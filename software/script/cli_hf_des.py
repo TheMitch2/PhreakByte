@@ -8,6 +8,7 @@ import re
 import struct
 import json
 import argparse
+import time
 
 from cli_core import (
     ArgumentParserNoExit,
@@ -1087,6 +1088,117 @@ class HfDesInfo(ReaderRequiredUnit):
             print(f" {CY}[!] GetApplicationIDs failed: {e}{C0}")
 
 
+# DfcReaderStatus (dfc_reader.h) -- final outcome of the reader-mode exchange.
+_DFC_READER_STATUS_NAMES = {
+    0: "ok",
+    2: "invalid_argument",
+    3: "buffer_too_small",
+    4: "protocol_error",
+    5: "integrity_error",
+    6: "card_error",
+    7: "unsupported",
+}
+_DFC_READER_STATUS_CARD_ERROR = 6
+
+# DFC_STATUS_* (dfc_common.h) -- the card's own native DESFire status byte,
+# only meaningful when the reader status above is card_error (6).
+_DFC_NATIVE_STATUS_NAMES = {
+    0x00: "OK",
+    0x0B: "PROXIMITY_KEY_DISABLED",
+    0x0C: "NO_CHANGES",
+    0x0E: "OUT_OF_EEPROM",
+    0x1C: "ILLEGAL_COMMAND_CODE",
+    0x1E: "INTEGRITY_ERROR",
+    0x40: "NO_SUCH_KEY",
+    0x7E: "LENGTH_ERROR",
+    0x90: "SPECIAL_SUCCESS",
+    0x9D: "PERMISSION_DENIED",
+    0x9E: "PARAMETER_ERROR",
+    0xA0: "APPLICATION_NOT_FOUND",
+    0xAE: "AUTHENTICATION_ERROR",
+    0xBE: "BOUNDARY_ERROR",
+    0xCA: "COMMAND_ABORTED",
+    0xCE: "COUNT_ERROR",
+    0xDE: "DUPLICATE_ERROR",
+    0xF0: "FILE_NOT_FOUND",
+}
+
+
+@hf_des.command("readerauth")
+class HfDesReaderAuth(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = (
+            "ISO 7816 mutual authentication against a physical DESFire card "
+            "in a single firmware call (field cycle + select/RATS + optional "
+            "AID select + auth), so the card's T=CL session never has to "
+            "survive a USB/BLE round trip."
+        )
+        parser.add_argument("--aid", type=str, default=None, metavar="<hex>",
+                             help="3-byte AID to select first -> application-level "
+                                  "auth. Omit for PICC master-key auth.")
+        parser.add_argument("-n", "--key-no", type=int, required=True, metavar="<0-31>",
+                             help="Key number to authenticate with.")
+        parser.add_argument("-a", "--algo", type=str, required=True,
+                             choices=["2tdea", "3tdea", "aes"],
+                             help="2tdea = legacy DES / 2-key 3DES (16-byte key), "
+                                  "3tdea = 3-key 3DES (24-byte key), "
+                                  "aes = AES-128 (16-byte key)")
+        parser.add_argument("-k", "--key", type=str, required=True, metavar="<hex>",
+                             help="Key bytes in hex; length must match --algo")
+        parser.epilog = (
+            "examples:\n"
+            "  hf des readerauth -n 0 -a aes -k 00000000000000000000000000000000\n"
+            "  hf des readerauth --aid 123456 -n 1 -a 3tdea "
+            "-k 00112233445566778899AABBCCDDEEFF0102030405060708\n"
+        )
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        try:
+            aid = bytes.fromhex(args.aid) if args.aid else None
+            if aid is not None and len(aid) != 3:
+                print(f" {CR}[!] --aid must be exactly 3 bytes{C0}")
+                return
+            key = bytes.fromhex(args.key)
+        except ValueError as e:
+            print(f" {CR}[!] {e}{C0}")
+            return
+
+        try:
+            resp = self.cmd.desfire_reader_auth_iso7816(
+                key_no=args.key_no, algorithm=args.algo, key=key, aid=aid)
+        except ValueError as e:
+            print(f" {CR}[!] {e}{C0}")
+            return
+
+        if resp.status == Status.HF_TAG_NO:
+            print(f" {CR}[!] No card in the field{C0}")
+            return
+        if resp.status != Status.HF_TAG_OK:
+            print(f" {CR}[!] Device rejected the request: {resp.status}{C0}")
+            return
+
+        data = resp.data
+        if not data:
+            print(f" {CR}[!] Empty response from device{C0}")
+            return
+
+        reader_status = data[0]
+        if reader_status == 0:
+            print(f" {CG}[+] Authenticated{C0}")
+            return
+
+        status_name = _DFC_READER_STATUS_NAMES.get(reader_status, f"0x{reader_status:02X}")
+        if reader_status == _DFC_READER_STATUS_CARD_ERROR and len(data) >= 2:
+            native = data[1]
+            native_name = _DFC_NATIVE_STATUS_NAMES.get(native, f"0x{native:02X}")
+            print(f" {CR}[!] Card refused authentication: "
+                  f"{native_name} (native status 0x{native:02X}){C0}")
+        else:
+            print(f" {CR}[!] Authentication failed: {status_name}{C0}")
+
+
 @hf_des.command("chk")
 class HfDesChk(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1418,5 +1530,3 @@ AUTHTRACE_STATUS_NAMES = {
     0x60: "par_err",
     0x68: "success",
 }
-
-

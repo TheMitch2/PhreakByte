@@ -1516,6 +1516,72 @@ class ChameleonCMD:
                 })
         return resp
 
+    # Cipher name -> (algorithm byte, key length, challenge length), matching
+    # dfc_reader_authenticate_iso7816_begin()'s validation in dfc_reader.c
+    # exactly: 2tdea (legacy DES / 2-key 3DES) takes a 16-byte key and an
+    # 8-byte challenge; 3tdea (3-key 3DES) a 24-byte key and 16-byte
+    # challenge; aes a 16-byte key and 16-byte challenge.
+    _DESFIRE_ISO7816_AUTH_ALGORITHMS = {
+        '2tdea': (0x02, 16),
+        '3tdea': (0x04, 24),
+        'aes':   (0x09, 16),
+    }
+
+    def desfire_reader_auth_iso7816(self, key_no: int, algorithm: str, key: bytes, aid: bytes = None):
+        """
+        Reader mode: ISO 7816 mutual authentication against a physical DESFire
+        card, in one firmware call. The firmware cycles the field, does
+        select+RATS, optionally ISO-selects `aid`, then runs the
+        GET CHALLENGE / EXTERNAL AUTHENTICATE / INTERNAL AUTHENTICATE exchange
+        without ever returning to the host in between -- avoiding the T=CL
+        session drop that a separate select-then-auth pair of USB calls would
+        cause.
+
+        :param key_no: key number, 0-31. Authenticates the PICC master key
+                        when aid is None, or a key inside the selected
+                        application when aid is given.
+        :param algorithm: '2tdea' (legacy DES / 2-key 3DES), '3tdea'
+                        (3-key 3DES), or 'aes'.
+        :param key: raw key bytes; length must match algorithm
+                        (16 for 2tdea/aes, 24 for 3tdea).
+        :param aid: optional 3-byte AID to select before authenticating.
+        :return: response object.
+            resp.status:
+                Status.HF_TAG_OK  -- request reached the card (see resp.data
+                                     for the actual outcome)
+                Status.HF_TAG_NO  -- no card found in the field
+                Status.PAR_ERR    -- malformed request (should not happen if
+                                     this wrapper's own checks pass)
+            resp.data[0]: DfcReaderStatus (0 = DfcReaderOk = authenticated).
+            resp.data[1]: only present when resp.data[0] == 6
+                          (DfcReaderCardError) -- the card's native DESFire
+                          status byte, e.g. 0xAE = AUTHENTICATION_ERROR,
+                          0xA0 = APPLICATION_NOT_FOUND (see DFC_STATUS_* in
+                          dfc_common.h).
+        """
+        if algorithm not in self._DESFIRE_ISO7816_AUTH_ALGORITHMS:
+            raise ValueError(
+                f"algorithm must be one of {list(self._DESFIRE_ISO7816_AUTH_ALGORITHMS)}")
+        alg_byte, want_key_len = self._DESFIRE_ISO7816_AUTH_ALGORITHMS[algorithm]
+        if len(key) != want_key_len:
+            raise ValueError(f"{algorithm} key must be {want_key_len} bytes, got {len(key)}")
+        if not (0 <= key_no <= 0x1F):
+            raise ValueError("key_no must be 0-31")
+
+        has_aid = aid is not None
+        if has_aid and len(aid) != 3:
+            raise ValueError("aid must be 3 bytes")
+        aid_bytes = aid if has_aid else b'\x00\x00\x00'
+        # DFC_ISO7816_AUTH_APP_REFERENCE (0x80) | key number, matching the
+        # key_reference format dfc_reader_authenticate_iso7816_begin expects.
+        key_reference = (0x80 if has_aid else 0x00) | key_no
+
+        payload = bytes([1 if has_aid else 0]) + aid_bytes + \
+            bytes([key_reference, alg_byte, want_key_len]) + bytes(key)
+
+        return self.device.send_cmd_sync(
+            Command.DESFIRE_READER_AUTH_ISO7816, payload, timeout=3)
+
     @expect_response(Status.SUCCESS)
     def mf1_read_emu_block_data(self, block_start: int, block_count: int):
         """
