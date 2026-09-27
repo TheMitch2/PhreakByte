@@ -105,6 +105,48 @@ AUTH_MODES = {
 }
 # Authentication mode as the binary encoding numbers it.
 AUTH_MODE_CODES = {0x0A: 0, 0x1A: 1, 0xAA: 2}
+
+# --- v6 authentication-command masks (credential format v6) -------------------
+# In v6 the PICC 0x82 / application 0x85 INTEGER is a six-bit command mask, not
+# the v4/v5 scalar enum. Bits: D40 0x01, ISO(native 0x1A) 0x02, AES 0x04,
+# EV2First 0x08, EV2NonFirst 0x10, ISO7816 0x20.
+DFC_VERSION_V6 = 6
+AUTH_CMD_BITS = {
+    "D40": 0x01, "ISO": 0x02, "AES": 0x04,
+    "EV2First": 0x08, "EV2NonFirst": 0x10, "ISO7816": 0x20,
+}
+AUTH_CMD_ORDER = ["D40", "ISO", "AES", "EV2First", "EV2NonFirst", "ISO7816"]
+# native command byte <-> canonical v6 name (for the preferred command tag)
+AUTH_CMD_TO_NATIVE = {"D40": 0x0A, "ISO": 0x1A, "AES": 0xAA}
+NATIVE_TO_AUTH_CMD = {0x0A: "D40", 0x1A: "ISO", 0xAA: "AES"}
+
+
+def auth_mask_to_names(mask: int) -> list:
+    return [n for n in AUTH_CMD_ORDER if mask & AUTH_CMD_BITS[n]]
+
+
+def auth_names_to_mask(names) -> int:
+    m = 0
+    for n in names:
+        if n not in AUTH_CMD_BITS:
+            raise DfcError(f"unknown authentication command {n!r}")
+        m |= AUTH_CMD_BITS[n]
+    return m
+
+
+def native_cmd_to_mask(native_cmd: int) -> int:
+    """Infer a v6 supported-command mask from a v4/v5 scalar native command,
+    per the format doc's upgrade rule (supported set inferred from key type)."""
+    name = NATIVE_TO_AUTH_CMD.get(native_cmd)
+    if name is None:
+        return AUTH_CMD_BITS["AES"]
+    if name == "AES":
+        # AES key type: AES native + EV2 secure messaging + ISO7816
+        return (AUTH_CMD_BITS["AES"] | AUTH_CMD_BITS["EV2First"]
+                | AUTH_CMD_BITS["EV2NonFirst"] | AUTH_CMD_BITS["ISO7816"])
+    if name == "ISO":
+        return AUTH_CMD_BITS["ISO"] | AUTH_CMD_BITS["ISO7816"]
+    return AUTH_CMD_BITS["D40"]
 AUTH_COMMANDS_BY_CODE = {0: 0x0A, 1: 0x1A, 2: 0xAA}
 
 
@@ -160,6 +202,9 @@ class DfcApplication:
     key_settings_1: int = 0x0F
     key_settings_2: int = 0x01
     auth_command: int = 0x0A
+    auth_mask: int = 0             # v6: supported-command mask (0 = derive from native)
+    preferred_cmd: str = ""        # v6: preferred command name
+    sm_disable: int = -1           # v6: app SM-disable octet, -1 = absent
     key_len: int = 16
     keys: list[DfcKey] = field(default_factory=list)
 
@@ -200,6 +245,9 @@ class DfcCredential:
     picc_key_settings_1: int = 0x0F
     picc_key_settings_2: int = 0x01
     picc_auth_command: int = 0x0A
+    picc_auth_mask: int = 0        # v6: supported-command mask (0 = derive from native)
+    picc_preferred_cmd: str = ""  # v6: preferred command name, "" = none
+    cred_version: int = 4          # decoded/target wire version (4/5/6)
     picc_keys: list[DfcKey] = field(default_factory=list)
     picc_random_id: bool = False
     picc_format_disabled: bool = False
@@ -420,11 +468,22 @@ def _encode_app(cred: DfcCredential, index: int, app: DfcApplication) -> bytes:
     body += (
         _tlv(0x83, bytes([app.key_settings_1]))
         + _tlv(0x84, bytes([app.key_settings_2]))
-        + _int(0x85, AUTH_MODE_CODES.get(app.auth_command, 0))
+        + _int(0x85, (app.auth_mask or native_cmd_to_mask(app.auth_command))
+                     if _target_v6(cred) else AUTH_MODE_CODES.get(app.auth_command, 0))
+        + (_tlv(0x8B, bytes([app.sm_disable]))
+           if (_target_v6(cred) and app.sm_disable >= 0) else b"")
+        + (_int(0x8C, AUTH_CMD_BITS[app.preferred_cmd])
+           if (_target_v6(cred) and app.preferred_cmd) else b"")
         + _encode_keys(0xA6, app.keys, app.key_len)
         + _encode_files(0xA7, cred, index)
     )
     return _tlv(0x30, body)
+
+
+def _target_v6(cred) -> bool:
+    return (cred.cred_version == 6 or cred.picc_auth_mask or cred.picc_preferred_cmd
+            or any(a.auth_mask or a.preferred_cmd or a.sm_disable >= 0
+                   for a in cred.apps))
 
 
 def der_encode(cred: DfcCredential) -> bytes:
@@ -444,8 +503,12 @@ def der_encode(cred: DfcCredential) -> bytes:
     picc = (
         _tlv(0x80, bytes([cred.picc_key_settings_1]))
         + _tlv(0x81, bytes([cred.picc_key_settings_2]))
-        + _int(0x82, AUTH_MODE_CODES.get(cred.picc_auth_command, 0))
+        + _int(0x82, (cred.picc_auth_mask or native_cmd_to_mask(cred.picc_auth_command))
+                     if _target_v6(cred)
+                     else AUTH_MODE_CODES.get(cred.picc_auth_command, 0))
     )
+    if _target_v6(cred) and cred.picc_preferred_cmd:
+        picc += _int(0x8F, AUTH_CMD_BITS[cred.picc_preferred_cmd])
     # DEFAULT FALSE: omit rather than emit an explicit false.
     if cred.picc_random_id:
         picc += _bool(0x83, True)
@@ -466,7 +529,14 @@ def der_encode(cred: DfcCredential) -> bytes:
         _encode_app(cred, i, app) for i, app in enumerate(cred.apps)
     )
 
-    ver = 5 if (cred.hardware_version or cred.software_version) else DFC_VERSION
+    _v6 = (cred.cred_version == 6 or cred.picc_auth_mask or cred.picc_preferred_cmd
+           or any(a.auth_mask or a.preferred_cmd or a.sm_disable >= 0 for a in cred.apps))
+    if _v6:
+        ver = DFC_VERSION_V6
+    elif cred.hardware_version or cred.software_version:
+        ver = 5
+    else:
+        ver = DFC_VERSION
     body = _int(0x80, ver) + _tlv(0xA1, card) + _tlv(0xA2, picc) + _tlv(0xA3, apps)
     out = _tlv(0x60, body)
     if len(out) > DER_MAX_SIZE:
@@ -804,7 +874,7 @@ def der_decode(blob: bytes, cls=DfcCredential) -> "DfcCredential":
 
     got = _fields(body, (0x80, 0xA1, 0xA2, 0xA3))
     version = _read_uint(_req(got, 0x80), 0xFF)
-    if version not in (DFC_VERSION, 5):
+    if version not in (DFC_VERSION, 5, DFC_VERSION_V6):
         raise DfcError(
             f"credential encoding version {version} is not supported",
             DfcErrorClass.UNSUPPORTED,
@@ -841,8 +911,8 @@ def der_decode(blob: bytes, cls=DfcCredential) -> "DfcCredential":
 
     picc = _fields(
         _req(got, 0xA2),
-        (0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0xA9, 0xAA,
-         0x8B, 0xAC, 0xAD, 0xAE),
+        (0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x8B, 0x8F,
+         0xA9, 0xAA, 0xAC, 0xAD, 0xAE),
     )
     if any(tag in picc for tag in (0x8B, 0xAC, 0xAD, 0xAE)):
         raise DfcError(
@@ -852,7 +922,24 @@ def der_decode(blob: bytes, cls=DfcCredential) -> "DfcCredential":
         )
     cred.picc_key_settings_1 = _read_octets(_req(picc, 0x80), 1)[0]
     cred.picc_key_settings_2 = _read_octets(_req(picc, 0x81), 1)[0]
-    cred.picc_auth_command = AUTH_COMMANDS_BY_CODE[_read_uint(_req(picc, 0x82), 2)]
+    if version == DFC_VERSION_V6:
+        cred.cred_version = 6
+        cred.picc_auth_mask = _read_uint(_req(picc, 0x82), 0x3F)
+        names = auth_mask_to_names(cred.picc_auth_mask)
+        if 0x8F in picc:                              # preferred command (v6)
+            pref_bit = _read_uint(picc[0x8F], 0x3F)
+            pref = auth_mask_to_names(pref_bit)
+            if len(pref) != 1 or not (pref_bit & cred.picc_auth_mask):
+                raise DfcError("PICC preferred auth command not a single enabled bit")
+            cred.picc_preferred_cmd = pref[0]
+        # native command the emulator will actually use: preferred if native,
+        # else the first native-capable enabled command
+        pick = cred.picc_preferred_cmd or next(
+            (n for n in ("AES", "ISO", "D40") if n in names), "AES")
+        cred.picc_auth_command = AUTH_CMD_TO_NATIVE.get(pick, 0xAA)
+    else:
+        cred.cred_version = version
+        cred.picc_auth_command = AUTH_COMMANDS_BY_CODE[_read_uint(_req(picc, 0x82), 2)]
     cred.picc_random_id = _read_default_false(picc, 0x83)
     cred.picc_format_disabled = _read_default_false(picc, 0x84)
     if 0x85 in picc:
@@ -871,7 +958,8 @@ def der_decode(blob: bytes, cls=DfcCredential) -> "DfcCredential":
         if tag != 0x30:
             raise DfcError(f"tag 0x{tag:02X} where an application was expected")
         app_fields = _fields(
-            value, (0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0xA6, 0xA7, 0xA8, 0x89, 0xAA)
+            value, (0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x89, 0x8B, 0x8C,
+                    0xA6, 0xA7, 0xA8, 0xAA)
         )
         if any(tag in app_fields for tag in (0xA8, 0x89, 0xAA)):
             raise DfcError(
@@ -892,7 +980,22 @@ def der_decode(blob: bytes, cls=DfcCredential) -> "DfcCredential":
             app.iso_aid = app_fields[0x82]
         app.key_settings_1 = _read_octets(_req(app_fields, 0x83), 1)[0]
         app.key_settings_2 = _read_octets(_req(app_fields, 0x84), 1)[0]
-        app.auth_command = AUTH_COMMANDS_BY_CODE[_read_uint(_req(app_fields, 0x85), 2)]
+        if version == DFC_VERSION_V6:
+            app.auth_mask = _read_uint(_req(app_fields, 0x85), 0x3F)
+            names = auth_mask_to_names(app.auth_mask)
+            if 0x8C in app_fields:                    # app preferred command (v6)
+                pref_bit = _read_uint(app_fields[0x8C], 0x3F)
+                pref = auth_mask_to_names(pref_bit)
+                if len(pref) != 1 or not (pref_bit & app.auth_mask):
+                    raise DfcError("application preferred auth command invalid")
+                app.preferred_cmd = pref[0]
+            if 0x8B in app_fields:                    # app SM-disable octet (v6)
+                app.sm_disable = _read_octets(app_fields[0x8B], 1)[0]
+            pick = app.preferred_cmd or next(
+                (n for n in ("AES", "ISO", "D40") if n in names), "AES")
+            app.auth_command = AUTH_CMD_TO_NATIVE.get(pick, 0xAA)
+        else:
+            app.auth_command = AUTH_COMMANDS_BY_CODE[_read_uint(_req(app_fields, 0x85), 2)]
         app.key_len = key_length_for_ks2(app.key_settings_2)
         app.keys = _read_keys(_req(app_fields, 0xA6), app.key_len)
 
