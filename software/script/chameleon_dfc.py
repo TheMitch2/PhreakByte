@@ -272,12 +272,12 @@ class DfcCredential:
         if filetype != DFC_FILETYPE:
             raise DfcError(f"not a DESFire credential file (Filetype: {filetype!r})")
         version = _parse_int(fields.get("Version", "0"))
-        if version not in (DFC_VERSION, 5):
+        if version not in (DFC_VERSION, 5, DFC_VERSION_V6):
             # Earlier versions carried no card record, no PICC keys beyond the
             # master, and no declared file size. Reading one means inventing
             # those, and inventing them is what this format exists to stop.
             raise DfcError(
-                f"unsupported .dfc version {version}, expected {DFC_VERSION} or 5",
+                f"unsupported .dfc version {version}, expected 4, 5, or 6",
                 DfcErrorClass.UNSUPPORTED,
             )
         _validate_text_keys(fields)
@@ -1056,6 +1056,8 @@ _STATIC_TEXT_KEYS = {
     "PICC Key Settings 1",
     "PICC Key Settings 2",
     "PICC Authentication Mode",
+    "PICC Authentication Commands",
+    "PICC Preferred Authentication Command",
     "PICC Key Count",
     "PICC Random ID",
     "PICC Format Disabled",
@@ -1106,7 +1108,8 @@ _KEY_TEXT_PATTERN = re.compile(
 )
 _APPLICATION_TEXT_PATTERN = re.compile(
     r"Application [0-9A-F]{2} (?:AID|ISO File ID|DF Name|Key Settings 1|"
-    r"Key Settings 2|Authentication Mode|Key Count|File Count)"
+    r"Key Settings 2|Authentication Mode|Authentication Commands|"
+    r"Preferred Authentication Command|SM Disable|Key Count|File Count)"
 )
 _FILE_TEXT_PATTERN = re.compile(
     r"(?:PICC |Application [0-9A-F]{2} )File [0-9A-F]{2} (?:Number|Type|"
@@ -1213,6 +1216,35 @@ def _auth_mode(text: str | None, ks2: int) -> int:
     return AUTH_MODES[text]
 
 
+def _parse_auth_commands(text: str) -> int:
+    """Text 'ISO, ISO7816' (canonical order) -> v6 six-bit command mask."""
+    t = text.strip()
+    if t.lower() == "none" or not t:
+        return 0
+    names = [p.strip() for p in t.split(",")]
+    return auth_names_to_mask(names)
+
+
+def _parse_preferred(text, mask: int, where: str) -> str:
+    if text is None or not text.strip():
+        return ""
+    name = text.strip()
+    if name not in AUTH_CMD_BITS:
+        raise DfcError(f"{where} preferred authentication command {name!r} unknown")
+    if not (AUTH_CMD_BITS[name] & mask):
+        raise DfcError(f"{where} preferred command {name} is not in its command set")
+    return name
+
+
+def _native_from_mask(mask: int, preferred: str) -> int:
+    """Native command byte the emulator uses: preferred if native, else first
+    native-capable enabled command."""
+    names = auth_mask_to_names(mask)
+    pick = preferred if preferred in ("D40", "ISO", "AES") else next(
+        (n for n in ("AES", "ISO", "D40") if n in names), "AES")
+    return AUTH_CMD_TO_NATIVE.get(pick, 0xAA)
+
+
 def _parse_uid(fields: dict[str, str]) -> bytes:
     uid = _parse_hex(fields.get("UID", ""))
     if len(uid) not in UID_LENGTHS:
@@ -1260,9 +1292,18 @@ def _parse_v4(cls, fields: dict[str, str]) -> "DfcCredential":
         _need(fields, "PICC Key Settings 1"), "PICC Key Settings 1")
     cred.picc_key_settings_2 = _parse_octet(
         _need(fields, "PICC Key Settings 2"), "PICC Key Settings 2")
-    cred.picc_auth_command = _auth_mode(
-        fields.get("PICC Authentication Mode"), cred.picc_key_settings_2
-    )
+    if "PICC Authentication Commands" in fields:
+        cred.picc_auth_mask = _parse_auth_commands(fields["PICC Authentication Commands"])
+        cred.picc_preferred_cmd = _parse_preferred(
+            fields.get("PICC Preferred Authentication Command"), cred.picc_auth_mask,
+            "PICC")
+        cred.cred_version = 6
+        cred.picc_auth_command = _native_from_mask(
+            cred.picc_auth_mask, cred.picc_preferred_cmd)
+    else:
+        cred.picc_auth_command = _auth_mode(
+            fields.get("PICC Authentication Mode"), cred.picc_key_settings_2
+        )
     picc_key_count = _parse_decimal(_need(fields, "PICC Key Count"), "PICC Key Count")
     if picc_key_count > MAX_KEYS:
         raise DfcError(f"PICC Key Count exceeds {MAX_KEYS}")
@@ -1313,9 +1354,20 @@ def _parse_v4(cls, fields: dict[str, str]) -> "DfcCredential":
             _need(fields, f"{prefix}Key Settings 1"), f"{prefix}Key Settings 1")
         app.key_settings_2 = _parse_octet(
             _need(fields, f"{prefix}Key Settings 2"), f"{prefix}Key Settings 2")
-        app.auth_command = _auth_mode(
-            fields.get(f"{prefix}Authentication Mode"), app.key_settings_2
-        )
+        if f"{prefix}Authentication Commands" in fields:
+            app.auth_mask = _parse_auth_commands(fields[f"{prefix}Authentication Commands"])
+            app.preferred_cmd = _parse_preferred(
+                fields.get(f"{prefix}Preferred Authentication Command"),
+                app.auth_mask, prefix.strip())
+            if f"{prefix}SM Disable" in fields:
+                app.sm_disable = _parse_octet(
+                    fields[f"{prefix}SM Disable"], f"{prefix}SM Disable")
+            cred.cred_version = 6
+            app.auth_command = _native_from_mask(app.auth_mask, app.preferred_cmd)
+        else:
+            app.auth_command = _auth_mode(
+                fields.get(f"{prefix}Authentication Mode"), app.key_settings_2
+            )
         app.key_len = key_length_for_ks2(app.key_settings_2)
         key_count = _parse_decimal(_need(fields, f"{prefix}Key Count"), f"{prefix}Key Count")
         if key_count > MAX_KEYS:
