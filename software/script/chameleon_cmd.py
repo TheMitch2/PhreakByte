@@ -1429,6 +1429,14 @@ class ChameleonCMD:
             data = struct.pack(f'!HHH{len(chunk)}s', total, sent, len(chunk), chunk)
             resp = self.device.send_cmd_sync(Command.DESFIRE_SET_CREDENTIAL, data)
             if resp.status != Status.SUCCESS:
+                # The device may append a 1-byte DfcDerStatus code:
+                # 1 = malformed (bad DER/order/semantic), 2 = unsupported
+                # (well-formed but this build lacks it), 3 = capacity.
+                der = {1: "malformed", 2: "unsupported (build lacks this feature)",
+                       3: "too large for device"}
+                detail = ""
+                if resp.data and len(resp.data) >= 1:
+                    detail = f" — DfcDer: {der.get(resp.data[0], resp.data[0])}"
                 # Surface a device-side rejection instead of pretending the load
                 # succeeded. STATUS_DEVICE_MODE_ERROR (0x69) means the tag is
                 # emulating (RF field present) — the engine holds pointers into
@@ -1436,7 +1444,7 @@ class ChameleonCMD:
                 raise UnexpectedResponseError(
                     f"device rejected credential load (status 0x{resp.status:02X}"
                     + (" — tag is emulating; remove it from any reader field and retry"
-                       if resp.status == 0x69 else "") + ")")
+                       if resp.status == 0x69 else "") + ")" + detail)
             sent += len(chunk)
             if progress:
                 progress(sent, total)
