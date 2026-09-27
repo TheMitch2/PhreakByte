@@ -451,7 +451,10 @@ class HfDesAuthTrace(ReaderRequiredUnit):
             "decryption of the random nonces for verification.\n\n"
             "Supports AuthenticateDES (0x0A, D40), AuthenticateAES (0xAA, "
             "EV1+) and AuthenticateISO 3K3DES (0x1A). Requires the "
-            "'cryptography' Python package."
+            "'cryptography' Python package.\n\n"
+            "This is the verbose per-frame tracer. To simply authenticate a "
+            "card reliably in one firmware call (no per-frame USB round trips), "
+            "use `hf des readerauth`."
         )
         parser.add_argument("--keyno", type=int, default=0, metavar="<n>",
                             help="DESFire key number (default 0 = master)")
@@ -1132,7 +1135,10 @@ class HfDesReaderAuth(ReaderRequiredUnit):
             "ISO 7816 mutual authentication against a physical DESFire card "
             "in a single firmware call (field cycle + select/RATS + optional "
             "AID select + auth), so the card's T=CL session never has to "
-            "survive a USB/BLE round trip."
+            "survive a USB/BLE round trip.\n\n"
+            "Use this to authenticate reliably (EV1+; 2TDEA/3TDEA/AES). For a "
+            "verbose host-side crypto walkthrough with every wire frame, or for "
+            "legacy D40 single-DES cards, use `hf des auth-trace` instead."
         )
         parser.add_argument("--aid", type=str, default=None, metavar="<hex>",
                              help="3-byte AID to select first -> application-level "
@@ -1141,8 +1147,9 @@ class HfDesReaderAuth(ReaderRequiredUnit):
                              help="Key number to authenticate with.")
         parser.add_argument("-a", "--algo", type=str, required=True,
                              choices=["2tdea", "3tdea", "aes"],
-                             help="2tdea = legacy DES / 2-key 3DES (16-byte key), "
-                                  "3tdea = 3-key 3DES (24-byte key), "
+                             help="2tdea = 2-key 3DES, EV1+ 16-byte key "
+                                  "(for legacy D40 single-DES use hf des auth-trace); "
+                                  "3tdea = 3-key 3DES (24-byte key); "
                                   "aes = AES-128 (16-byte key)")
         parser.add_argument("-k", "--key", type=str, required=True, metavar="<hex>",
                              help="Key bytes in hex; length must match --algo")

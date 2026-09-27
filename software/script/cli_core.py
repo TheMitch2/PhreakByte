@@ -445,56 +445,6 @@ class HF14AAntiCollArgsUnit(DeviceRequiredUnit):
         return change_requested, anti_coll_data_changed, uid, atqa, sak, ats
 
 
-class MFUAuthArgsUnit(ReaderRequiredUnit):
-    def args_parser(self) -> ArgumentParserNoExit:
-        parser = ArgumentParserNoExit()
-
-        def key_parser(key: str) -> bytes:
-            try:
-                key = bytes.fromhex(key)
-            except ValueError:
-                raise ValueError("Key should be a hex string")
-
-            if len(key) not in [4, 16]:
-                raise ValueError("Key should either be 4 or 16 bytes long")
-            elif len(key) == 16:
-                raise ValueError("Ultralight-C authentication isn't supported yet")
-
-            return key
-
-        parser.add_argument(
-            "-k",
-            "--key",
-            type=key_parser,
-            metavar="<hex>",
-            help="Authentication key (EV1/NTAG 4 bytes).",
-        )
-        parser.add_argument(
-            "-l",
-            action="store_true",
-            dest="swap_endian",
-            help="Swap endianness of the key.",
-        )
-
-        return parser
-
-    def get_param(self, args):
-        key = args.key
-
-        if key is not None and args.swap_endian:
-            key = bytearray(key)
-            for i in range(len(key)):
-                key[i] = key[len(key) - 1 - i]
-            key = bytes(key)
-
-        class Param:
-            def __init__(self, key):
-                self.key = key
-
-        return Param(key)
-
-    def on_exec(self, args: argparse.Namespace):
-        raise NotImplementedError("Please implement this")
 
 
 
