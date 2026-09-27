@@ -1427,7 +1427,16 @@ class ChameleonCMD:
         while sent < total:
             chunk = blob[sent:sent + self.DESFIRE_CHUNK]
             data = struct.pack(f'!HHH{len(chunk)}s', total, sent, len(chunk), chunk)
-            self.device.send_cmd_sync(Command.DESFIRE_SET_CREDENTIAL, data)
+            resp = self.device.send_cmd_sync(Command.DESFIRE_SET_CREDENTIAL, data)
+            if resp.status != Status.SUCCESS:
+                # Surface a device-side rejection instead of pretending the load
+                # succeeded. STATUS_DEVICE_MODE_ERROR (0x69) means the tag is
+                # emulating (RF field present) — the engine holds pointers into
+                # the credential from the NFC ISR and will not accept a load then.
+                raise UnexpectedResponseError(
+                    f"device rejected credential load (status 0x{resp.status:02X}"
+                    + (" — tag is emulating; remove it from any reader field and retry"
+                       if resp.status == 0x69 else "") + ")")
             sent += len(chunk)
             if progress:
                 progress(sent, total)
