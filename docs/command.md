@@ -316,12 +316,14 @@ MIFARE Classic commands
 
 #### `hf mf autopwn`
 
-MIFARE Classic auto recovery (PM3-style): detect PRNG, check known keys, then escalate darkside -> nested -> hardnested -> staticnested, propagating each recovered key. Finishes by dumping the card and optionally loading it straight into an emulation slot.
+MIFARE Classic auto recovery (PM3-style): detect PRNG, check known keys, then escalate darkside -> nested -> hardnested -> staticnested, propagating each recovered key. Flags follow Proxmark3: -f is the key dictionary, -o is the output suffix (hf-mf-<uid>-dump[-suffix].json). -s/--slot additionally loads the card into an emulation slot.
 
 - `-k`, `--key` — Known key (12 hex)
-- `-f`, `--file` — Write recovered card here. .json -> Proxmark3 'mfc v2', .bin -> raw. Keys go to <base>.dic and <base>.key. Non-interactive when set.
-- `-s`, `--slot` — Load the recovered card into this emulation slot (1-8). (choices: 1, 2, 3, 4, 5, 6, 7, 8)
-- `--dict` — Extra key dictionary file (one 12-hex key per line) to try first.
+- `-f`, `--file`, `--dict`, `--dic` — Filename of key dictionary to try first (PM3 -f).
+- `-o`, `--output` — Dump the card + keys to hf-mf-<uid>-dump[-<suffix>].json and hf-mf-<uid>-key[-<suffix>].(dic|bin). Bare -o uses no suffix.
+- `--bin` — With -o, also write the raw .bin dump next to the JSON.
+- `-s`, `--slot` — Also load the recovered card into this emulation slot (1-8). (choices: 1, 2, 3, 4, 5, 6, 7, 8)
+- `--slow` — Slower acquisition for non-standard cards (PM3 -s/--slow).
 - `--keyfile` — Resume: seed known keys from a Proxmark3 .key (A||B per sector) or .dic file, so already-recovered sectors are skipped.
 - `--no-dump` — Recover keys only; skip the card dump.
 
