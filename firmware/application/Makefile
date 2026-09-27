@@ -415,6 +415,7 @@ ifeq	(${CURRENT_DEVICE_TYPE}, ${CHAMELEON_ULTRA})
     $(DESFIRE_DIR)/src/dfc_crypto.c \
     $(DESFIRE_DIR)/src/dfc_profile.c \
     $(DESFIRE_DIR)/src/dfc_ev2.c \
+    $(DESFIRE_DIR)/src/dfc_ev2_crypto.c \
     $(DESFIRE_DIR)/src/aes_cmac.c \
     $(DESFIRE_DIR)/src/des_cmac.c \
     $(TINY_DES_DIR)/des.c \
