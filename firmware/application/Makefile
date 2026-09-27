@@ -403,27 +403,27 @@ ifeq	(${CURRENT_DEVICE_TYPE}, ${CHAMELEON_ULTRA})
   SRC_FILES +=\
     $(DESFIRE_DIR)/desfire_shim.c \
     $(DESFIRE_DIR)/nfc_desfire.c \
-    $(DESFIRE_DIR)/core/src/dfc_virtual_picc.c \
-    $(DESFIRE_DIR)/core/src/dfc_emulator.c \
-    $(DESFIRE_DIR)/core/src/dfc_emulator_commands.c \
-    $(DESFIRE_DIR)/core/src/dfc_emulator_crypto.c \
-    $(DESFIRE_DIR)/core/src/dfc_emulator_iso7816.c \
-    $(DESFIRE_DIR)/core/src/dfc_credential.c \
-    $(DESFIRE_DIR)/core/src/dfc_der.c \
-    $(DESFIRE_DIR)/core/src/dfc_secure_messaging.c \
-    $(DESFIRE_DIR)/core/src/dfc_common.c \
-    $(DESFIRE_DIR)/core/src/dfc_crypto.c \
-    $(DESFIRE_DIR)/core/src/dfc_profile.c \
-    $(DESFIRE_DIR)/core/src/dfc_ev2.c \
-    $(DESFIRE_DIR)/core/src/aes_cmac.c \
-    $(DESFIRE_DIR)/core/src/des_cmac.c \
+    $(DESFIRE_DIR)/src/dfc_virtual_picc.c \
+    $(DESFIRE_DIR)/src/dfc_emulator.c \
+    $(DESFIRE_DIR)/src/dfc_emulator_commands.c \
+    $(DESFIRE_DIR)/src/dfc_emulator_crypto.c \
+    $(DESFIRE_DIR)/src/dfc_emulator_iso7816.c \
+    $(DESFIRE_DIR)/src/dfc_credential.c \
+    $(DESFIRE_DIR)/src/dfc_der.c \
+    $(DESFIRE_DIR)/src/dfc_secure_messaging.c \
+    $(DESFIRE_DIR)/src/dfc_common.c \
+    $(DESFIRE_DIR)/src/dfc_crypto.c \
+    $(DESFIRE_DIR)/src/dfc_profile.c \
+    $(DESFIRE_DIR)/src/dfc_ev2.c \
+    $(DESFIRE_DIR)/src/aes_cmac.c \
+    $(DESFIRE_DIR)/src/des_cmac.c \
     $(TINY_DES_DIR)/des.c \
     $(DESFIRE_DIR)/shim/mbedtls_compat.c \
 
   INC_FOLDERS +=\
     ${DESFIRE_DIR} \
-    ${DESFIRE_DIR}/core/src \
-    ${DESFIRE_DIR}/core/port \
+    ${DESFIRE_DIR}/src \
+    ${DESFIRE_DIR}/port \
     ${TINY_DES_DIR} \
     ${DESFIRE_DIR}/shim \
 
