@@ -900,10 +900,35 @@ class HfDesELoad(SlotIndexArgsAndGoUnit):
         except Exception as e:
             print(f"\n {CR}[!] device rejected the credential: {e}{C0}")
             return
+        # Stamp the slot's anti-collision record from the credential so
+        # `hw slot list` and a reader's anticollision see the card's real UID,
+        # not the default the slot was seeded with. DESFire answers as
+        # ISO14443-4: SAK 0x20; ATQA 0x0344 for a 7-byte UID (0x0044 for 4-byte);
+        # ATS/SAK/ATQA from the credential when it carries them.
+        try:
+            uid = cred.uid
+            if cred.picc_atqa is not None:
+                atqa = bytes(cred.picc_atqa)
+            else:
+                atqa = bytes([0x03, 0x44]) if len(uid) == 7 else bytes([0x00, 0x44])
+            sak = bytes([cred.picc_sak]) if cred.picc_sak is not None else bytes([0x20])
+            ats = bytes(cred.picc_ats) if cred.picc_ats else b""
+            self.cmd.hf14a_set_anti_coll_data(uid, atqa, sak, ats)
+        except Exception as e:
+            print(f" {CY}[!] loaded, but could not set slot UID ({e}); "
+                  f"hw slot list may show a default UID{C0}")
+
         print(f"\n - Loaded {len(blob)} bytes into slot {self.slot_num}")
         print(f"   UID {cred.uid.hex().upper()}, "
               f"{len(cred.apps)} application(s), {len(cred.files)} file(s)")
         print(f" {CY}Run 'hw slot store' to keep it across a power cycle.{C0}")
+
+    def after_exec(self, args: argparse.Namespace):
+        # Stay on the slot we just loaded — do NOT revert to the previously
+        # active slot. A user who loads a card into slot N expects the device
+        # to be emulating that card (and edump/readers to see it), not to
+        # silently switch back. Persist the active-slot choice.
+        self.cmd.set_active_slot(self.slot_num)
 
 
 @hf_des.command("edump")
