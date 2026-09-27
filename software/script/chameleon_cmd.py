@@ -1434,9 +1434,13 @@ class ChameleonCMD:
                 # (well-formed but this build lacks it), 3 = capacity.
                 der = {1: "malformed", 2: "unsupported (build lacks this feature)",
                        3: "too large for device"}
+                stages = {1: "decode", 2: "ATS-consistency", 3: "materialize/capacity",
+                          4: "reload/bind_session"}
                 detail = ""
                 if resp.data and len(resp.data) >= 1:
                     detail = f" — DfcDer: {der.get(resp.data[0], resp.data[0])}"
+                    if len(resp.data) >= 2:
+                        detail += f", stage: {stages.get(resp.data[1], resp.data[1])}"
                 # Surface a device-side rejection instead of pretending the load
                 # succeeded. STATUS_DEVICE_MODE_ERROR (0x69) means the tag is
                 # emulating (RF field present) — the engine holds pointers into
