@@ -3419,34 +3419,35 @@ static data_frame_tx_t *cmd_processor_desfire_set_credential(uint16_t cmd, uint1
      * half-decoded one either -- reset the slot to a blank card so it is always
      * a valid, emulatable state, and say so. */
     DfcCredential *cred = nfc_tag_desfire_get_credential();
+    /* stage: 1=decode 2=ats 3=materialize 4=reload -- returned to the host so a
+     * rejection names the exact step, since a malformed decode here can differ
+     * from a host-side decode of the same bytes when builds diverge. */
+    uint8_t stage = 1;
     DfcDerStatus st = dfc_der_decode(cred, m_desfire_xfer, m_desfire_xfer_total);
     if (st == DfcDerOk && !dfc_credential_picc_ats_is_consistent(cred)) {
-        /* Well formed, and the codecs round-trip it, but the stored ATS does not
-         * describe itself: emulating it would mean answering RATS with a frame no
-         * card would send. Unsupported rather than malformed. */
+        stage = 2;
         st = DfcDerUnsupported;
     }
     if (st == DfcDerOk) {
-        /* A credential may know only a prefix of a file's contents. The device
-         * is the card from here on, so give every file its declared allocation
-         * before the emulator binds to it. The transfer buffer is free now, so
-         * it doubles as the scratch that carries each known prefix across the
-         * reallocation. */
         if (!dfc_credential_materialize_contents(cred, m_desfire_xfer, sizeof(m_desfire_xfer))) {
+            stage = 3;
             st = DfcDerCapacity;
         }
     }
     m_desfire_xfer_total = 0;
     m_desfire_xfer_have = 0;
     if (st != DfcDerOk) {
-        NRF_LOG_ERROR("DESFire load rejected: %s; slot reset to a blank card",
-                      dfc_der_status_name(st));
+        NRF_LOG_ERROR("DESFire load rejected at stage %u: %s; slot reset to a blank card",
+                      stage, dfc_der_status_name(st));
         dfc_credential_init_blank(cred);
         (void)nfc_tag_desfire_reload();
-        uint8_t code = (uint8_t)st;
-        return data_frame_make(cmd, STATUS_PAR_ERR, 1, &code);
+        uint8_t code[2] = { (uint8_t)st, stage };
+        return data_frame_make(cmd, STATUS_PAR_ERR, 2, code);
     }
-    if (!nfc_tag_desfire_reload()) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    if (!nfc_tag_desfire_reload()) {
+        uint8_t code[2] = { 0, 4 };  /* reload/bind_session failed after a clean decode */
+        return data_frame_make(cmd, STATUS_PAR_ERR, 2, code);
+    }
     return data_frame_make(cmd, STATUS_SUCCESS, 0, NULL);
 }
 
