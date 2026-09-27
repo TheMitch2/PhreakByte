@@ -1,0 +1,24 @@
+Filetype: DFC Credential
+Version: 6
+Card Generation: EV2
+Card Storage: 4096
+UID: 04 42 38 1A D3 10 90
+UID Provenance: Real
+PICC Key Settings 1: 0F
+PICC Key Settings 2: 01
+PICC Authentication Commands: ISO
+PICC Preferred Authentication Command: ISO
+PICC Key Count: 1
+PICC Key 00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+PICC Key 00 Version: 00
+PICC File Count: 0
+Application Count: 1
+Application 00 AID: F5 41 31
+Application 00 Key Settings 1: 0F
+Application 00 Key Settings 2: 82
+Application 00 Authentication Commands: AES, EV2First, EV2NonFirst
+Application 00 Preferred Authentication Command: EV2First
+Application 00 Key Count: 1
+Application 00 Key 00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+Application 00 Key 00 Version: 00
+Application 00 File Count: 0
