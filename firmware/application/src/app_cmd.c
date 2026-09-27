@@ -38,6 +38,8 @@ extern void nfc_tag_14a_set_sniff_passive(bool passive);
 #include "nfc_14a_4.h"
 #if defined(PROJECT_DESFIRE_EMULATION)
 #include "dfc_der.h"
+#include "dfc_command.h"
+#include "dfc_reader.h"
 #include "desfire/desfire_shim.h"
 #include "desfire/nfc_desfire.h"
 /* Ceiling on a transferable credential blob. Sized from the engine capacities
@@ -3534,6 +3536,175 @@ static data_frame_tx_t *cmd_processor_desfire_get_stats(uint16_t cmd, uint16_t s
     resp[16] = (uint8_t)(reset_us >> 8); resp[17] = (uint8_t)reset_us;
     return data_frame_make(cmd, STATUS_SUCCESS, sizeof(resp), resp);
 }
+
+/**
+ * Drive one dfc_reader.c exchange (a command exchange or an authentication)
+ * to completion over the existing T=CL session, using the same tcl_apdu_
+ * transceive helper and block-number state as every other HF14A-4 reader
+ * path in this file. Caller has already done field-on + scan_auto + RATS.
+ *
+ * Returns the exchange's terminal status: DfcReaderOk on success, or the
+ * first error dfc_reader_step or the transport reported.
+ */
+static DfcReaderStatus desfire_reader_run_exchange_(
+    DfcReaderExchange *ex,
+    uint8_t *abuf, uint8_t *rbuf, uint8_t *chain_buf, uint16_t *rbits, uint8_t *blk) {
+    static uint8_t tx[DFC_READER_MAX_COMMAND];
+    const uint8_t *rx = NULL;
+    size_t rx_len = 0;
+    DfcReaderStatus st;
+    for(;;) {
+        size_t tx_len = 0;
+        st = dfc_reader_step(ex, rx, rx_len, tx, sizeof(tx), &tx_len);
+        if(st != DfcReaderPending) return st;
+        /* tcl_apdu_'s frame buffer (abuf[64]) holds PCB(1) + APDU + CRC(2),
+         * matching the 61-byte cap cmd_processor_hf14a_4_reader_apdu uses
+         * for the same 64-byte buffer. */
+        if(tx_len == 0 || tx_len > 61) return DfcReaderBufferTooSmall;
+        uint8_t *rdata = NULL;
+        uint16_t rlen = 0;
+        if(!tcl_apdu_(tx, (uint8_t)tx_len, &rdata, &rlen, abuf, rbuf, chain_buf, rbits, blk)) {
+            return DfcReaderProtocolError; /* T=CL transport failed */
+        }
+        rx = rdata;
+        rx_len = rlen;
+    }
+}
+
+/**
+ * DESFire reader mode: ISO 7816 mutual authentication against a physical
+ * card in the HF field. Activates the field, selects the card (select+RATS),
+ * optionally ISO-selects a target application by AID, then runs the standard
+ * ISO 7816 GET CHALLENGE / EXTERNAL AUTHENTICATE / INTERNAL AUTHENTICATE
+ * exchange (dfc-core's dfc_reader_authenticate_iso7816_begin), all within
+ * this single firmware call so the T=CL session and block-number state never
+ * have to survive a USB/BLE round trip.
+ *
+ * payload:
+ *   [0]      flags: bit0 = has_aid (select this application before authenticating)
+ *   [1..3]   aid[3] (ignored unless flags & 1)
+ *   [4]      key_reference: 0x00-0x0D at PICC level, 0x80-0x8D within the
+ *            selected application (DFC_ISO7816_AUTH_APP_REFERENCE | key no.)
+ *   [5]      algorithm: DFC_ISO7816_AUTH_ALGORITHM_AES (0x09),
+ *            _3TDEA (0x04) or _2TDEA (0x02)
+ *   [6]      key_len: 16 (AES/2TDEA) or 24 (3TDEA)
+ *   [7..]    key bytes (key_len)
+ *
+ * response:
+ *   STATUS_HF_TAG_NO   — no card in the field
+ *   STATUS_HF_TAG_OK, [0]=DfcReaderOk (0)                     — authenticated
+ *   STATUS_HF_TAG_OK, [0]=DfcReaderStatus, [1]=card SW1 status — refused/error
+ *     (the card's raw native status byte is included whenever [0] is
+ *     DfcReaderCardError, so the host can distinguish e.g. a wrong key from
+ *     an application that does not exist)
+ */
+static data_frame_tx_t *cmd_processor_desfire_reader_auth_iso7816(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
+    if(length < 7) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    bool has_aid = (data[0] & 0x01) != 0;
+    uint8_t aid[DFC_COMMAND_AID_LENGTH];
+    memcpy(aid, &data[1], sizeof(aid));
+    uint8_t key_reference = data[4];
+    uint8_t algorithm = data[5];
+    uint8_t key_len = data[6];
+    if(key_len != DFC_AES_KEY_LENGTH && key_len != DFC_MAX_KEY_LEN) {
+        return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    }
+    if(length != (uint16_t)(7 + key_len)) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    uint8_t key[DFC_MAX_KEY_LEN];
+    memcpy(key, &data[7], key_len);
+
+    /* Step 1: cycle field, then full select + RATS — same sequence
+     * cmd_processor_hf14a_4_reader_apdu uses, for the same reason: the card
+     * may still be in T=CL active state from a previous exchange and will
+     * not answer REQA/WUPA until powered off first. */
+    pcd_14a_reader_antenna_off();
+    bsp_delay_ms(5);
+    pcd_14a_reader_reset();
+    pcd_14a_reader_antenna_on();
+    bsp_delay_ms(8);
+
+    pcd_14a_reader_timeout_set(200);
+    picc_14a_tag_t taginfo;
+    status = pcd_14a_reader_scan_auto(&taginfo);
+    pcd_14a_reader_timeout_set(DEF_COM_TIMEOUT);
+    if(status != STATUS_HF_TAG_OK) {
+        return data_frame_make(cmd, STATUS_HF_TAG_NO, 0, NULL);
+    }
+    bsp_delay_ms(5);
+
+    /* Clear RC522 stale state after RATS before the first transceive
+     * (see cmd_processor_hf14a_4_emv_scan for why this is needed). */
+    write_register_single(CommandReg, PCD_IDLE);
+    {
+        uint16_t w = 0;
+        while((read_register_single(CommandReg) & 0x0F) != PCD_IDLE && w++ < 1000);
+    }
+    write_register_single(ComIrqReg, 0x7F);
+    set_register_mask(FIFOLevelReg, 0x80);
+    clear_register_mask(BitFramingReg, 0x80);
+
+    static uint8_t abuf[64];
+    static uint8_t rbuf[270];
+    static uint8_t chain_buf[512];
+    uint16_t rbits = 0;
+    uint8_t blk = 0;
+
+    if(has_aid) {
+        static DfcCommand select_cmd;
+        if(dfc_command_select_application(&select_cmd, aid, NULL) != DfcCommandOk) {
+            return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+        }
+        static DfcReaderSession select_session; /* unused: SelectApplication needs no session */
+        dfc_reader_session_init(&select_session);
+        static DfcReaderExchange select_ex;
+        DfcReaderStatus bst = dfc_reader_exchange_begin(
+            &select_ex, &select_session, DfcReaderFramingIso7816, &select_cmd, NULL);
+        if(bst != DfcReaderOk) {
+            uint8_t resp[1] = {(uint8_t)bst};
+            return data_frame_make(cmd, STATUS_HF_TAG_OK, 1, resp);
+        }
+        DfcReaderStatus sel_st = desfire_reader_run_exchange_(
+            &select_ex, abuf, rbuf, chain_buf, &rbits, &blk);
+        if(sel_st != DfcReaderOk || dfc_reader_result_status(&select_ex) != DFC_STATUS_OK) {
+            uint8_t resp[2];
+            resp[0] = (uint8_t)(sel_st == DfcReaderOk ? DfcReaderCardError : sel_st);
+            resp[1] = dfc_reader_result_status(&select_ex);
+            return data_frame_make(cmd, STATUS_HF_TAG_OK, 2, resp);
+        }
+    }
+
+    size_t random_len = (algorithm == DFC_ISO7816_AUTH_ALGORITHM_2TDEA) ?
+                         DFC_ISO7816_AUTH_CHALLENGE_2TDEA : DFC_ISO7816_AUTH_CHALLENGE_LONG;
+    uint8_t random_first[DFC_ISO7816_AUTH_CHALLENGE_LONG];
+    uint8_t random_second[DFC_ISO7816_AUTH_CHALLENGE_LONG];
+    dfc_random_fill(random_first, random_len);
+    dfc_random_fill(random_second, random_len);
+
+    static DfcReaderSession auth_session;
+    dfc_reader_session_init(&auth_session);
+    static DfcReaderExchange auth_ex;
+    DfcReaderStatus bst = dfc_reader_authenticate_iso7816_begin(
+        &auth_ex, &auth_session, key_reference, key, key_len, algorithm,
+        random_first, random_second, random_len);
+    memset(key, 0, sizeof(key));
+    if(bst != DfcReaderOk) {
+        uint8_t resp[1] = {(uint8_t)bst};
+        return data_frame_make(cmd, STATUS_HF_TAG_OK, 1, resp);
+    }
+
+    DfcReaderStatus auth_st = desfire_reader_run_exchange_(
+        &auth_ex, abuf, rbuf, chain_buf, &rbits, &blk);
+    if(auth_st != DfcReaderOk) {
+        uint8_t resp[2];
+        resp[0] = (uint8_t)auth_st;
+        resp[1] = (auth_st == DfcReaderCardError) ? dfc_reader_result_status(&auth_ex) : 0;
+        dfc_reader_session_clear(&auth_session);
+        return data_frame_make(cmd, STATUS_HF_TAG_OK, 2, resp);
+    }
+
+    uint8_t resp[1] = {(uint8_t)DfcReaderOk};
+    return data_frame_make(cmd, STATUS_HF_TAG_OK, 1, resp);
+}
 #endif
 
 static data_frame_tx_t *cmd_processor_hf14a_4_emv_scan(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
@@ -4087,6 +4258,7 @@ static cmd_data_map_t m_data_cmd_map[] = {
     {    DATA_CMD_DESFIRE_GET_INFO,               NULL,                        cmd_processor_desfire_get_info,              NULL                   },
     {    DATA_CMD_DESFIRE_FACTORY_BLANK,          NULL,                        cmd_processor_desfire_factory_blank,         NULL                   },
     {    DATA_CMD_DESFIRE_GET_STATS,              NULL,                        cmd_processor_desfire_get_stats,             NULL                   },
+    {    DATA_CMD_DESFIRE_READER_AUTH_ISO7816,    before_hf_reader_run,       cmd_processor_desfire_reader_auth_iso7816,   NULL                   },
 #endif
     {    6010,                                     NULL,                        cmd_processor_hf14a_4_debug_counters,        NULL                   },
     /* HF14A scan keeping field alive */
