@@ -180,6 +180,7 @@ class Command(enum.IntEnum):
     DESFIRE_GET_INFO = 6008
     DESFIRE_FACTORY_BLANK = 6009
     DESFIRE_GET_STATS = 6011
+    DESFIRE_READER_AUTH_ISO7816 = 6012
 
     # Standalone (host-less) modes subsystem
     STANDALONE_GET_MODE         = 7000
