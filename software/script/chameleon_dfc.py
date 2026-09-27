@@ -470,12 +470,14 @@ def _encode_app(cred: DfcCredential, index: int, app: DfcApplication) -> bytes:
         + _tlv(0x84, bytes([app.key_settings_2]))
         + _int(0x85, (app.auth_mask or native_cmd_to_mask(app.auth_command))
                      if _target_v6(cred) else AUTH_MODE_CODES.get(app.auth_command, 0))
+        + _encode_keys(0xA6, app.keys, app.key_len)
+        + _encode_files(0xA7, cred, index)
+        # v6 APP_SM_DISABLE=P(11)=0x8B, APP_PREFERRED_AUTH=P(12)=0x8C,
+        # both declared AFTER keys(6)/files(7)/key_sets(8)/delegated(10).
         + (_tlv(0x8B, bytes([app.sm_disable]))
            if (_target_v6(cred) and app.sm_disable >= 0) else b"")
         + (_int(0x8C, AUTH_CMD_BITS[app.preferred_cmd])
            if (_target_v6(cred) and app.preferred_cmd) else b"")
-        + _encode_keys(0xA6, app.keys, app.key_len)
-        + _encode_files(0xA7, cred, index)
     )
     return _tlv(0x30, body)
 
@@ -507,8 +509,6 @@ def der_encode(cred: DfcCredential) -> bytes:
                      if _target_v6(cred)
                      else AUTH_MODE_CODES.get(cred.picc_auth_command, 0))
     )
-    if _target_v6(cred) and cred.picc_preferred_cmd:
-        picc += _int(0x8F, AUTH_CMD_BITS[cred.picc_preferred_cmd])
     # DEFAULT FALSE: omit rather than emit an explicit false.
     if cred.picc_random_id:
         picc += _bool(0x83, True)
@@ -524,6 +524,9 @@ def der_encode(cred: DfcCredential) -> bytes:
         picc += _tlv(0x88, bytes([cred.picc_sm_disable]))
     picc += _encode_keys(0xA9, cred.picc_keys, cred.picc_key_len)
     picc += _encode_files(0xAA, cred, OWNER_PICC)
+    # v6 PICC_PREFERRED_AUTH is P(15) = 0x8F, declared AFTER keys(9)/files(10).
+    if _target_v6(cred) and cred.picc_preferred_cmd:
+        picc += _int(0x8F, AUTH_CMD_BITS[cred.picc_preferred_cmd])
 
     apps = b"".join(
         _encode_app(cred, i, app) for i, app in enumerate(cred.apps)
@@ -911,8 +914,8 @@ def der_decode(blob: bytes, cls=DfcCredential) -> "DfcCredential":
 
     picc = _fields(
         _req(got, 0xA2),
-        (0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x8B, 0x8F,
-         0xA9, 0xAA, 0xAC, 0xAD, 0xAE),
+        (0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x8B,
+         0xA9, 0xAA, 0x8F, 0xAC, 0xAD, 0xAE),
     )
     if any(tag in picc for tag in (0x8B, 0xAC, 0xAD, 0xAE)):
         raise DfcError(
@@ -958,8 +961,8 @@ def der_decode(blob: bytes, cls=DfcCredential) -> "DfcCredential":
         if tag != 0x30:
             raise DfcError(f"tag 0x{tag:02X} where an application was expected")
         app_fields = _fields(
-            value, (0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x89, 0x8B, 0x8C,
-                    0xA6, 0xA7, 0xA8, 0xAA)
+            value, (0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x89,
+                    0xA6, 0xA7, 0x8B, 0x8C, 0xA8, 0xAA)
         )
         if any(tag in app_fields for tag in (0xA8, 0x89, 0xAA)):
             raise DfcError(
