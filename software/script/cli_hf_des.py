@@ -884,7 +884,11 @@ class HfDesELoad(SlotIndexArgsAndGoUnit):
         else:
             dfc_tag_type = TagSpecificType.DESFIRE_EV2_2K if _ev else TagSpecificType.DESFIRE_EV1_2K
         self.cmd.set_slot_tag_type(self.slot_num, dfc_tag_type)
-        self.cmd.set_slot_data_default(self.slot_num, dfc_tag_type)
+        # NB: do NOT seed the slot with default DESFire data here. If the
+        # credential load below is refused (e.g. the tag is emulating in an RF
+        # field), the default card would remain and be silently emulated in
+        # place of the intended credential. desfire_set_credential establishes
+        # the slot from the credential itself and now raises on rejection.
         
         # The slot's anti-collision record is the device's to settle: it is the
         # only party that knows what the engine answers activation with for the
