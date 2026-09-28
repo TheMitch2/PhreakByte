@@ -204,12 +204,13 @@ don't configure it. To override, pass the raw 6-byte config blob with `-d`
 #  e.g. slots 0-3, start 0, 2000 ms = 01 0F 00 00 D0 07
 standalone config slot-cycle -d 010F0000D007
 ```
+
 Fields (6-byte blob): `version=01`, `slot_mask` (bit N = include slot N),
 `start_slot` (must be set in the mask), `reserved=00`, `interval_ms` little-endian
 (100-60000, default 3000). **Buttons:** BOTH_SHORT = advance now (resumes if
 paused) · BOTH_LONG = arm/disarm · BOTH_VLONG = pause/resume.
----
 
+---
 ## `--opt-in` and quiet flags
 
 `set-mode` takes optional flags:
