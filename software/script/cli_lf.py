@@ -50,7 +50,6 @@ from cli_core import (
     lf_pac,
     lf_t55xx,
     lf_viking,
-    pac_encode_raw,
 )
 
 
