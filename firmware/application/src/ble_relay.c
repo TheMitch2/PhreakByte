@@ -420,15 +420,27 @@ static void dispatch(const relay_evt_t *e) {
 
     case BLE_RELAY_MSG_FRAME:
         if (e->len > 0 && m_cbs.on_frame) {
-            uint16_t bits = e->buf[0] | ((uint16_t)e->buf[1] << 8);
-            m_cbs.on_frame(e->buf + 2, bits);
+            uint16_t raw  = e->buf[0] | ((uint16_t)e->buf[1] << 8);
+            uint16_t bits = raw & BLE_RELAY_BITS_MASK;
+            const uint8_t *par = NULL;
+            if (raw & BLE_RELAY_BITS_PARITY_FLAG) {
+                uint8_t dlen = (bits + 7) / 8;
+                if (e->len >= (uint16_t)(2 + 2 * dlen)) par = e->buf + 2 + dlen;
+            }
+            m_cbs.on_frame(e->buf + 2, bits, par);
         }
         break;
 
     case BLE_RELAY_MSG_RESPONSE:
         if (e->len > 0 && m_cbs.on_response) {
-            uint16_t bits = e->buf[0] | ((uint16_t)e->buf[1] << 8);
-            m_cbs.on_response(e->buf + 2, bits);
+            uint16_t raw  = e->buf[0] | ((uint16_t)e->buf[1] << 8);
+            uint16_t bits = raw & BLE_RELAY_BITS_MASK;
+            const uint8_t *par = NULL;
+            if (raw & BLE_RELAY_BITS_PARITY_FLAG) {
+                uint8_t dlen = (bits + 7) / 8;
+                if (e->len >= (uint16_t)(2 + 2 * dlen)) par = e->buf + 2 + dlen;
+            }
+            m_cbs.on_response(e->buf + 2, bits, par);
         }
         break;
 
@@ -530,6 +542,19 @@ bool ble_relay_send_frame(const uint8_t *data, uint16_t bits) {
     return true;
 }
 
+bool ble_relay_send_frame_par(const uint8_t *data, uint16_t bits, const uint8_t *parity) {
+    if (!data || !parity) return false;
+    uint8_t dlen = (bits + 7) / 8;
+    if ((size_t)(2 + 2 * dlen) > RELAY_MAX_PAYLOAD) return false;
+    uint8_t buf[2 + RELAY_MAX_PAYLOAD];
+    uint16_t bf = (bits & BLE_RELAY_BITS_MASK) | BLE_RELAY_BITS_PARITY_FLAG;
+    buf[0] = (uint8_t)(bf); buf[1] = (uint8_t)(bf >> 8);
+    memcpy(buf + 2, data, dlen);
+    memcpy(buf + 2 + dlen, parity, dlen);   /* one parity byte per data byte */
+    adv_send(BLE_RELAY_MSG_FRAME, buf, 2 + 2 * dlen);
+    return true;
+}
+
 bool ble_relay_send_response(const uint8_t *data, uint16_t bits) {
     if (!data) return false;
     uint8_t buf[2 + RELAY_MAX_PAYLOAD];
@@ -539,6 +564,19 @@ bool ble_relay_send_response(const uint8_t *data, uint16_t bits) {
     buf[1] = (uint8_t)(bits >> 8 );
     memcpy(buf + 2, data, dlen);
     adv_send(BLE_RELAY_MSG_RESPONSE, buf, 2 + dlen);
+    return true;
+}
+
+bool ble_relay_send_response_par(const uint8_t *data, uint16_t bits, const uint8_t *parity) {
+    if (!data || !parity) return false;
+    uint8_t dlen = (bits + 7) / 8;
+    if ((size_t)(2 + 2 * dlen) > RELAY_MAX_PAYLOAD) return false;
+    uint8_t buf[2 + RELAY_MAX_PAYLOAD];
+    uint16_t bf = (bits & BLE_RELAY_BITS_MASK) | BLE_RELAY_BITS_PARITY_FLAG;
+    buf[0] = (uint8_t)(bf); buf[1] = (uint8_t)(bf >> 8);
+    memcpy(buf + 2, data, dlen);
+    memcpy(buf + 2 + dlen, parity, dlen);
+    adv_send(BLE_RELAY_MSG_RESPONSE, buf, 2 + 2 * dlen);
     return true;
 }
 
