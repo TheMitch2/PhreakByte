@@ -39,7 +39,7 @@ jobs:
         with:
           python-version: '3.x'
 
-- name: Install dependencies and set up mergehex shim
+      - name: Install dependencies and set up mergehex shim
         run: |
           pip install intelhex --quiet
 
