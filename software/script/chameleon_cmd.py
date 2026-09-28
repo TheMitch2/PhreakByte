@@ -703,6 +703,33 @@ class ChameleonCMD:
                 f"{' page1' if page1 else ''} failed (status 0x{resp.status:02X})")
         return resp
 
+    def lf_t55xx_write_blocks(self, words, pwd: bytes = None, timeout: int = 8):
+        """
+        Write page-0 blocks 0..len(words)-1 in ONE 125 kHz field session
+        (Ultra only). The field stays powered for every block and a single
+        RESET closes it — unlike repeated lf_t55xx_write() calls, which cycle
+        the field off/on between blocks and fail over BLE (the tag loses power
+        during the ~0.5 s BLE round-trip between commands). Use this for
+        wipe/clone.
+
+        :param words: iterable of 1..8 four-byte big-endian data words; words[0]
+            is block 0 (config), words[1] block 1, and so on.
+        :param pwd:   4-byte password, or None for an open write.
+        :param timeout: response timeout (s).
+        """
+        words = list(words)
+        if not 1 <= len(words) <= 8:
+            raise ValueError("lf_t55xx_write_blocks: need 1..8 words")
+        use_pwd = pwd is not None
+        pwd_bytes = pwd if use_pwd else b'\x00\x00\x00\x00'
+        blob = b''.join(bytes(w) for w in words)
+        data = struct.pack(f'!B4sB{len(blob)}s', int(use_pwd), pwd_bytes, len(words), blob)
+        resp = self.device.send_cmd_sync(Command.LF_T55XX_WRITE_BLOCKS, data, timeout=timeout)
+        if resp.status != Status.LF_TAG_OK:
+            raise UnexpectedResponseError(
+                f"T55xx multi-block write failed (status 0x{resp.status:02X})")
+        return resp
+
     @expect_response(Status.LF_TAG_OK)
     def lf_t55xx_read(self, block: int, rf_n: int = 32, pwd: bytes = None,
                       page1: bool = False, raw: bool = False, downlink: bool = True,
