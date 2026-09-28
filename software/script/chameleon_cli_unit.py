@@ -520,95 +520,6 @@ class HF14AInfo(ReaderRequiredUnit):
         scan.device_com = self.device_com
         scan.scan(deep=True)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Sentinel values returned by _run_mfkey64 / _run_mfkey32v2_sniff
-# to distinguish "tool unavailable" from "tool ran but found no key".
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class CrackEffect:
     """
     A class to create a visual effect of cracking blocks of data.
@@ -758,333 +669,6 @@ class CrackEffect:
         process_thread.join()
         self.stop_event.set()
         scramble_thread.join()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def _t55_hex4(s: str, name: str) -> bytes:
-    """Parse exactly 4 hex bytes, or raise a clean ArgsParserError."""
-    try:
-        b = bytes.fromhex(s)
-    except ValueError:
-        raise ArgsParserError(f"{name} must be 8 hex digits (4 bytes)")
-    if len(b) != 4:
-        raise ArgsParserError(f"{name} must be 8 hex digits (4 bytes)")
-    return b
-
-
-def _t55_amplitude_halfbits(samples, rf_n):
-    """Binarize a SAADC amplitude capture and recover the half-bit level stream
-    with a phase-locked sampler. Half-cell = rf_n/2 samples (SAADC samples once
-    per carrier cycle), known a priori. The half-bit level is a majority vote at
-    the cell centre, and the clock re-anchors on the nearest real transition each
-    cell, so run-length jitter and stretched/merged runs in the settling region
-    don't slip Manchester phase (the RLE round(run/unit) approach did). Returns
-    the half-bit list, or []."""
-    n = len(samples)
-    if n < 96:
-        return []
-    lo, hi = min(samples), max(samples)
-    if hi - lo < 8:
-        return []
-    thr = (lo + hi) / 2.0
-    b = [1 if s >= thr else 0 for s in samples]
-    hb_len = max(2, rf_n // 2)
-    edges = [i for i in range(1, n) if b[i] != b[i - 1]]
-    if not edges:
-        return []
-    win = max(2, hb_len // 3)
-    pos = edges[0]  # anchor phase on the first transition
-    hb = []
-    while pos + hb_len <= n:
-        c = pos + hb_len // 2
-        seg = b[max(0, c - win):c + win + 1]
-        hb.append(1 if sum(seg) * 2 >= len(seg) else 0)
-        nb = pos + hb_len
-        cand = [e for e in edges if abs(e - nb) <= hb_len // 3]
-        pos = min(cand, key=lambda e: abs(e - nb)) if cand else nb
-    return hb
-
-
-def _t55_manchester_decode(hb, off):
-    """Manchester-decode a half-bit stream from a start phase, with phase-slip
-    resync. Returns (bitstring, violations)."""
-    bits, viol, i = [], 0, off
-    while i + 1 < len(hb):
-        a, d = hb[i], hb[i + 1]
-        if a == 1 and d == 0:
-            bits.append(1); i += 2
-        elif a == 0 and d == 1:
-            bits.append(0); i += 2
-        else:
-            viol += 1; i += 1  # slip one half-cell to resync
-    return "".join(map(str, bits)), viol
-
-
-def _t55_amplitude_bits(samples, rf_n):
-    """Decode the amplitude capture to a bitstring (lower-violation phase)."""
-    hb = _t55_amplitude_halfbits(samples, rf_n)
-    if not hb:
-        return ""
-    s0, v0 = _t55_manchester_decode(hb, 0)
-    s1, v1 = _t55_manchester_decode(hb, 1)
-    return s0 if v0 <= v1 else s1
-
-
-def _t55_find_word(samples, word_bytes, rf_n):
-    """Search both half-bit phases and both Manchester polarities for a 32-bit
-    word. Returns (polarity, bit_offset) or None."""
-    hb = _t55_amplitude_halfbits(samples, rf_n)
-    if not hb:
-        return None
-    target = "".join(f"{x:08b}" for x in word_bytes)
-    for off in (0, 1):
-        s, _ = _t55_manchester_decode(hb, off)
-        if target in s:
-            return ("normal", s.index(target))
-        inv = "".join("1" if ch == "0" else "0" for ch in s)
-        if target in inv:
-            return ("inverted", inv.index(target))
-    return None
-
-
-def _t55_stream_block(bits):
-    """A T55xx block is 32 bits and the tag streams it repeatedly, so a correct
-    read is one 32-bit period — not the whole demodulated smear. Find the
-    smallest repeating period in the bitstream and return (period_bits,
-    period_bitstring). period_bits == 32 means a clean block; a proper divisor
-    of 32 (e.g. 16) means the read-back collapsed to a shorter period (the known
-    dense-word framing issue) and is NOT a trustworthy 32-bit value. Returns
-    (None, None) if no stable period is found."""
-    n = len(bits)
-    if n < 16:
-        return None, None
-    # Skip a long constant settling lead-in (the field-on ramp demodulates as one
-    # sustained level and otherwise dominates the period search).
-    lead = 1
-    while lead < n and bits[lead] == bits[0]:
-        lead += 1
-    if lead > 48:
-        bits = bits[lead:]
-        n = len(bits)
-        if n < 16:
-            return None, None
-    for p in range(8, min(33, n // 2 + 1)):
-        agree = sum(1 for i in range(n - p) if bits[i] == bits[i + p])
-        if agree / (n - p) >= 0.92:
-            return p, bits[:p]
-    return None, None
-
-
-# T5577 block-0 (configuration) decode, field layout per PM3 SetConfigWithBlock0Ex
-# (RfidResearchGroup/proxmark3 client/src/cmdlft55xx.c). Verified against known
-# configs 0x000880E0 (Manchester RF/32, maxblock 7) and 0x00148040 (em410x:
-# Manchester RF/64, maxblock 2).
-_T55_MOD = {0: "DIRECT (ASK/NRZ)", 1: "PSK1", 2: "PSK2", 3: "PSK3",
-            4: "FSK1", 5: "FSK2", 6: "FSK1a", 7: "FSK2a",
-            8: "Manchester", 16: "Biphase", 24: "Biphase-a (CDP)"}
-_T55_BITRATE = [8, 16, 32, 40, 50, 64, 100, 128]  # 3-bit non-extended dbr index
-
-# Detected config from `lf t55xx detect`, used as the default RF for `read`.
-_T55_DETECTED = {"rf": None, "mod": "manchester"}
-
-
-def _t55_parse_block0(b0):
-    """Decode a T5577 block-0 config word into its fields."""
-    extend = (b0 >> 17) & 0x01                 # X-mode / extended bit-rate
-    if extend:
-        dbr = (b0 >> 18) & 0x3F                 # extended rate table differs
-        rf = None
-    else:
-        dbr = (b0 >> 18) & 0x07
-        rf = _T55_BITRATE[dbr]
-    modulation = (b0 >> 12) & 0x1F
-    return {
-        "block0": b0, "extend": bool(extend), "rf": rf, "dbr": dbr,
-        "modulation": modulation,
-        "mod_name": _T55_MOD.get(modulation, f"0x{modulation:02X} (unknown)"),
-        "maxblock": (b0 >> 5) & 0x07,
-        "pwd": bool((b0 >> 4) & 1),
-        "st": bool((b0 >> 3) & 1),
-        "inverted": bool((b0 >> 1) & 1),
-    }
-
-
-def _t55_decode_bits(cmd, block, rf, pwd, page1, modulation):
-    """Return the raw demodulated bit STRING for a block before any 32-bit framing
-    (modulation 0 = Manchester via SAADC amplitude host decode; 1 = biphase via the
-    firmware diphase_feed demod), or "" on failure."""
-    if modulation == 1:
-        n, items = cmd.lf_t55xx_read(block, rf, pwd, page1, modulation=1)
-        return "".join("1" if b else "0" for b in items) if items else ""
-    n, samples = cmd.lf_t55xx_read(block, rf, pwd, page1, adc=True)
-    if n == 0:
-        return ""
-    return _t55_amplitude_bits(samples, rf) or ""
-
-
-def _t55_lock_config(bits, rf, want_mods):
-    """Slide a 32-bit window over the stream and return (block0, fields, inverted)
-    for the first window that REPEATS (== the next 32 bits) AND parses to a config
-    whose modulation is in want_mods, bitrate == rf, not extended. The repeat
-    requirement skips the settling lead-in, tolerates block rotation, and rejects
-    streaming tags (FDX-B) that never present a repeating 32-bit config block.
-    Mirrors PM3's stride-locked framing. Returns None if nothing matches."""
-    if not bits:
-        return None
-    n = len(bits)
-    for i in range(n - 64):
-        for inv in (0, 1):
-            seg = bits[i:i + 32]
-            nxt = bits[i + 32:i + 64]
-            if inv:
-                seg = "".join("1" if c == "0" else "0" for c in seg)
-                nxt = "".join("1" if c == "0" else "0" for c in nxt)
-            if seg != nxt:
-                continue
-            f = _t55_parse_block0(int(seg, 2))
-            if (f["modulation"] in want_mods and not f["extend"]
-                    and f["rf"] == rf and f["maxblock"] >= 1):
-                return int(seg, 2), f, inv
-    return None
-
-
-def _t55_detect_sources(cmd, rf, pwd, modcode):
-    """Candidate demodulated bit strings for detecting block 0 at this rate. For
-    Manchester, try the firmware EDGE decode first (block 0 is sparse, so the edge
-    path is reliable and sidesteps the amplitude decoder's phase ambiguity on config
-    words) plus the SAADC amplitude decode as a denser-config fallback. For biphase,
-    the firmware diphase edge decode."""
-    out = []
-    if modcode == 0:
-        n, items = cmd.lf_t55xx_read(0, rf, pwd, False, modulation=0)
-        if items:
-            out.append("".join("1" if b else "0" for b in items))
-        n, samples = cmd.lf_t55xx_read(0, rf, pwd, False, adc=True)
-        if n:
-            b = _t55_amplitude_bits(samples, rf)
-            if b:
-                out.append(b)
-    else:
-        n, items = cmd.lf_t55xx_read(0, rf, pwd, False, modulation=1)
-        if items:
-            out.append("".join("1" if b else "0" for b in items))
-    return out
-
-
-def _t55_read_framed(cmd, block, rf, pwd, page1, modulation):
-    """Read a block and frame it to its repeating unit -> (period, unit) or
-    (None, None)."""
-    bits = _t55_decode_bits(cmd, block, rf, pwd, page1, modulation)
-    if not bits:
-        return None, None
-    return _t55_stream_block(bits)
-
-
-def _t55_frame_block(bits):
-    """Frame a demodulated stream to one 32-bit block: skip a long constant settling
-    lead-in, then return (value, note) for the most common 32-bit window that repeats
-    (== the next 32 bits) — any rotation of the true block, hence the caller's "may
-    be rotated" note. Falls back to the shortest repeating period (flagging a
-    collapse) when nothing repeats at 32; (None, None) if unusable."""
-    n = len(bits)
-    if n < 64:
-        return None, None
-    lead = 1
-    while lead < n and bits[lead] == bits[0]:
-        lead += 1
-    if lead > 48:
-        bits = bits[lead:]
-        n = len(bits)
-        if n < 64:
-            return None, None
-    reps = {}
-    for i in range(n - 64):
-        w = bits[i:i + 32]
-        if w == bits[i + 32:i + 64]:
-            reps[w] = reps.get(w, 0) + 1
-    if reps:
-        return int(max(reps, key=reps.get), 2), "32-bit block"
-    period, unit = _t55_stream_block(bits)
-    if period is None:
-        return None, None
-    return int((unit * (32 // period + 1))[:32], 2), \
-        f"{period}-bit period — repetitive value or dense-word collapse"
-
-
-def _t55_expect_match(bits, want):
-    """True if the 32-bit `want` appears as a repeating window in any rotation or
-    inverted polarity of the demodulated stream."""
-    wb = format(want, "032b")
-    cands = set()
-    for base in (wb, "".join("1" if c == "0" else "0" for c in wb)):
-        for r in range(32):
-            cands.add(base[r:] + base[:r])
-    n = len(bits)
-    for i in range(n - 64):
-        w = bits[i:i + 32]
-        if w == bits[i + 32:i + 64] and w in cands:
-            return True
-    return False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 @hw_slot.command("list")
 class HWSlotList(DeviceRequiredUnit):
@@ -1469,17 +1053,6 @@ class HWSlotDisable(SlotIndexArgsUnit, SenseTypeArgsUnit):
         self.cmd.set_slot_enable(slot_num, sense_type, False)
         print(f" - Disable slot {slot_num} {sense_type.name} success.")
 
-
-
-
-
-
-
-
-
-
-
-
 @hw_slot.command("nick")
 class HWSlotNick(SlotIndexArgsUnit, SenseTypeArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1518,7 +1091,6 @@ class HWSlotNick(SlotIndexArgsUnit, SenseTypeArgsUnit):
                 f" - Get tag nick name for slot {slot_num} {sense_type.name}" f": {res}"
             )
 
-
 @hw_slot.command("store")
 class HWSlotUpdate(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1529,7 +1101,6 @@ class HWSlotUpdate(DeviceRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         self.cmd.slot_data_config_save()
         print(" - Store slots config and data from device memory to flash success.")
-
 
 @hw_slot.command("openall")
 class HWSlotOpenAll(DeviceRequiredUnit):
@@ -1560,7 +1131,6 @@ class HWSlotOpenAll(DeviceRequiredUnit):
         # update config and save to flash
         self.cmd.slot_data_config_save()
         print(" - Succeeded opening all slots and setting data to default.")
-
 
 @hw.command("dfu")
 class HWDFU(DeviceRequiredUnit):
@@ -1713,7 +1283,6 @@ class HWSettingsAnimation(DeviceRequiredUnit):
         else:
             print(AnimationMode(self.cmd.get_animation_mode()))
 
-
 @hw_settings.command("sleeptimeout")
 class HWSettingsSleepTimeout(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1747,7 +1316,6 @@ class HWSettingsSleepTimeout(DeviceRequiredUnit):
             current = self.cmd.get_sleep_timeout()
             print(f"Current wake timeout: {current} seconds")
 
-
 @hw_settings.command("bleclearbonds")
 class HWSettingsBleClearBonds(DeviceRequiredUnit):
 
@@ -1768,7 +1336,6 @@ class HWSettingsBleClearBonds(DeviceRequiredUnit):
         self.cmd.delete_all_ble_bonds()
         print(" - Successfully clear all bonds")
 
-
 @hw_settings.command("store")
 class HWSettingsStore(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1782,7 +1349,6 @@ class HWSettingsStore(DeviceRequiredUnit):
             print(" - Store success @.@~")
         else:
             print(" - Store failed")
-
 
 @hw_settings.command("reset")
 class HWSettingsReset(DeviceRequiredUnit):
@@ -1806,7 +1372,6 @@ class HWSettingsReset(DeviceRequiredUnit):
         else:
             print(" - Reset failed")
 
-
 @hw.command("reset")
 class HWReset(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1824,7 +1389,6 @@ class HWReset(DeviceRequiredUnit):
             print(" - Reset failed!")
         # let time for comm thread to close port
         time.sleep(0.1)
-
 
 @hw.command("factory_reset")
 class HWFactoryReset(DeviceRequiredUnit):
@@ -1851,7 +1415,6 @@ class HWFactoryReset(DeviceRequiredUnit):
         else:
             print(" - Reset failed!")
 
-
 @hw.command("battery")
 class HWBatteryInfo(DeviceRequiredUnit):
     # How much remaining battery is considered low?
@@ -1869,7 +1432,6 @@ class HWBatteryInfo(DeviceRequiredUnit):
         print(f"   percentage -> {percentage}%")
         if percentage < HWBatteryInfo.BATTERY_LOW_LEVEL:
             print(color_string((CR, "[!] Low battery, please charge.")))
-
 
 @hw_settings.command("btnpress")
 class HWButtonSettingsGet(DeviceRequiredUnit):
@@ -1944,7 +1506,6 @@ class HWButtonSettingsGet(DeviceRequiredUnit):
                     )
                 print("")
 
-
 @hw_settings.command("blekey")
 class HWSettingsBLEKey(DeviceRequiredUnit):
 
@@ -1978,7 +1539,6 @@ class HWSettingsBLEKey(DeviceRequiredUnit):
                 print(
                     f" - {color_string((CR, 'Only 6 ASCII characters from 0 to 9 are supported.'))}"
                 )
-
 
 @hw_settings.command("blepair")
 class HWBlePair(DeviceRequiredUnit):
@@ -2020,7 +1580,6 @@ class HWBlePair(DeviceRequiredUnit):
             print(f" - Successfully change ble pairing to {disabled_str}.")
             print(color_string((CY, "Do not forget to store your settings in flash!")))
 
-
 @hw_settings.command("blename")
 class HWSettingsBLEName(DeviceRequiredUnit):
 
@@ -2054,7 +1613,6 @@ class HWSettingsBLEName(DeviceRequiredUnit):
             print(
                 color_string((CY, "You may need to reconnect/rescan for the new name to show up."))
             )
-
 
 @hw.command("raw")
 class HWRaw(DeviceRequiredUnit):
@@ -2121,7 +1679,6 @@ class HWRaw(DeviceRequiredUnit):
             print(f"   Data (HEX): {response.data.hex()}")
         else:
             print(f"   Data (HEX): (none)")
-
 
 @hf_14a.command("raw")
 class HF14ARaw(ReaderRequiredUnit):
@@ -2248,11 +1805,6 @@ examples/notes:
             )
         else:
             print(f" [*] {color_string((CY, 'No response'))}")
-
-
-
-
-
 
 @hf_14a.command('sniff')
 class HF14ASniff(BaseCLIUnit):
@@ -2461,7 +2013,6 @@ class HF14ASniff(BaseCLIUnit):
         # Summary block (pass only reader→card frames for protocol decode)
         print()
         _print_14a_sniff_summary([(szBits, data, is_tx) for (szBits, data, is_tx,parity) in frames])  # full frames needed for nonce extraction
-
 
 @hf_14a.command("auth-trace")
 class HF14AAuthTrace(ReaderRequiredUnit):
@@ -2697,7 +2248,6 @@ examples:
         elif nt_int is not None:
             print(f" {CY}Auth aborted before NR||AR — NT={nt_int:08X}, no further analysis{C0}")
 
-
 def _decode_sw(sw1: int, sw2: int) -> str:
     """Decode an ISO 7816-4 status word pair."""
     exact = {
@@ -2749,9 +2299,7 @@ def _decode_sw(sw1: int, sw2: int) -> str:
         return 'Proprietary OK'
     return ''
 
-
 _CD = "\033[90m"   # dim grey: raw/garbled frames that fail validation
-
 
 def _sak_desc(sak: int):
     try:
@@ -2761,7 +2309,6 @@ def _sak_desc(sak: int):
     if sak_type:
         return f"SAK (Select Acknowledge) = 0x{sak:02X}  [{sak_type}]"
     return f"SAK (Select Acknowledge) = 0x{sak:02X}"
-
 
 def _decode_14a_frame_col(data: bytes, szBits: int, is_tx: bool = False,
                           prev_cmd=None, iso_dep: bool = False):
@@ -3057,7 +2604,6 @@ def _known_bertag(tag: int) -> str:
     }
     return table.get(tag, '')
 
-
 def _extract_sniff_nonces(frames):
     """
     Extract MIFARE Classic auth nonces from a complete frame list (reader + card).
@@ -3140,7 +2686,6 @@ def _extract_sniff_nonces(frames):
             })
 
     return nonces
-
 
 def _print_14a_sniff_summary(frames):
     """Print a decoded summary of the sniff session."""
@@ -3375,7 +2920,6 @@ def _get_capture():
         return None
     return _m._last_capture
 
-
 @data.command('hexsamples')
 class DataHexsamples(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -3415,7 +2959,6 @@ class DataHexsamples(BaseCLIUnit):
         print(f" {row // 16:02d} | {hex_part:<47s} | {bar}")
         print()
         print(" _ gap  . ringing  - low  + mid  o carrier  O high  # clipped")
-
 
 @data.command('plot')
 class DataPlot(BaseCLIUnit):
@@ -3491,7 +3034,6 @@ class DataPlot(BaseCLIUnit):
             print(f" {lbl} |{row}|")
         print(f"        +{'-'*len(buckets)}+")
 
-
 def _plot_matplotlib(xs, ys, mean, threshold, start, end):
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
@@ -3541,7 +3083,6 @@ def _plot_matplotlib(xs, ys, mean, threshold, start, end):
 
     plt.tight_layout()
     plt.show()
-
 
 def _plot_pyqtgraph(xs, ys, mean, threshold, start, end):
     import sys
@@ -3597,7 +3138,6 @@ def _plot_pyqtgraph(xs, ys, mean, threshold, start, end):
 
     win.show()
     app.exec_()
-
 
 @data.command('manrawdecode')
 class DataManrawdecode(BaseCLIUnit):
@@ -3686,7 +3226,6 @@ class DataManrawdecode(BaseCLIUnit):
         if hex_str:
             print()
             print(f" Hex: {CG}{hex_str[:64]}{C0}{'...' if len(hex_str) > 64 else ''}")
-
 
 @data.command('modulation')
 class DataModulation(BaseCLIUnit):
@@ -3825,7 +3364,6 @@ def _emv_decode_apdu(data: bytes) -> str:
     if cla == 0x00 and ins == 0xB2:
         return f'READ RECORD  SFI={(p2 >> 3) & 0x1F}  rec={p1}'
     return f'CLA={cla:02x} INS={ins:02x} P1={p1:02x} P2={p2:02x}'
-
 
 @emv.command('scan')
 class EMVScan(DeviceRequiredUnit):
@@ -4246,7 +3784,6 @@ class EMVScan(DeviceRequiredUnit):
             except Exception as e:
                 print(f' {CR}Slot load failed: {e}{C0}')
 
-
 @emv.command('debug')
 class EMVDebug(DeviceRequiredUnit):
     """Show T=CL emulation debug counters (I-blocks rx/tx, last PCB, last match)."""
@@ -4268,7 +3805,6 @@ class EMVDebug(DeviceRequiredUnit):
         print(
             f'   Last rx PCB       : {d[2]:02x}  (blk_num={(d[2] & 0x01)}, chain={(d[2] >> 5) & 1}, cid={(d[2] >> 4) & 1})')
         print(f'   Last static match : {"yes" if d[3] else "no"}')
-
 
 @emv.command('load')
 class EMVLoad(DeviceRequiredUnit):
@@ -4482,7 +4018,6 @@ class EMVLoad(DeviceRequiredUnit):
         print(f'\n {CG}Done! Slot {target_slot} ready with {len(static_pairs)} response(s).{C0}')
         print(f' {C0}Next: hw slot change -s {target_slot} && hw mode -e{C0}')
 
-
 @emv.command('apdu')
 class EMVApdu(DeviceRequiredUnit):
     """
@@ -4643,7 +4178,6 @@ def parse_authtrace_buffer(raw: bytes):
         })
     return sessions
 
-
 def authtrace_summarise(sessions):
     out = []
     for s in sessions:
@@ -4658,7 +4192,6 @@ def authtrace_summarise(sessions):
             f"{tx} card\u2192reader){nonce_info}"
         )
     return "\n".join(out)
-
 
 def authtrace_pretty_dump(sessions):
     """Full decoded per-frame dump matching hf 14a sniff/trace output style."""
@@ -4748,7 +4281,6 @@ def authtrace_pretty_dump(sessions):
                     out.append(f"    {CG}mfkey32v2: {cmd}{C0}")
     return "\n".join(out)
 
-
 def parse_relay_result_buffer(raw: bytes) -> list:
     """Parse a relay FDS result buffer into a list of session dicts.
 
@@ -4808,7 +4340,6 @@ def parse_relay_result_buffer(raw: bytes) -> list:
         idx += 1
     return sessions
 
-
 def parse_relay_frames(trace: bytes) -> list:
     """Decode a raw trace buffer into frame dicts (same format as AuthTrace)."""
     frames = []
@@ -4832,7 +4363,6 @@ def parse_relay_frames(trace: bytes) -> list:
         })
         off += byte_cnt
     return frames
-
 
 def relay_result_summary(sessions) -> str:
     """Human-readable session table for --dump."""
@@ -4863,7 +4393,6 @@ def relay_result_summary(sessions) -> str:
                     f"{f['hex']:<44}  {decoded_str}"
                 )
     return '\n'.join(lines)
-
 
 # --- Commands ----------------------------------------------------------------
 
@@ -4950,7 +4479,6 @@ class StandaloneStatus(DeviceRequiredUnit):
             except Exception:
                 pass
 
-
 @standalone.command('set-mode')
 class StandaloneSetMode(DeviceRequiredUnit):
     """
@@ -5006,7 +4534,6 @@ class StandaloneSetMode(DeviceRequiredUnit):
             f"ok: state={state.name} mode={mode_now.name} "
             f"flags={int(flags_now):#04x}")))
 
-
 @standalone.command('trigger')
 class StandaloneTrigger(DeviceRequiredUnit):
     """
@@ -5034,7 +4561,6 @@ class StandaloneTrigger(DeviceRequiredUnit):
             print(color_string((CR, "refused (likely missing opt-in)")))
         else:
             print(color_string((CR, f"trigger failed: status={resp.status}")))
-
 
 @standalone.command('disarm')
 class StandaloneDisarm(DeviceRequiredUnit):
@@ -5070,7 +4596,6 @@ class StandaloneDisarm(DeviceRequiredUnit):
                 pass
             print(color_string((CR, f"disarm failed: {e}")))
             print(color_string((CY, "Use the both-button chord on the device to disarm manually.")))
-
 
 @standalone.command('get-result')
 class StandaloneGetResult(DeviceRequiredUnit):
@@ -5199,7 +4724,6 @@ class StandaloneGetResult(DeviceRequiredUnit):
         # default summary
         print(authtrace_summarise(sessions))
 
-
 @standalone.command('ls')
 class StandaloneLs(DeviceRequiredUnit):
     """
@@ -5249,7 +4773,6 @@ class StandaloneLs(DeviceRequiredUnit):
             est = f"~{max(1, sz // 64)}" if sz > 0 else "-"
             print(f"  {CG}{name:<14}{C0}  {sz:>7}B  {est:>14}")
 
-
 @standalone.command('clear-result')
 class StandaloneClearResult(DeviceRequiredUnit):
     """Discard the active mode's result buffer."""
@@ -5265,7 +4788,6 @@ class StandaloneClearResult(DeviceRequiredUnit):
             print(color_string((CG, "cleared")))
         else:
             print(color_string((CR, f"clear failed: status={resp.status}")))
-
 
 @standalone.command('config')
 class StandaloneConfig(DeviceRequiredUnit):
@@ -5544,7 +5066,6 @@ class HFSeosELoad(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
         ):
             print(color_string((CR, "Error: No changes were requested.")))
 
-
         seos_data = self.cmd.seos_read_emu_data()
 
         # Parse args
@@ -5624,7 +5145,6 @@ class HFSeosKeys(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
             privmac=privmac
         )
         print(f"\n {CR}No keys found{C0}")
-
 
 # ---- Indala LF (read + T55xx clone) : ported from RRG #402 (kevihiiin); emulation (econfig) omitted ----
 def indala_decode_raw(raw: bytes):
