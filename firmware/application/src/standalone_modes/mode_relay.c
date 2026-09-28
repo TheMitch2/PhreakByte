@@ -416,7 +416,9 @@ static void on_ready(void) {
 }
 
 /* Response from real card (CU2 → CU1 via BLE) */
-static void on_response(const uint8_t *data, uint16_t bits) {
+static void on_response(const uint8_t *data, uint16_t bits, const uint8_t *parity) {
+    (void)parity;  /* Crypto1 parity relay: consumed once the card-side capture
+                    * path (nfc_relay_tag/nfc_14a) forwards parity. T=CL unused. */
     if (m_st.sub != RS_CARD_AWAIT_RESPONSE) return;
     uint16_t bytes = (bits + 7) / 8;
     if (bytes > sizeof(m_st.response_buf)) bytes = sizeof(m_st.response_buf);
@@ -435,7 +437,8 @@ static void on_no_response(void) {
 }
 
 /* Frame from CU1 to forward to real card (CU2 side) */
-static void on_frame(const uint8_t *data, uint16_t bits) {
+static void on_frame(const uint8_t *data, uint16_t bits, const uint8_t *parity) {
+    (void)parity;  /* see on_response: reader-side bit-transceive will use this */
     if (m_st.reader_frame_pending) return;
     uint16_t bytes = (bits + 7) / 8;
     if (bytes > sizeof(m_st.reader_frame_buf))
