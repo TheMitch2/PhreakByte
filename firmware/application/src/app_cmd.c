@@ -1098,6 +1098,41 @@ static data_frame_tx_t *cmd_processor_lf_t55xx_write(uint16_t cmd, uint16_t stat
     return data_frame_make(cmd, status, 0, NULL);
 }
 
+static data_frame_tx_t *cmd_processor_lf_t55xx_write_blocks(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
+    /* Write several page-0 blocks (0..blk_count-1) in ONE 125kHz field session:
+     * the field stays powered for every block and a single RESET closes it. The
+     * per-block LF_T55XX_WRITE command cycles the field off/on between commands,
+     * which is fine over USB (~1ms gap) but fails over BLE (~0.5s gap) because
+     * the tag loses power between blocks. Used by `lf t55xx wipe`/clone. */
+    typedef struct {
+        uint8_t use_pwd;      /* 1 = password write, 0 = open write */
+        uint8_t pwd[4];       /* 32-bit password, big-endian (ignored if use_pwd == 0) */
+        uint8_t blk_count;    /* number of blocks, 1..8, addressed 0..blk_count-1 */
+        uint8_t words[];      /* blk_count * 4 bytes, big-endian per word */
+    } PACKED payload_t;
+
+    if (length < sizeof(payload_t)) {
+        return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    }
+    payload_t *p = (payload_t *)data;
+    if (p->blk_count < 1 || p->blk_count > 8 ||
+        length < (uint16_t)(sizeof(payload_t) + p->blk_count * 4u)) {
+        return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    }
+
+    uint32_t words[8];
+    for (uint8_t i = 0; i < p->blk_count; i++) {
+        words[i] = bytes_to_num(&p->words[i * 4], 4);
+    }
+    uint32_t passwd = bytes_to_num(p->pwd, 4);
+
+    /* t55xx_write_data holds the field across all blocks + one RESET. When no
+     * password is used it still passes 0 as the leading word; block 0's config
+     * (words[0]) should already clear the pwd bit for an open wipe. */
+    t55xx_write_data(passwd, words, p->blk_count);
+    return data_frame_make(cmd, STATUS_LF_TAG_OK, 0, NULL);
+}
+
 #define T55XX_READ_MAX_ITEMS 320   /* bits (demod) or interval bytes (mode 1) */
 #define T55XX_ADC_MAX_SAMPLES 2048 /* mode 2: ~64 bits at 32 samples/bit */
 static data_frame_tx_t *cmd_processor_lf_t55xx_read(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
@@ -4186,6 +4221,7 @@ static cmd_data_map_t m_data_cmd_map[] = {
 #endif
     {    DATA_CMD_IDTECK_WRITE_TO_T55XX,        before_reader_run,           cmd_processor_idteck_write_to_t55xx,         NULL                   },
     {    DATA_CMD_LF_T55XX_WRITE,               before_reader_run,           cmd_processor_lf_t55xx_write,                NULL                   },
+    {    DATA_CMD_LF_T55XX_WRITE_BLOCKS,        before_reader_run,           cmd_processor_lf_t55xx_write_blocks,         NULL                   },
     {    DATA_CMD_LF_T55XX_READ,                before_reader_run,           cmd_processor_lf_t55xx_read,                 NULL                   },
     {    DATA_CMD_ADC_GENERIC_READ,             before_reader_run,           cmd_processor_generic_read,                  NULL                   },
 
