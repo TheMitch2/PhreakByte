@@ -1,6 +1,6 @@
 # Standalone Modes
 
-Standalone modes let the ChameleonUltra work **without a host** - no laptop, no
+Standalone modes let the ChameleonUltra work **without a host** ,  no laptop, no
 app, just the device and its two buttons. You configure a mode over the CLI
 once, **arm** it, then walk away. The device runs the mode on button presses,
 saves results to flash, and you pull them back at the bench later.
@@ -33,7 +33,7 @@ stored results.
 
 ## LED feedback (all modes)
 
-The slot LEDs signal state and confirm each action landed - watch them before
+The slot LEDs signal state and confirm each action landed ,  watch them before
 you walk away:
 
 | LED pattern | Meaning |
@@ -42,12 +42,12 @@ you walk away:
 | Reverse sweep → **all off** | Disarmed. |
 | **Green triple-flash** | Action succeeded (a capture landed). |
 | **Red triple-flash** | Action failed. |
-| **Red double-flash** | Refused - mode needs `--opt-in`. |
+| **Red double-flash** | Refused ,  mode needs `--opt-in`. |
 | Brief mode-colour **wave** | A long operation started / finished. |
 
 ---
 
-## `authtrace` - reader-side auth capture  *(Ultra only)*
+## `authtrace` ,  reader-side auth capture  *(Ultra only)*
 
 CU acts as a **reader**. Each press runs one full HF14A authentication against a
 real card and records every frame (REQA…ATS, auth, `nt`, `nr‖ar`, `at`).
@@ -57,7 +57,7 @@ standalone set-mode authtrace
 standalone config authtrace --key-type A --block 4 --key FFFFFFFFFFFF --timeout 1000
 standalone trigger                 # arm  (or: both-buttons long on device)
 #  → walk to the card, press both-short per auth attempt (green flash = captured)
-standalone disarm                  # or both-buttons long - saves results
+standalone disarm                  # or both-buttons long ,  saves results
 standalone get-result              # pull the traces
 ```
 
@@ -68,7 +68,7 @@ standalone get-result              # pull the traces
 BOTH_VLONG = discard all sessions.
 No `--opt-in` needed (never writes target memory or slots).
 
-## `emultrace` - card-side auth capture  *(Lite + Ultra)*
+## `emultrace` ,  card-side auth capture  *(Lite + Ultra)*
 
 CU emulates a **card** and captures the exchange when a real reader
 authenticates to it. A new REQA (7-bit `0x26`) arriving mid-capture marks a
@@ -79,17 +79,17 @@ mfkey32v2.
 
 ```
 standalone set-mode emul-trace
-standalone trigger                 # arm - then present CU to the reader
+standalone trigger                 # arm ,  then present CU to the reader
 #  captures happen automatically as the reader authenticates
 standalone disarm
 standalone get-result
 ```
 
 **Config:** none. **Buttons:** BOTH_LONG = arm/disarm. Sessions commit
-automatically (on the next REQA or after the idle timeout) - no short-press
+automatically (on the next REQA or after the idle timeout) ,  no short-press
 capture. **Works on Lite and Ultra** (emulation only).
 
-## `hf14a-tap-sniff` - passive tap  *(Ultra only)*
+## `hf14a-tap-sniff` ,  passive tap  *(Ultra only)*
 
 CU stays **silent** and listens: NFCT captures the reader→card downlink, RC522
 captures the card→reader uplink from the shared coil. Never interferes with the
@@ -108,13 +108,13 @@ standalone get-result
 ms). **Buttons:** BOTH_SHORT = capture one session · BOTH_LONG = arm/disarm ·
 BOTH_VLONG = discard all sessions. No `--opt-in` needed.
 
-## `relay` - two-device BLE relay  *(Ultra only, needs two CUs)*
+## `relay` ,  two-device BLE relay  *(Ultra only, needs two CUs)*
 
 A transparent Bluetooth relay between **two** ChameleonUltras. Roles are
 assigned automatically by BLE MAC: the **lower MAC becomes CARD** (NFCT, faces
 the reader), the **higher MAC becomes READER** (RC522, faces the card).
 
-**Setup - do this on BOTH devices:**
+**Setup ,  do this on BOTH devices:**
 ```
 standalone set-mode relay --opt-in    # relay requires --opt-in
 standalone config relay --timeout 3000   # --timeout is reused as the WTX window, ms (500-10000)
@@ -130,7 +130,7 @@ automatically. On connect, each device flashes green (success) and then goes
 | **Green** | READER | the real **card** | RC522 |
 
 So: put the **blue** device on the reader, the **green** device on the card. If
-the LEDs aren't blue/green solid yet, the two haven't paired - keep them in BLE
+the LEDs aren't blue/green solid yet, the two haven't paired ,  keep them in BLE
 range.
 
 Then present the devices; frames relay automatically and are recorded.
@@ -139,21 +139,62 @@ standalone disarm                     # saves the session trace
 standalone get-result
 ```
 **Buttons:** BOTH_LONG = arm/disarm · **BOTH_VLONG = discard results and
-restart pairing** (stops BLE, clears the trace, re-links from scratch - use it if
+restart pairing** (stops BLE, clears the trace, re-links from scratch ,  use it if
 roles didn't assign or a device dropped). Relay has no short-press action; frames
 relay automatically once paired.
-**Config flag:** `--timeout <500-10000>` - reused as the WTX
+**Config flag:** `--timeout <500-10000>` ,  reused as the WTX
 (waiting-time-extension) window in ms, tuned for BLE round-trip latency. Relay
 ignores `--block/--key-type/--key`.
 
-## `slot-cycle` - rotate emulation slots  *(Lite + Ultra)*
+### What relay can and cannot carry
+
+Relay is transparent ,  it forwards frames byte-for-byte and lets the real reader
+and real card do all the cryptography end to end. Whether a given card *can* be
+relayed comes down to one thing: **timing**, and whether the protocol lets the
+relay buy time to cover the Bluetooth round-trip (typically 35-80 ms).
+
+**ISO 14443-4 cards (DESFire, EMV, most contactless payment/ID): relayed.**
+These run T=CL, which has a **Waiting-Time-Extension (WTX)** S-block. On each
+I-block the relay sends `S(WTX)` to the reader within the first response window;
+the reader grants more time and re-opens the window; the relayed answer is sent
+when it arrives. This is the `--timeout` (WTX ms) you configure. Encrypted
+payloads (DESFire secure messaging, EMV) relay fine because they are opaque
+I-block bytes ,  the endpoints handle the crypto.
+
+**MIFARE Classic (Crypto1 authentication): NOT relayable, by protocol.** This is
+a hard limit, not a missing feature, for two independent reasons:
+
+1. **No WTX exists at this layer.** Crypto1 auth happens over ISO 14443-**3**,
+   *before* T=CL ,  the reader never sent RATS, so it does not understand
+   S-blocks. Sending `S(WTX)` to a Crypto1 reader is meaningless to it; it will
+   treat the auth as failed and abort. WTX is a two-party T=CL agreement, and a
+   Crypto1 reader is not a party to it. Adding WTX code changes nothing the
+   reader would honour.
+
+2. **The timing cannot be extended.** Crypto1 auth is three tightly-timed,
+   back-to-back exchanges (`nt` → `nr‖ar` → `at`), each with a fixed
+   frame-delay time of microseconds to a few milliseconds and **no legal way to
+   ask the reader to wait**. Without WTX, the relay falls back to widening the
+   NFCT frame-delay window to its ~77 ms hardware ceiling ,  and a BLE round-trip
+   sits right at or beyond that for even one exchange, let alone three in a row.
+
+(There is also a lower-level obstacle: the firmware strips the encrypted parity
+bits from received frames before the relay handler sees them, and Crypto1's
+parity is part of the cipher stream. But even if parity were preserved, reasons
+1 and 2 above make Crypto1 relay impossible over BLE.)
+
+This is not specific to the ChameleonUltra ,  MIFARE Classic auth is unrelayable
+over any high-latency link; hardware relay rigs that manage it use sub-
+millisecond wired or tuned-RF links, not Bluetooth.
+
+## `slot-cycle` ,  rotate emulation slots  *(Lite + Ultra)*
 
 Rotates the active emulation slot through a chosen set at a fixed interval. No
-RF interaction, no writes - the safest mode.
+RF interaction, no writes ,  the safest mode.
 
 ```
 standalone set-mode slot-cycle
-standalone trigger                 # arm - rotation begins (uses firmware defaults)
+standalone trigger                 # arm ,  rotation begins (uses firmware defaults)
 ```
 Defaults are sensible (all slots, start at 0, 3000 ms dwell), so you usually
 don't configure it. To override, pass the raw 6-byte config blob with `-d`
@@ -172,10 +213,10 @@ paused) · BOTH_LONG = arm/disarm · BOTH_VLONG = pause/resume.
 ## `--opt-in` and quiet flags
 
 `set-mode` takes optional flags:
-- `--opt-in` - sets `HOST_OPTED_IN`. **Required** for modes that act on real
+- `--opt-in` ,  sets `HOST_OPTED_IN`. **Required** for modes that act on real
   targets (e.g. `relay`); arming without it gives a **red double-flash** and a
   "requires --opt-in" refusal.
-- `--quiet-buzzer` / `--quiet-led` - silence the buzzer / LEDs for covert use.
+- `--quiet-buzzer` / `--quiet-led` ,  silence the buzzer / LEDs for covert use.
 
 ## CLI reference (`standalone` group)
 
@@ -206,7 +247,7 @@ u16 trace_len       length of the trace bytes
 u8  trace[trace_len]   verbatim wire trace (same format as CMD 2017)
 ```
 
-Traces are Proxmark3-decoder-compatible - feed them to mfkey32v2 / mfkey64.
+Traces are Proxmark3-decoder-compatible ,  feed them to mfkey32v2 / mfkey64.
 `relay` wraps the same trace bytes with per-session role, UID, ATQA/SAK, and
 frame count.
 
