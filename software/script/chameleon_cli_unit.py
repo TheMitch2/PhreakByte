@@ -7,6 +7,7 @@ Step 1 of the split: foundation extracted, commands still here."""
 
 from cli_core import *  # noqa: F401,F403 - foundation: bases, groups, helpers, imports
 import cli_core
+from fdxb_country import ISO3166_NUMERIC
 # re-export everything cli_core defined so command bodies resolve names
 globals().update({k: v for k, v in vars(cli_core).items() if not k.startswith('__')})
 
@@ -4190,11 +4191,22 @@ class EMVScan(DeviceRequiredUnit):
             except Exception:
                 pass
 
-        # Issuer Country Code (ISO 3166-1 numeric, BCD)
+        # Issuer Country Code (ISO 3166-1 numeric, BCD) -> add the country name
         for v in tags[0x5F28]:
             country = v.hex().upper().lstrip('0') or '0'
-            print(f' {CG}Issuer Country:{C0} {CY}{country}{C0}')
-            result.setdefault('Decoded', {})['IssuerCountry'] = country
+            try:
+                # EMV 5F28 is pure ISO 3166-1 numeric. Use the ISO table only --
+                # not the FDX-B code namer, which labels 900+ as manufacturer/
+                # test-transponder codes that never occur on an EMV card.
+                name = ISO3166_NUMERIC.get(int(country))
+            except ValueError:
+                name = None
+            shown = f'{country} ({name})' if name else country
+            print(f' {CG}Issuer Country:{C0} {CY}{shown}{C0}')
+            dec = result.setdefault('Decoded', {})
+            dec['IssuerCountry'] = country
+            if name:
+                dec['IssuerCountryName'] = name
 
         # Application Preferred Name (9F12) — only if different from label
         for v in tags[0x9F12]:
@@ -5721,8 +5733,3 @@ def indala_format_output(raw: bytes) -> str:
     lines = [f"Indala (len 64)  Raw: {raw.hex().upper()}"]
     lines.append(f"   Fmt 26  FC: {fc}  Card: {cn}")
     return "\n".join(lines)
-
-
-
-
-
