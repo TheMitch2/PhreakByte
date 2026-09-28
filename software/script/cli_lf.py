@@ -13,6 +13,7 @@ import time
 import sys
 
 from cli_core import (
+    UnexpectedResponseError,
     lf_indala,
     ArgsParserError,
     ArgumentParserNoExit,
@@ -937,13 +938,32 @@ class LFT55xxWipe(ReaderRequiredUnit):
             cfg = bytes.fromhex("6001F004" if args.q5 else "000880E0")
         pwd = _t55_hex4(args.pwd, "pwd") if args.pwd is not None else None
         zero = b"\x00\x00\x00\x00"
+        # A T55xx write is slow (LF + EEPROM program); over BLE the notification
+        # round-trip needs headroom, so use a generous per-write timeout, and let
+        # the tag settle briefly between writes so a weakly-coupled tag over BLE
+        # doesn't miss the next start-gap. lf_t55xx_write now raises on failure,
+        # so a bad block stops the wipe with a clear message instead of a silent
+        # "wiped" over a half-programmed tag.
+        WRITE_TIMEOUT = 8      # seconds; comfortably covers BLE round-trip + program
+        SETTLE = 0.05          # 50 ms between writes
+
+        def _write(blk, word, pw, page1=False):
+            try:
+                self.cmd.lf_t55xx_write(blk, word, pw, page1=page1, timeout=WRITE_TIMEOUT)
+            except (TimeoutError, UnexpectedResponseError) as e:
+                raise Exception(
+                    f"wipe stopped at block {blk}{' page1' if page1 else ''}: {e}. "
+                    f"Re-seat the tag on the antenna and retry"
+                    f"{' (over BLE, keep the tag still)' if True else ''}.")
+            time.sleep(SETTLE)
+
         # Block 0 first, authenticated if a password was supplied. The default
         # config clears the pwd bit, so blocks 1-7 are then written open.
-        self.cmd.lf_t55xx_write(0, cfg, pwd, page1=False)
+        _write(0, cfg, pwd)
         for blk in range(1, 8):
-            self.cmd.lf_t55xx_write(blk, zero, None, page1=False)
+            _write(blk, zero, None)
         if args.extended:
-            self.cmd.lf_t55xx_write(3, zero, None, page1=True)
+            _write(3, zero, None, page1=True)
         print(f" - T55xx wiped (block 0 = {cfg.hex().upper()}"
               f"{', Q5' if args.q5 else ''}{', +pg1 blk3' if args.extended else ''})")
 
