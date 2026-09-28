@@ -944,26 +944,21 @@ class LFT55xxWipe(ReaderRequiredUnit):
         # doesn't miss the next start-gap. lf_t55xx_write now raises on failure,
         # so a bad block stops the wipe with a clear message instead of a silent
         # "wiped" over a half-programmed tag.
-        WRITE_TIMEOUT = 8      # seconds; comfortably covers BLE round-trip + program
-        SETTLE = 0.05          # 50 ms between writes
-
-        def _write(blk, word, pw, page1=False):
-            try:
-                self.cmd.lf_t55xx_write(blk, word, pw, page1=page1, timeout=WRITE_TIMEOUT)
-            except (TimeoutError, UnexpectedResponseError) as e:
-                raise Exception(
-                    f"wipe stopped at block {blk}{' page1' if page1 else ''}: {e}. "
-                    f"Re-seat the tag on the antenna and retry"
-                    f"{' (over BLE, keep the tag still)' if True else ''}.")
-            time.sleep(SETTLE)
-
-        # Block 0 first, authenticated if a password was supplied. The default
-        # config clears the pwd bit, so blocks 1-7 are then written open.
-        _write(0, cfg, pwd)
-        for blk in range(1, 8):
-            _write(blk, zero, None)
-        if args.extended:
-            _write(3, zero, None, page1=True)
+        # All page-0 blocks in ONE field session: block 0 = config (clears the
+        # pwd bit for an open wipe), blocks 1-7 = zeros. This is a single device
+        # command, so the field stays powered the whole time and it works over
+        # BLE (the old per-block loop cycled the field between each write and the
+        # tag lost power during the ~0.5s BLE round-trip).
+        words = [cfg] + [zero] * 7
+        try:
+            self.cmd.lf_t55xx_write_blocks(words, pwd, timeout=15)
+            # Extended mode: block 3 page 1 is a different page, one extra write.
+            if args.extended:
+                self.cmd.lf_t55xx_write(3, zero, None, page1=True, timeout=8)
+        except (TimeoutError, UnexpectedResponseError) as e:
+            raise Exception(
+                f"T55xx wipe failed: {e}. Re-seat the tag flat on the antenna "
+                f"and retry (over BLE, keep the tag still during the wipe).")
         print(f" - T55xx wiped (block 0 = {cfg.hex().upper()}"
               f"{', Q5' if args.q5 else ''}{', +pg1 blk3' if args.extended else ''})")
 
