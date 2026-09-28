@@ -33,25 +33,74 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        # The nRF5 SDK (firmware/nrf52_sdk) is committed in the repo, so no
-        # submodule fetch or SDK download is needed.
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies and set up mergehex shim
+        run: |
+          pip install intelhex --quiet
+
+          cat <<'EOF' | sudo tee /usr/local/bin/mergehex > /dev/null
+          #!/usr/bin/env python3
+          import sys
+          from intelhex import IntelHex
+
+          def main(argv):
+              inputs, out = [], None
+              i = 0
+              while i < len(argv):
+                  a = argv[i]
+                  if a in ('-m', '--merge'):
+                      i += 1
+                      while i < len(argv) and not argv[i].startswith('-'):
+                          inputs.append(argv[i])
+                          i += 1
+                      continue
+                  if a in ('-o', '--output'):
+                      out = argv[i + 1]
+                      i += 2
+                      continue
+                  if a in ('-h', '--help'):
+                      print("mergehex shim: --merge f1 f2 ... --output out.hex")
+                      return 0
+                  i += 1
+
+              if not inputs or not out:
+                  print("mergehex shim: need --merge <files> and --output <file>", file=sys.stderr)
+                  return 2
+
+              merged = IntelHex()
+              for f in inputs:
+                  part = IntelHex(f)
+                  overlap = set(merged.addresses()) & set(part.addresses())
+                  if overlap:
+                      lo = min(overlap)
+                      print(f"mergehex shim: overlap at 0x{lo:X} merging {f}", file=sys.stderr)
+                      return 1
+                  merged.merge(part, overlap='error')
+
+              merged.write_hex_file(out)
+              return 0
+
+          if __name__ == '__main__':
+              sys.exit(main(sys.argv[1:]))
+          EOF
+
+          sudo chmod +x /usr/local/bin/mergehex
 
       - name: Install pinned ARM GCC 10.3-2021.10 + zip
         run: |
           sudo apt-get update
           sudo apt-get install -y zip
-          # The firmware targets GCC 10.3-2021.10 (see firmware/Makefile.defs).
-          # Ubuntu's default gcc-arm-none-eabi is now GCC 13, whose larger code
-          # size overflows the 44KB bootloader FLASH region. Pin the exact
-          # toolchain the project builds with.
           TC=gcc-arm-none-eabi-10.3-2021.10
           URL=https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/${TC}-x86_64-linux.tar.bz2
           curl -fSL "$URL" -o /tmp/armgcc.tar.bz2
           sudo mkdir -p /opt/armgcc
           sudo tar -xjf /tmp/armgcc.tar.bz2 -C /opt/armgcc
           echo "/opt/armgcc/${TC}/bin" >> "$GITHUB_PATH"
-          # Point the SDK's toolchain path (Makefile.posix defaults to /usr/bin)
-          # at this install for both the bootloader and application makefiles.
           echo "GNU_INSTALL_ROOT=/opt/armgcc/${TC}/bin/" >> "$GITHUB_ENV"
 
       - name: Verify toolchain
@@ -62,8 +111,6 @@ jobs:
 
       - name: Install nrfutil + nrf5sdk-tools
         run: |
-          # build.sh calls `nrfutil nrf5sdk-tools pkg/settings generate`.
-          # Install the nrfutil launcher and the nrf5sdk-tools command.
           curl -fsSL https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/executables/x86_64-unknown-linux-gnu/nrfutil \
             -o /usr/local/bin/nrfutil
           chmod +x /usr/local/bin/nrfutil
@@ -74,8 +121,6 @@ jobs:
         working-directory: firmware
         env:
           CURRENT_DEVICE_TYPE: ${{ matrix.device }}
-          # GNU_INSTALL_ROOT is exported to $GITHUB_ENV by the toolchain step;
-          # the SDK's Makefile.posix reads it to locate arm-none-eabi-*.
         run: |
           chmod +x build.sh
           ./build.sh
@@ -88,9 +133,7 @@ jobs:
         working-directory: firmware
         run: |
           mkdir -p ../dist
-          # The DFU application package — the thing you flash over serial DFU.
           cp objects/${{ matrix.device }}-dfu-app.zip     ../dist/
-          # The full SD+BL+app package and the UF2 images, for convenience.
           cp objects/${{ matrix.device }}-dfu-full.zip    ../dist/ 2>/dev/null || true
           cp objects/${{ matrix.device }}-application.uf2 ../dist/ 2>/dev/null || true
           cp objects/${{ matrix.device }}-fullimage.uf2   ../dist/ 2>/dev/null || true
