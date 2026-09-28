@@ -311,7 +311,7 @@ bool nfc_tag_14a_4_base_handler(nfc_tag_14a_4_tcl_state_t *m_tcl_session_state, 
             send_rack(m_tcl_session_state);
             return false;
         }
-        
+
         return true;
     }
 
@@ -325,15 +325,15 @@ bool nfc_tag_14a_4_base_handler(nfc_tag_14a_4_tcl_state_t *m_tcl_session_state, 
 
 static void nfc_tag_14a_4_state_handler(uint8_t *data, uint16_t szBytes) {
     if (!nfc_tag_14a_4_base_handler(&m_tcl_session_state, data, szBytes)) return;
-    
+
     /* APDU complete — check static table first, then WTX */
     uint8_t  *static_resp = NULL;
     uint16_t  static_len  = 0;
     bool _found = find_static_response(m_tcl_session_state.m_apdu_buf, m_tcl_session_state.m_apdu_len,
-                                        &static_resp, &static_len);
+                                       &static_resp, &static_len);
     m_dbg_last_match = _found ? 1 : 0;
     NRF_LOG_INFO("14A4 find_static: found=%d static_len=%d resp_count=%d",
-                    _found, static_len, m_static_resp_count);
+                 _found, static_len, m_static_resp_count);
     if (_found) {
         m_dbg_iblocks_tx++;
         memcpy(m_tcl_session_state.m_resp_buf, static_resp, static_len);

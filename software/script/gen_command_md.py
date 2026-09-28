@@ -5,16 +5,23 @@ Walks the CLITree in chameleon_cli_unit.py, renders every group and command with
 its real argparse options (flags, help, choices, required, defaults). Run from
 software/script/:  python3 gen_command_md.py > ../docs/command.md
 """
-import argparse, re, io, sys
+import argparse
+import re
+import io
+import sys
 import chameleon_cli_unit as U
 from chameleon_utils import CLITree
 
 ANSI = re.compile(r'\x1b\[[0-9;]*m')
+
+
 def clean(s):
     return ANSI.sub('', s).strip() if s else s
 
+
 def anchor(fullname):
     return fullname.replace(' ', '-').replace('_', '_')
+
 
 def render_opts(parser, out):
     seen = set()
@@ -42,6 +49,7 @@ def render_opts(parser, out):
         if meta:
             line += f" ({'; '.join(meta)})"
         out.write(f"- {line}\n")
+
 
 def walk(node: CLITree, depth, out, toc):
     # groups: name + help; leaves: name + parser.description + options
@@ -72,19 +80,26 @@ def walk(node: CLITree, depth, out, toc):
             ep = clean(parser.epilog)
             out.write(f"\n```\n{ep}\n```\n")
 
+
 def main():
     out = io.StringIO()
     toc = []
     # count groups/commands
+
     def count(n):
         g = c = 0
         for ch in n.children:
             if ch.cls is None and not ch.root:
-                g += 1; gg, cc = count(ch); g += gg; c += cc
+                g += 1
+                gg, cc = count(ch)
+                g += gg
+                c += cc
             elif ch.cls is not None:
                 c += 1
             else:
-                gg, cc = count(ch); g += gg; c += cc
+                gg, cc = count(ch)
+                g += gg
+                c += cc
         return g, c
     ngroups, ncmds = count(U.root)
 
@@ -114,6 +129,7 @@ def main():
           "Absent DESFire keys/files are preserved honestly (version-only keys carry no key bytes; "
           "unread files carry no data), per PM3's `mfdes v1` spec.\n")
     print(body.getvalue())
+
 
 if __name__ == "__main__":
     main()

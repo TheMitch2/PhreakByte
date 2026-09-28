@@ -78,6 +78,7 @@ class LFEMIdArgsUnit(DeviceRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         raise NotImplementedError("Please implement this")
 
+
 class LFHIDIdArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
@@ -193,6 +194,7 @@ class LFHIDIdArgsUnit(DeviceRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         raise NotImplementedError()
 
+
 class LFHIDIdReadArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
@@ -213,6 +215,7 @@ class LFHIDIdReadArgsUnit(DeviceRequiredUnit):
 
     def on_exec(self, args: argparse.Namespace):
         raise NotImplementedError()
+
 
 class LFIOProxIdArgsUnit(DeviceRequiredUnit):
     """
@@ -274,11 +277,13 @@ class LFIOProxIdArgsUnit(DeviceRequiredUnit):
 
         return True
 
+
 class LFIOProxReadArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
         parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
         return parser
+
 
 class LFVikingIdArgsUnit(DeviceRequiredUnit):
     @staticmethod
@@ -301,6 +306,7 @@ class LFVikingIdArgsUnit(DeviceRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         raise NotImplementedError("Please implement this")
 
+
 class LFJablotronIdArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
@@ -321,6 +327,7 @@ class LFJablotronIdArgsUnit(DeviceRequiredUnit):
 
     def on_exec(self, args: argparse.Namespace):
         raise NotImplementedError("Please implement this")
+
 
 class LFFdxbIdArgsUnit(DeviceRequiredUnit):
     """Argument parser for FDX-B: 26 hex chars = 13 bytes (destuffed frame)."""
@@ -355,6 +362,7 @@ class LFFdxbIdArgsUnit(DeviceRequiredUnit):
 
     def on_exec(self, args: argparse.Namespace):
         raise NotImplementedError("Please implement this")
+
 
 class LFIdteckIdArgsUnit(DeviceRequiredUnit):
     """Argument parser for IDTECK: 16-hex = full 64-bit frame (preamble + payload)."""
@@ -474,6 +482,7 @@ class LFFdxbRead(ReaderRequiredUnit):
             return True
         return False
 
+
 @lf_fdxb.command("write")
 class LFFdxbWriteT55xx(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -516,6 +525,7 @@ class LFFdxbWriteT55xx(ReaderRequiredUnit):
         self.cmd.fdxb_write_to_t55xx(data_bytes)
         print(f" - FDX-B frame: {data_bytes.hex().upper()} written to T55xx")
 
+
 @lf_fdxb.command("clone")
 class LFFdxbClone(LFFdxbWriteT55xx):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -531,6 +541,7 @@ class LFFdxbClone(LFFdxbWriteT55xx):
                   f"cloning anyway, but the tag may not verify on other readers")
         self.cmd.fdxb_write_to_t55xx(data_bytes)
         print(f" - FDX-B clone complete: {data_bytes.hex().upper()}")
+
 
 @lf.command("search")
 class LFSearch(ReaderRequiredUnit):
@@ -580,6 +591,7 @@ class LFSearch(ReaderRequiredUnit):
             return
         print(f"{color_string((CG, str(tag_type)))}: {color_string((CG, id_bytes.hex()))}")
 
+
 @lf_em_410x.command("read")
 class LFEMRead(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -590,6 +602,7 @@ class LFEMRead(ReaderRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         data = self.cmd.em410x_scan()
         print(f"{TagSpecificType(data[0])}: {color_string((CG, data[1].hex()))}")
+
 
 @lf_em_410x.command("write")
 class LFEM410xWriteT55xx(LFEMIdArgsUnit, ReaderRequiredUnit):
@@ -608,6 +621,7 @@ class LFEM410xWriteT55xx(LFEMIdArgsUnit, ReaderRequiredUnit):
         self.cmd.em410x_write_to_t55xx(id_bytes)
         print(f" - EM410x ID write done: {id_hex}")
 
+
 def _t55_hex4(s: str, name: str) -> bytes:
     """Parse exactly 4 hex bytes, or raise a clean ArgsParserError."""
     try:
@@ -617,6 +631,7 @@ def _t55_hex4(s: str, name: str) -> bytes:
     if len(b) != 4:
         raise ArgsParserError(f"{name} must be 8 hex digits (4 bytes)")
     return b
+
 
 def _t55_amplitude_halfbits(samples, rf_n):
     """Binarize a SAADC amplitude capture and recover the half-bit level stream
@@ -658,11 +673,14 @@ def _t55_manchester_decode(hb, off):
     while i + 1 < len(hb):
         a, d = hb[i], hb[i + 1]
         if a == 1 and d == 0:
-            bits.append(1); i += 2
+            bits.append(1)
+            i += 2
         elif a == 0 and d == 1:
-            bits.append(0); i += 2
+            bits.append(0)
+            i += 2
         else:
-            viol += 1; i += 1  # slip one half-cell to resync
+            viol += 1
+            i += 1  # slip one half-cell to resync
     return "".join(map(str, bits)), viol
 
 
@@ -872,6 +890,7 @@ def _t55_expect_match(bits, want):
             return True
     return False
 
+
 @lf_t55xx.command("write")
 class LFT55xxWrite(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -895,6 +914,7 @@ class LFT55xxWrite(ReaderRequiredUnit):
         pwd = _t55_hex4(args.pwd, "pwd") if args.pwd is not None else None
         self.cmd.lf_t55xx_write(args.block, word, pwd, page1)
         print(f" - T55xx block {args.block}{' (pg1)' if page1 else ''} <- {word.hex().upper()}")
+
 
 @lf_t55xx.command("wipe")
 class LFT55xxWipe(ReaderRequiredUnit):
@@ -926,6 +946,7 @@ class LFT55xxWipe(ReaderRequiredUnit):
             self.cmd.lf_t55xx_write(3, zero, None, page1=True)
         print(f" - T55xx wiped (block 0 = {cfg.hex().upper()}"
               f"{', Q5' if args.q5 else ''}{', +pg1 blk3' if args.extended else ''})")
+
 
 @lf_t55xx.command("detect")
 class LFT55xxDetect(ReaderRequiredUnit):
@@ -971,6 +992,7 @@ class LFT55xxDetect(ReaderRequiredUnit):
         print(f"{CY}   Likely a streaming tag with no addressable config block (e.g. FDX-B — "
               f"use `lf fdxb`), or FSK/PSK (not wired into t55xx read), or a rate not tried. "
               f"`lf t55xx read -b 0 --adc` shows the raw envelope.{C0}")
+
 
 @lf_t55xx.command("read")
 class LFT55xxRead(ReaderRequiredUnit):
@@ -1068,6 +1090,7 @@ class LFT55xxRead(ReaderRequiredUnit):
             else:
                 print(f"{CR} - verify MISMATCH: {args.expect.upper()} not in stream{C0}")
 
+
 @lf_hid_prox.command("read")
 class LFHIDProxRead(LFHIDIdReadArgsUnit, ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1089,6 +1112,7 @@ class LFHIDProxRead(LFHIDIdReadArgsUnit, ReaderRequiredUnit):
         if oem > 0:
             print(f" OEM: {color_string((CG, oem))}")
         print(f" CN: {color_string((CG, cn))}")
+
 
 @lf_hid_prox.command("write")
 class LFHIDProxWriteT55xx(LFHIDIdArgsUnit, ReaderRequiredUnit):
@@ -1124,6 +1148,7 @@ class LFHIDProxWriteT55xx(LFHIDIdArgsUnit, ReaderRequiredUnit):
             print(f" OEM: {args.oem}")
         print(f" CN: {args.cn}")
         print("write done.")
+
 
 @lf_hid_prox.command("econfig")
 class LFHIDProxEconfig(SlotIndexArgsAndGoUnit, LFHIDIdArgsUnit):
@@ -1174,6 +1199,7 @@ class LFHIDProxEconfig(SlotIndexArgsAndGoUnit, LFHIDIdArgsUnit):
                 print(f"   OEM: {color_string((CG, oem))}")
             print(f"   CN: {color_string((CG, cn))}")
 
+
 @lf_ioprox.command("read")
 class LFIOProxRead(LFIOProxReadArgsUnit, ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1188,6 +1214,7 @@ class LFIOProxRead(LFIOProxReadArgsUnit, ReaderRequiredUnit):
         print(f"   Facility: {color_string((CG, f'{fc} [0x{fc:02X}]'))}")
         print(f"   ID: {color_string((CY, cn))}")
         print(f"   Raw: {color_string((CY, raw8.hex().upper()))}")
+
 
 @lf_ioprox.command("write")
 class LFIOProxWriteT55xx(LFIOProxIdArgsUnit, ReaderRequiredUnit):
@@ -1225,6 +1252,7 @@ class LFIOProxWriteT55xx(LFIOProxIdArgsUnit, ReaderRequiredUnit):
         print(f"   ID: {color_string((CY, cn))}")
         print(f"   Raw: {color_string((CY, raw8.hex().upper()))}")
         print("Write done.")
+
 
 @lf_ioprox.command("econfig")
 class LFIOProxEconfig(SlotIndexArgsAndGoUnit, LFIOProxIdArgsUnit):
@@ -1284,12 +1312,14 @@ class LFIOProxEconfig(SlotIndexArgsAndGoUnit, LFIOProxIdArgsUnit):
             print(f"   ID: {color_string((CY, cn))}")
             print(f"   Raw: {color_string((CY, raw8.hex().upper()))}")
 
+
 def jablotron_card_id(raw_bytes: bytes) -> int:
     """Convert 5 raw Jablotron bytes to decimal card number via BCD."""
     card_id = 0
     for b in raw_bytes:
         card_id = card_id * 100 + ((b >> 4) * 10) + (b & 0x0F)
     return card_id
+
 
 def pac_encode_raw(card_id: bytes) -> bytes:
     """Encode 8-byte card ID to 16-byte T55XX bitstream (128 bits).
@@ -1320,6 +1350,7 @@ def pac_encode_raw(card_id: bytes) -> bytes:
         if bits[i]:
             raw[i >> 3] |= 1 << (7 - (i & 7))
     return bytes(raw)
+
 
 def pac_decode_raw(raw: bytes) -> bytes:
     """Decode 16-byte T55XX bitstream to 8-byte card ID.
@@ -1370,6 +1401,7 @@ def pac_decode_raw(raw: bytes) -> bytes:
 
     return card_id
 
+
 @lf_pac.command('read')
 class LFPacRead(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1382,6 +1414,7 @@ class LFPacRead(ReaderRequiredUnit):
         card_id_ascii = ''.join(chr(b) if 0x20 <= b < 0x7f else '.' for b in card_id)
         raw = pac_encode_raw(card_id)
         print(f" PAC/Stanley - CN: {color_string((CG, card_id_ascii))} | Raw: {raw.hex().upper()}")
+
 
 class LFPacIdArgsUnit(DeviceRequiredUnit):
     @staticmethod
@@ -1428,6 +1461,7 @@ class LFPacIdArgsUnit(DeviceRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         raise NotImplementedError("Please implement this")
 
+
 @lf_pac.command('write')
 class LFPacWriteT55xx(LFPacIdArgsUnit, ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1441,6 +1475,7 @@ class LFPacWriteT55xx(LFPacIdArgsUnit, ReaderRequiredUnit):
         id_ascii = ''.join(chr(b) if 0x20 <= b < 0x7f else '.' for b in id_bytes)
         raw = pac_encode_raw(id_bytes)
         print(f" - PAC/Stanley write done - CN: {id_ascii} | Raw: {raw.hex().upper()}")
+
 
 @lf_pac.command('econfig')
 class LFPacEconfig(SlotIndexArgsAndGoUnit, LFPacIdArgsUnit):
@@ -1467,6 +1502,7 @@ class LFPacEconfig(SlotIndexArgsAndGoUnit, LFPacIdArgsUnit):
             print(' - Get PAC/Stanley tag id success.')
             print(f'CN: {card_id_ascii} | Raw: {raw.hex().upper()}')
 
+
 @lf_viking.command("read")
 class LFVikingRead(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1477,6 +1513,7 @@ class LFVikingRead(ReaderRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         id = self.cmd.viking_scan()
         print(f" Viking: {color_string((CG, id.hex()))}")
+
 
 @lf_viking.command("write")
 class LFVikingWriteT55xx(LFVikingIdArgsUnit, ReaderRequiredUnit):
@@ -1491,6 +1528,7 @@ class LFVikingWriteT55xx(LFVikingIdArgsUnit, ReaderRequiredUnit):
         self.cmd.viking_write_to_t55xx(id_bytes)
         print(f" - Viking ID(8H): {id_hex} write done.")
 
+
 @lf_idteck.command("write")
 class LFIdteckWriteT55xx(LFIdteckIdArgsUnit, ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1503,6 +1541,7 @@ class LFIdteckWriteT55xx(LFIdteckIdArgsUnit, ReaderRequiredUnit):
         id_bytes = bytes.fromhex(id_hex)
         self.cmd.idteck_write_to_t55xx(id_bytes)
         print(f" - IDTECK frame {id_hex} written to T55xx.")
+
 
 @lf_idteck.command("econfig")
 class LFIdteckEconfig(SlotIndexArgsAndGoUnit, LFIdteckIdArgsUnit):
@@ -1536,6 +1575,7 @@ class LFIdteckEconfig(SlotIndexArgsAndGoUnit, LFIdteckIdArgsUnit):
             print(f"   Card ID  : {info['card_id']} (0x{info['card_id']:06X})")
             chk_tag = color_string((CG, "ok")) if info["checksum_valid"] else color_string((CY, "mismatch"))
             print(f"   Checksum : 0x{info['checksum']:02X} (expected 0x{info['checksum_expected']:02X}, {chk_tag})")
+
 
 @lf.command("clone")
 class LFT55xxClone(ReaderRequiredUnit):
@@ -1735,6 +1775,7 @@ class LFT55xxClone(ReaderRequiredUnit):
             self.cmd.idteck_write_to_t55xx(id_bytes)
             print(f" - IDTECK frame cloned to T55xx: {id_hex.upper()}")
 
+
 @lf_generic.command("adcread")
 class LFADCGenericRead(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1761,6 +1802,7 @@ class LFADCGenericRead(ReaderRequiredUnit):
         else:
             print("generic read error")
 
+
 @lf_em_410x.command("econfig")
 class LFEM410xEconfig(SlotIndexArgsAndGoUnit, LFEMIdArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1778,6 +1820,7 @@ class LFEM410xEconfig(SlotIndexArgsAndGoUnit, LFEMIdArgsUnit):
             response = self.cmd.em410x_get_emu_id()
             print(" - Get em410x tag id success.")
             print(f"ID: {response.hex()}")
+
 
 @lf_viking.command("econfig")
 class LFVikingEconfig(SlotIndexArgsAndGoUnit, LFVikingIdArgsUnit):
@@ -1802,6 +1845,7 @@ class LFVikingEconfig(SlotIndexArgsAndGoUnit, LFVikingIdArgsUnit):
             print(" - Get Viking tag id success.")
             print(f"ID: {response.hex().upper()}")
 
+
 @lf_jablotron.command("read")
 class LFJablotronRead(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1815,6 +1859,7 @@ class LFJablotronRead(ReaderRequiredUnit):
         print(f" Jablotron ID: {color_string((CG, id.hex().upper()))}")
         print(f" Card number:  {color_string((CY, str(card_id)))}")
 
+
 @lf_jablotron.command("write")
 class LFJablotronWriteT55xx(LFJablotronIdArgsUnit, ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1827,6 +1872,7 @@ class LFJablotronWriteT55xx(LFJablotronIdArgsUnit, ReaderRequiredUnit):
         id_bytes = bytes.fromhex(id_hex)
         self.cmd.jablotron_write_to_t55xx(id_bytes)
         print(f" - Jablotron ID: {id_hex.upper()} write done.")
+
 
 @lf_jablotron.command("econfig")
 class LFJablotronEconfig(SlotIndexArgsAndGoUnit, LFJablotronIdArgsUnit):
@@ -1852,6 +1898,7 @@ class LFJablotronEconfig(SlotIndexArgsAndGoUnit, LFJablotronIdArgsUnit):
             print(" - Get Jablotron tag id success.")
             print(f"ID: {response.hex().upper()}")
             print(f"Card: {card_id}")
+
 
 @lf_em_4x05.command("read")
 class LFEm4x05Read(ReaderRequiredUnit):
@@ -1882,6 +1929,7 @@ class LFEm4x05Read(ReaderRequiredUnit):
             print(f" UID (64) : {CG}{uid64:016x}{C0}")
         else:
             print(f" UID      : {CG}{uid:08x}{C0}")
+
 
 @lf.command('sniff')
 class LFSniff(ReaderRequiredUnit):
@@ -1976,6 +2024,7 @@ class LFSniff(ReaderRequiredUnit):
             except Exception as e:
                 print(f"{CR}Failed to save: {e}{C0}")
 
+
 class LFIndalaIdArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
@@ -2014,6 +2063,7 @@ class LFIndalaIdArgsUnit(DeviceRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         raise NotImplementedError("Please implement this")
 
+
 @lf_indala.command("read")
 class LFIndalaRead(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -2027,6 +2077,7 @@ class LFIndalaRead(ReaderRequiredUnit):
             print(f" Indala scan failed: {resp.status}")
             return
         print(f" {indala_format_output(resp.data[:8])}")
+
 
 @lf_indala.command("write")
 class LFIndalaWriteT55xx(LFIndalaIdArgsUnit, ReaderRequiredUnit):

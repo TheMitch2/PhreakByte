@@ -211,6 +211,7 @@ def detect_mfu_page_count(cmd):
 
     return tag_name, stop_page
 
+
 @hf_mfu.command("ercnt")
 class HFMFUERCNT(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -228,6 +229,7 @@ class HFMFUERCNT(DeviceRequiredUnit):
             print(f" - Tearing: {color_string((CG, 'not set'))}")
         else:
             print(f" - Tearing: {color_string((CR, 'set'))}")
+
 
 @hf_mfu.command("ewcnt")
 class HFMFUEWCNT(DeviceRequiredUnit):
@@ -258,6 +260,7 @@ class HFMFUEWCNT(DeviceRequiredUnit):
         )
 
         print("- Ok")
+
 
 @hf_mfu.command("rdpg")
 class HFMFURDPG(MFUAuthArgsUnit):
@@ -325,6 +328,7 @@ class HFMFURDPG(MFUAuthArgsUnit):
                 # we may lose the tag again here
                 pass
             print(color_string((CR, " - Auth failed")))
+
 
 @hf_mfu.command("wrpg")
 class HFMFUWRPG(MFUAuthArgsUnit):
@@ -416,6 +420,7 @@ class HFMFUWRPG(MFUAuthArgsUnit):
                 # we may lose the tag again here
                 pass
             print(color_string((CR, " - Auth failed")))
+
 
 @hf_mfu.command("ndefread")
 class HFMFUNDEFREAD(MFUAuthArgsUnit):
@@ -599,6 +604,7 @@ class HFMFUNDEFREAD(MFUAuthArgsUnit):
 
         for i, rec in enumerate(records):
             print(f" - Record {i}: {rec.describe()}")
+
 
 @hf_mfu.command("ndefwrite")
 class HFMFUNDEFWRITE(MFUAuthArgsUnit):
@@ -789,6 +795,7 @@ class HFMFUNDEFWRITE(MFUAuthArgsUnit):
 
         print(color_string((CG, "- Ok, NDEF message written.")))
 
+
 @hf_mfu.command("eview")
 class HFMFUEVIEW(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -805,6 +812,7 @@ class HFMFUEVIEW(DeviceRequiredUnit):
             for i in range(0, len(data), 4):
                 print(f"#{page+(i >> 2):02x}: {data[i:i+4].hex()}")
             page += count
+
 
 @hf_mfu.command("eload")
 class HFMFUELOAD(DeviceRequiredUnit):
@@ -892,6 +900,7 @@ class HFMFUELOAD(DeviceRequiredUnit):
 
         print(" - Ok")
 
+
 @hf_mfu.command("esave")
 class HFMFUESAVE(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -972,6 +981,7 @@ class HFMFUESAVE(DeviceRequiredUnit):
 
         print(" - Ok")
 
+
 @hf_mfu.command("rcnt")
 class HFMFURCNT(MFUAuthArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1038,6 +1048,7 @@ class HFMFURCNT(MFUAuthArgsUnit):
                 # we may lose the tag again here
                 pass
             print(color_string((CR, " - Auth failed")))
+
 
 @hf_mfu.command("dump")
 class HFMFUDUMP(MFUAuthArgsUnit):
@@ -1307,6 +1318,7 @@ class HFMFUDUMP(MFUAuthArgsUnit):
         else:
             self.do_dump(args, param, fd, save_as_eml)
 
+
 @hf_mfu.command("version")
 class HFMFUVERSION(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1329,6 +1341,7 @@ class HFMFUVERSION(ReaderRequiredUnit):
         )
         print(f" - Data: {resp[:8].hex()}")
 
+
 @hf_mfu.command("signature")
 class HFMFUSIGNATURE(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1350,6 +1363,7 @@ class HFMFUSIGNATURE(ReaderRequiredUnit):
             options=options, resp_timeout_ms=200, data=struct.pack("!BB", 0x3C, 0x00)
         )
         print(f" - Data: {resp[:32].hex()}")
+
 
 @hf_mfu.command("authnonce")
 class HFMFUAUTHNONCE(ReaderRequiredUnit):
@@ -1377,6 +1391,7 @@ class HFMFUAUTHNONCE(ReaderRequiredUnit):
             print(f" - Nonce: {resp[1:9].hex()}")
         else:
             print(f" - Error: Unexpected response: {resp.hex()}")
+
 
 @hf_mfu.command("ulcg")
 class HFMFUULCG(ReaderRequiredUnit):
@@ -1706,6 +1721,7 @@ class HFMFUULCG(ReaderRequiredUnit):
                     self.write_block(block, data)
                 print("[+] Key restored on the card")
 
+
 @hf_mfu.command("nfcimport")
 class HFMFUNfcImport(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
     FLIPPER_TYPE_MAP: ClassVar[dict[str, TagSpecificType]] = {
@@ -1966,6 +1982,7 @@ class HFMFUNfcImport(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
             f" - Import complete. Slot {self.slot_num} is now emulating "
             f"{device_type} ({file_name})"
         )
+
 
 @hf_mfu.command("econfig")
 class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredUnit):
@@ -2228,6 +2245,7 @@ class HFMFUEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequired
                 print(f'- {"Log (password) mode:":40}{f"{detection}"}')
             except (ValueError, chameleon_com.CMDInvalidException, TimeoutError):
                 pass
+
 
 @hf_mfu.command("edetect")
 class HFMFUEDetect(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):

@@ -651,7 +651,7 @@ void ble_main_relay_adv_set(const uint8_t *raw_adv, uint8_t len) {
         params.secondary_phy   = BLE_GAP_PHY_1MBPS;
 
         ret_code_t rc = sd_ble_gap_adv_set_configure(
-            &m_advertising.adv_handle, &adv_data, &params);
+                            &m_advertising.adv_handle, &adv_data, &params);
         if (rc != NRF_SUCCESS) {
             NRF_LOG_WARNING("relay: adv_set_configure rc=%u", rc);
             return;
@@ -681,7 +681,7 @@ void ble_main_relay_adv_set(const uint8_t *raw_adv, uint8_t len) {
         params.secondary_phy   = BLE_GAP_PHY_1MBPS;
 
         ret_code_t rc = sd_ble_gap_adv_set_configure(
-            &m_advertising.adv_handle, &adv_data, &params);
+                            &m_advertising.adv_handle, &adv_data, &params);
         if (rc != NRF_SUCCESS) {
             NRF_LOG_WARNING("relay: adv reconfig rc=%u", rc);
             return;

@@ -297,7 +297,7 @@ uint8_t lf_t55xx_write_block(uint8_t block, uint32_t word, uint32_t passwd, bool
 
 /**
  * Write FDX-B frame data to T55xx chip.
- * 
+ *
  * @param fdxb_data: 13-byte FDX-B destuffed frame from scan
  * @param new_passwd: 4-byte new password
  * @param old_passwds: array of old passwords to try
@@ -311,7 +311,7 @@ uint8_t write_fdxb_to_t55xx(uint8_t *fdxb_data, uint8_t *new_passwd, uint8_t *ol
     if (blk_count == 0) {
         return STATUS_PAR_ERR;
     }
-    
+
     // Use standard T55xx write infrastructure (same as jablotron/EM410x)
     return write_t55xx(blks, blk_count, new_passwd, old_passwds, old_passwd_count);
 }

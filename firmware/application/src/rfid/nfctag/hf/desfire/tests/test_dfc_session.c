@@ -3,16 +3,16 @@
 #include "dfc_common.h"
 #include <string.h>
 
-static void hex_to_bytes(const char* hex, uint8_t* out) {
+static void hex_to_bytes(const char *hex, uint8_t *out) {
     size_t len = strlen(hex) / 2;
-    for(size_t i = 0; i < len; i++) {
+    for (size_t i = 0; i < len; i++) {
         unsigned int byte;
         sscanf(hex + i * 2, "%2x", &byte);
         out[i] = (uint8_t)byte;
     }
 }
 
-static MunitResult test_rotate_left(const MunitParameter params[], void* data) {
+static MunitResult test_rotate_left(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     uint8_t buf[8] = {0x5e, 0xc0, 0x44, 0xf1, 0x84, 0xfa, 0x03, 0xae};
@@ -24,7 +24,7 @@ static MunitResult test_rotate_left(const MunitParameter params[], void* data) {
 
 static MunitResult test_detectable_uid_accepts_supported_lengths_starting_with_04(
     const MunitParameter params[],
-    void* data) {
+    void *data) {
     (void)params;
     (void)data;
 
@@ -42,7 +42,7 @@ static MunitResult test_detectable_uid_accepts_supported_lengths_starting_with_0
 }
 
 static MunitResult
-    test_standard_data_file_settings_are_desfire_layout(const MunitParameter params[], void* data) {
+test_standard_data_file_settings_are_desfire_layout(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
 
@@ -59,7 +59,7 @@ static MunitResult
 
 static MunitResult test_authentication_mode_names_accept_d40_and_legacy_aliases(
     const MunitParameter params[],
-    void* data) {
+    void *data) {
     (void)params;
     (void)data;
 
@@ -78,7 +78,7 @@ static MunitResult test_authentication_mode_names_accept_d40_and_legacy_aliases(
 }
 
 static MunitResult
-    test_authentication_mode_names_reject_invalid_input(const MunitParameter params[], void* data) {
+test_authentication_mode_names_reject_invalid_input(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
 
@@ -90,7 +90,7 @@ static MunitResult
 }
 
 // Protocol regression vector for D40 DES authentication/session derivation.
-static MunitResult test_d40_des_reference_vector(const MunitParameter params[], void* data) {
+static MunitResult test_d40_des_reference_vector(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
 
@@ -152,7 +152,7 @@ static MunitResult test_d40_des_reference_vector(const MunitParameter params[], 
     return MUNIT_OK;
 }
 
-static MunitResult test_derive_session_key_aes(const MunitParameter params[], void* data) {
+static MunitResult test_derive_session_key_aes(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     // AES session key = RndA[0:4] || RndB[0:4] || RndA[12:16] || RndB[12:16]
@@ -174,7 +174,7 @@ static MunitResult test_derive_session_key_aes(const MunitParameter params[], vo
     return MUNIT_OK;
 }
 
-static MunitResult test_derive_session_key_2k3des(const MunitParameter params[], void* data) {
+static MunitResult test_derive_session_key_2k3des(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     // 2K3DES session key = RndA[0:4] || RndB[0:4] || RndA[4:8] || RndB[4:8].
@@ -196,7 +196,7 @@ static MunitResult test_derive_session_key_2k3des(const MunitParameter params[],
 }
 
 static MunitResult
-    test_iso_auth_derives_expected_session_key(const MunitParameter params[], void* data) {
+test_iso_auth_derives_expected_session_key(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
 
@@ -242,7 +242,7 @@ static MunitResult
     return MUNIT_OK;
 }
 
-static MunitResult test_derive_session_key_3k3des(const MunitParameter params[], void* data) {
+static MunitResult test_derive_session_key_3k3des(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     // 3K3DES session key = RndA[0:4]||RndB[0:4]||RndA[6:10]||RndB[6:10]||RndA[12:16]||RndB[12:16]
@@ -266,60 +266,76 @@ static MunitResult test_derive_session_key_3k3des(const MunitParameter params[],
 
 static MunitTest tests[] = {
     {"/rotate_left", test_rotate_left, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {"/detectable_uid",
+    {
+        "/detectable_uid",
         test_detectable_uid_accepts_supported_lengths_starting_with_04,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
-    {"/standard_data_file_settings",
-     test_standard_data_file_settings_are_desfire_layout,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
-    {"/authentication_mode/d40_aliases",
-     test_authentication_mode_names_accept_d40_and_legacy_aliases,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
-    {"/authentication_mode/rejects_invalid",
-     test_authentication_mode_names_reject_invalid_input,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
-    {"/d40_des/reference_vector",
-     test_d40_des_reference_vector,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
+    {
+        "/standard_data_file_settings",
+        test_standard_data_file_settings_are_desfire_layout,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
+    {
+        "/authentication_mode/d40_aliases",
+        test_authentication_mode_names_accept_d40_and_legacy_aliases,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
+    {
+        "/authentication_mode/rejects_invalid",
+        test_authentication_mode_names_reject_invalid_input,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
+    {
+        "/d40_des/reference_vector",
+        test_d40_des_reference_vector,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
     {"/session_key/aes", test_derive_session_key_aes, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {"/session_key/2k3des",
-     test_derive_session_key_2k3des,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
-    {"/session_key/iso_auth",
-     test_iso_auth_derives_expected_session_key,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
-    {"/session_key/3k3des",
-     test_derive_session_key_3k3des,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
+    {
+        "/session_key/2k3des",
+        test_derive_session_key_2k3des,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
+    {
+        "/session_key/iso_auth",
+        test_iso_auth_derives_expected_session_key,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
+    {
+        "/session_key/3k3des",
+        test_derive_session_key_3k3des,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };
 
 static const MunitSuite suite = {"", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE};
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     return munit_suite_main(&suite, NULL, argc, argv);
 }

@@ -118,7 +118,7 @@ typedef enum {
 
 typedef struct standalone_mode_iface {
     standalone_mode_t   id;
-    const char *        name;          /* short, ASCII, no spaces */
+    const char         *name;          /* short, ASCII, no spaces */
 
     bool                writes_tag;    /* requires HOST_OPTED_IN */
     bool                writes_slot;   /* requires HOST_OPTED_IN */
@@ -175,10 +175,10 @@ uint8_t             app_standalone_get_flags(void);
 standalone_rc_t     app_standalone_set_mode(standalone_mode_t mode, uint8_t flags);
 
 standalone_rc_t     app_standalone_set_config(standalone_mode_t mode,
-                                              const uint8_t *cfg, size_t cfg_len);
+        const uint8_t *cfg, size_t cfg_len);
 standalone_rc_t     app_standalone_get_config(standalone_mode_t mode,
-                                              uint8_t *cfg, size_t cfg_max,
-                                              size_t *cfg_len);
+        uint8_t *cfg, size_t cfg_max,
+        size_t *cfg_len);
 
 /* -------------------------------------------------------------------------
  * Result-buffer persistence.
@@ -203,12 +203,12 @@ standalone_rc_t     app_standalone_get_config(standalone_mode_t mode,
 #define STANDALONE_RESULT_PERSIST_MAX   2084u    /* 4-byte header + 2080 data */
 
 standalone_rc_t app_standalone_save_result_buf(standalone_mode_t mode,
-                                               const uint32_t *buf_words,
-                                               size_t byte_len);
+        const uint32_t *buf_words,
+        size_t byte_len);
 standalone_rc_t app_standalone_load_result_buf(standalone_mode_t mode,
-                                               uint32_t *buf_words,
-                                               size_t word_buf_bytes,
-                                               size_t *out_byte_len);
+        uint32_t *buf_words,
+        size_t word_buf_bytes,
+        size_t *out_byte_len);
 
 /* Returns available result bytes for a mode — checks RAM for the active
  * mode, FDS for all others. This is what standalone ls should use. */
@@ -222,7 +222,7 @@ bool                app_standalone_on_button(standalone_button_evt_t evt);
 void                app_standalone_tick(uint32_t now_ms);
 
 standalone_rc_t     app_standalone_read_result(uint8_t *out, size_t out_max,
-                                               size_t *out_len);
+        size_t *out_len);
 standalone_rc_t     app_standalone_clear_result(void);
 
 /* Manual trigger - host-side equivalent of BOTH_SHORT. */

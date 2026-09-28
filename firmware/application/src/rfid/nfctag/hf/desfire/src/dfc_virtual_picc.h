@@ -34,8 +34,8 @@ typedef struct {
 } DfcVirtualPiccActivation;
 
 typedef struct {
-    DfcCredential* credential;
-    DfcEmulator* emulator;
+    DfcCredential *credential;
+    DfcEmulator *emulator;
     bool activated;
     // Random ID: the UID presented for this activation. Regenerated on every
     // activation and dropped when the field goes away, so a reader that sees the
@@ -62,7 +62,7 @@ typedef struct {
 
 #if DFC_ENABLE_EMULATOR
 
-DfcVirtualPiccSession* dfc_virtual_picc_session_alloc(DfcCredential* credential);
+DfcVirtualPiccSession *dfc_virtual_picc_session_alloc(DfcCredential* credential);
 void dfc_virtual_picc_session_free(DfcVirtualPiccSession* session);
 
 // The anticollision parameters this credential is answered with: UID (generated
@@ -83,17 +83,17 @@ DfcVirtualPiccStatus dfc_virtual_picc_scan_iso14443a(
     DfcVirtualPiccActivation* activation);
 DfcVirtualPiccStatus dfc_virtual_picc_iso_dep_exchange(
     DfcVirtualPiccSession* session,
-    const uint8_t* command,
+    const uint8_t *command,
     size_t command_len,
-    uint8_t* response,
+    uint8_t *response,
     size_t response_capacity,
-    size_t* response_len);
+    size_t *response_len);
 DfcVirtualPiccStatus dfc_virtual_picc_iso_dep_frame_exchange(
     DfcVirtualPiccSession* session,
-    const uint8_t* frame,
+    const uint8_t *frame,
     size_t frame_len,
-    uint8_t* response,
+    uint8_t *response,
     size_t response_capacity,
-    size_t* response_len);
+    size_t *response_len);
 
 #endif // DFC_ENABLE_EMULATOR

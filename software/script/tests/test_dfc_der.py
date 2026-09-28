@@ -22,6 +22,7 @@ from chameleon_dfc import (  # noqa: E402
     DfcKey,
 )
 
+
 def build_basic() -> DfcCredential:
     cred = DfcCredential()
     cred.uid = bytes.fromhex('04223344556677')

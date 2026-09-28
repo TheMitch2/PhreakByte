@@ -30,7 +30,7 @@ NRF_LOG_MODULE_REGISTER();
 
 /* ---------------------------------------------------------- assertions ---- */
 
-void dfc_assert_fail(const char* file, int line) {
+void dfc_assert_fail(const char *file, int line) {
     NRF_LOG_ERROR("DESFire assertion failed at %s:%d", file, line);
     /* APP_ERROR_HANDLER resets the device, so the message has to be pushed out
      * of the deferred log buffer first or it is lost -- which would defeat the
@@ -52,30 +52,30 @@ static bool m_emulator_used;
 static bool m_secure_messaging_used;
 static bool m_session_used;
 
-void* dfc_platform_alloc(size_t size, DfcAllocTag tag) {
-    switch(tag) {
-    case DfcAllocEmulator:
-        if(m_emulator_used || size > sizeof(m_emulator)) return NULL;
-        m_emulator_used = true;
-        return &m_emulator;
-    case DfcAllocSecureMessaging:
-        if(m_secure_messaging_used || size > sizeof(m_secure_messaging)) return NULL;
-        m_secure_messaging_used = true;
-        return &m_secure_messaging;
-    case DfcAllocSession:
-        if(m_session_used || size > sizeof(m_session)) return NULL;
-        m_session_used = true;
-        return &m_session;
+void *dfc_platform_alloc(size_t size, DfcAllocTag tag) {
+    switch (tag) {
+        case DfcAllocEmulator:
+            if (m_emulator_used || size > sizeof(m_emulator)) return NULL;
+            m_emulator_used = true;
+            return &m_emulator;
+        case DfcAllocSecureMessaging:
+            if (m_secure_messaging_used || size > sizeof(m_secure_messaging)) return NULL;
+            m_secure_messaging_used = true;
+            return &m_secure_messaging;
+        case DfcAllocSession:
+            if (m_session_used || size > sizeof(m_session)) return NULL;
+            m_session_used = true;
+            return &m_session;
     }
     return NULL;
 }
 
-void dfc_platform_free(void* ptr) {
-    if(ptr == &m_emulator) {
+void dfc_platform_free(void *ptr) {
+    if (ptr == &m_emulator) {
         m_emulator_used = false;
-    } else if(ptr == &m_secure_messaging) {
+    } else if (ptr == &m_secure_messaging) {
         m_secure_messaging_used = false;
-    } else if(ptr == &m_session) {
+    } else if (ptr == &m_session) {
         m_session_used = false;
     }
 }
@@ -90,10 +90,10 @@ void dfc_platform_free(void* ptr) {
 static DfcByteBuf m_bytebufs[DESFIRE_BYTEBUF_SLOTS];
 static bool m_bytebuf_used[DESFIRE_BYTEBUF_SLOTS];
 
-DfcByteBuf* dfc_bytebuf_alloc(size_t max_size) {
-    if(max_size > DFC_BYTEBUF_MAX) return NULL;
-    for(size_t i = 0; i < DESFIRE_BYTEBUF_SLOTS; i++) {
-        if(!m_bytebuf_used[i]) {
+DfcByteBuf *dfc_bytebuf_alloc(size_t max_size) {
+    if (max_size > DFC_BYTEBUF_MAX) return NULL;
+    for (size_t i = 0; i < DESFIRE_BYTEBUF_SLOTS; i++) {
+        if (!m_bytebuf_used[i]) {
             m_bytebuf_used[i] = true;
             m_bytebufs[i].size_bytes = 0;
             return &m_bytebufs[i];
@@ -103,8 +103,8 @@ DfcByteBuf* dfc_bytebuf_alloc(size_t max_size) {
 }
 
 void dfc_bytebuf_free(DfcByteBuf* b) {
-    for(size_t i = 0; i < DESFIRE_BYTEBUF_SLOTS; i++) {
-        if(b == &m_bytebufs[i]) {
+    for (size_t i = 0; i < DESFIRE_BYTEBUF_SLOTS; i++) {
+        if (b == &m_bytebufs[i]) {
             m_bytebuf_used[i] = false;
             return;
         }
@@ -115,14 +115,14 @@ void dfc_bytebuf_reset(DfcByteBuf* b) {
     b->size_bytes = 0;
 }
 
-void dfc_bytebuf_append_bytes(DfcByteBuf* b, const uint8_t* data, size_t len) {
-    if(b->size_bytes + len > DFC_BYTEBUF_MAX) return;
+void dfc_bytebuf_append_bytes(DfcByteBuf* b, const uint8_t *data, size_t len) {
+    if (b->size_bytes + len > DFC_BYTEBUF_MAX) return;
     memcpy(b->data + b->size_bytes, data, len);
     b->size_bytes += len;
 }
 
 void dfc_bytebuf_append_byte(DfcByteBuf* b, uint8_t byte) {
-    if(b->size_bytes + 1 > DFC_BYTEBUF_MAX) return;
+    if (b->size_bytes + 1 > DFC_BYTEBUF_MAX) return;
     b->data[b->size_bytes++] = byte;
 }
 
@@ -130,7 +130,7 @@ size_t dfc_bytebuf_get_size_bytes(const DfcByteBuf* b) {
     return b->size_bytes;
 }
 
-const uint8_t* dfc_bytebuf_get_data(const DfcByteBuf* b) {
+const uint8_t *dfc_bytebuf_get_data(const DfcByteBuf* b) {
     return b->data;
 }
 
@@ -154,21 +154,21 @@ void desfire_random_pump(void) {
     uint8_t wanted;
     CRITICAL_REGION_ENTER();
     wanted = (m_entropy_len < DESFIRE_ENTROPY_LOW_MARK) ?
-                 (uint8_t)(DESFIRE_ENTROPY_SIZE - m_entropy_len) :
-                 0;
+             (uint8_t)(DESFIRE_ENTROPY_SIZE - m_entropy_len) :
+             0;
     CRITICAL_REGION_EXIT();
-    if(wanted == 0) return;
+    if (wanted == 0) return;
 
     uint8_t available = 0;
     nrf_drv_rng_bytes_available(&available);
-    if(available == 0) return;
-    if(available < wanted) wanted = available;
+    if (available == 0) return;
+    if (available < wanted) wanted = available;
 
     uint8_t staging[DESFIRE_ENTROPY_SIZE];
-    if(nrf_drv_rng_rand(staging, wanted) != NRF_SUCCESS) return;
+    if (nrf_drv_rng_rand(staging, wanted) != NRF_SUCCESS) return;
 
     CRITICAL_REGION_ENTER();
-    if(m_entropy_len + wanted > DESFIRE_ENTROPY_SIZE) {
+    if (m_entropy_len + wanted > DESFIRE_ENTROPY_SIZE) {
         wanted = (uint8_t)(DESFIRE_ENTROPY_SIZE - m_entropy_len);
     }
     memcpy(m_entropy + m_entropy_len, staging, wanted);
@@ -188,11 +188,11 @@ unsigned desfire_random_starvations(void) {
     return m_starvations;
 }
 
-void dfc_random_fill(uint8_t* buf, size_t len) {
+void dfc_random_fill(uint8_t *buf, size_t len) {
     size_t taken = 0;
 
     CRITICAL_REGION_ENTER();
-    if(m_entropy_len > 0) {
+    if (m_entropy_len > 0) {
         taken = (len < m_entropy_len) ? len : m_entropy_len;
         /* Draw from the tail so the remainder stays contiguous at the front. */
         memcpy(buf, m_entropy + m_entropy_len - taken, taken);
@@ -200,7 +200,7 @@ void dfc_random_fill(uint8_t* buf, size_t len) {
     }
     CRITICAL_REGION_EXIT();
 
-    if(taken == len) return;
+    if (taken == len) return;
 
     /* Reserve ran dry mid-authentication. Fall back to the C PRNG, which
      * app_main seeds from the hardware RNG at boot: weaker than the reserve but
@@ -208,7 +208,7 @@ void dfc_random_fill(uint8_t* buf, size_t len) {
      * authentication rests on RndB being unpredictable to the reader. The
      * counter makes the shortfall visible rather than silent. */
     m_starvations++;
-    for(size_t i = taken; i < len; i++) {
+    for (size_t i = taken; i < len; i++) {
         buf[i] = (uint8_t)(rand() & 0xFF);
     }
 }
@@ -229,7 +229,7 @@ _Static_assert(
 
 /* The firmware has no user interface, so progress events go nowhere. The engine
  * reports them and carries on regardless. */
-void dfc_port_notify(void* context, DfcEvent event) {
+void dfc_port_notify(void *context, DfcEvent event) {
     DFC_UNUSED(context);
     DFC_UNUSED(event);
 }

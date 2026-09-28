@@ -23,13 +23,13 @@
  * bootloader) and the normal build (embedding our custom bootloader) place
  * it at 0xF3000, so both rewind UICR to 0xF3000 to match. */
 #ifdef RECOVERY_MODE
-  #define BL_REGION_START    0x000F3000UL
-  #define BL_REGION_END      0x000FE000UL
-  #define UICR_BL_ADDR_STOCK 0x000F3000UL
+#define BL_REGION_START    0x000F3000UL
+#define BL_REGION_END      0x000FE000UL
+#define UICR_BL_ADDR_STOCK 0x000F3000UL
 #else
-  #define BL_REGION_START    0x000F3000UL
-  #define BL_REGION_END      0x000FE000UL
-  #define UICR_BL_ADDR_STOCK 0x000F3000UL
+#define BL_REGION_START    0x000F3000UL
+#define BL_REGION_END      0x000FE000UL
+#define UICR_BL_ADDR_STOCK 0x000F3000UL
 #endif
 #define BL_PAGE_SIZE       0x1000UL
 #define BL_REGION_PAGES    ((BL_REGION_END - BL_REGION_START) / BL_PAGE_SIZE)
@@ -42,13 +42,11 @@
 
 /* ---- Inline NVMC ---- */
 
-static inline void nvmc_wait_ready(void)
-{
+static inline void nvmc_wait_ready(void) {
     while (NRF_NVMC->READY == NVMC_READY_READY_Busy) {}
 }
 
-static void nvmc_page_erase(uint32_t page_addr)
-{
+static void nvmc_page_erase(uint32_t page_addr) {
     nvmc_wait_ready();
     NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Een << NVMC_CONFIG_WEN_Pos);
     nvmc_wait_ready();
@@ -68,8 +66,7 @@ static void nvmc_page_erase(uint32_t page_addr)
     nvmc_wait_ready();
 }
 
-static void nvmc_write_word(uint32_t dst, uint32_t word)
-{
+static void nvmc_write_word(uint32_t dst, uint32_t word) {
     nvmc_wait_ready();
     NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos);
     nvmc_wait_ready();
@@ -79,8 +76,7 @@ static void nvmc_write_word(uint32_t dst, uint32_t word)
     nvmc_wait_ready();
 }
 
-static void nvmc_write_bytes(uint32_t dst, const uint8_t *src, uint32_t len)
-{
+static void nvmc_write_bytes(uint32_t dst, const uint8_t *src, uint32_t len) {
     nvmc_wait_ready();
     NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos);
     nvmc_wait_ready();
@@ -108,8 +104,7 @@ static void nvmc_write_bytes(uint32_t dst, const uint8_t *src, uint32_t len)
 
 
 /* CRC32 (zlib polynomial, same as Python zlib.crc32). */
-static uint32_t crc32_compute(const uint8_t *p, uint32_t len)
-{
+static uint32_t crc32_compute(const uint8_t *p, uint32_t len) {
     uint32_t crc = 0xFFFFFFFFu;
     for (uint32_t i = 0; i < len; i++) {
         crc ^= p[i];
@@ -121,21 +116,19 @@ static uint32_t crc32_compute(const uint8_t *p, uint32_t len)
 }
 
 
-bl_updater_status_t bl_updater_validate(void)
-{
+bl_updater_status_t bl_updater_validate(void) {
     if (EMBEDDED_BOOTLOADER_BIN_SIZE == 0u)
         return BL_UPDATER_ERR_EMPTY;
     if (EMBEDDED_BOOTLOADER_BIN_SIZE > BL_REGION_BYTES)
         return BL_UPDATER_ERR_TOO_LARGE;
     if (crc32_compute(EMBEDDED_BOOTLOADER_BIN, EMBEDDED_BOOTLOADER_BIN_SIZE)
-        != EMBEDDED_BOOTLOADER_BIN_CRC32)
+            != EMBEDDED_BOOTLOADER_BIN_CRC32)
         return BL_UPDATER_ERR_CRC;
     return BL_UPDATER_OK;
 }
 
 
-static bl_updater_status_t bl_updater_flash_bl(bool validate_first)
-{
+static bl_updater_status_t bl_updater_flash_bl(bool validate_first) {
     if (validate_first) {
         bl_updater_status_t st = bl_updater_validate();
         if (st != BL_UPDATER_OK) return st;
@@ -194,8 +187,7 @@ static bl_updater_status_t bl_updater_flash_bl(bool validate_first)
 }
 
 
-bl_updater_status_t bl_updater_run(void)
-{
+bl_updater_status_t bl_updater_run(void) {
     bl_updater_status_t st = bl_updater_flash_bl(true);
     if (st != BL_UPDATER_OK) return st;
     nrf_delay_ms(50);
@@ -203,8 +195,7 @@ bl_updater_status_t bl_updater_run(void)
     return BL_UPDATER_OK;
 }
 
-bl_updater_status_t bl_updater_run_and_invalidate_app_force(void)
-{
+bl_updater_status_t bl_updater_run_and_invalidate_app_force(void) {
     bl_updater_status_t st = bl_updater_flash_bl(false);
     if (st != BL_UPDATER_OK) return st;
     nvmc_page_erase(APP_REGION_START);

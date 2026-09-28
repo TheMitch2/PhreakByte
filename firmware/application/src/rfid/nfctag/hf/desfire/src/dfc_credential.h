@@ -248,7 +248,7 @@ typedef struct {
     char name[DFC_FILE_NAME_MAX_LENGTH + 1];
 } DfcCredential;
 
-DfcCredential* dfc_credential_alloc(void);
+DfcCredential *dfc_credential_alloc(void);
 void dfc_credential_free(DfcCredential* dfc_credential);
 
 bool dfc_credential_clear(DfcCredential* dfc_credential);
@@ -283,17 +283,17 @@ bool dfc_credential_uid_is_detectable(DfcCredential* dfc_credential);
 // no user ATS is stored, which is the common case.
 bool dfc_credential_picc_ats_is_consistent(const DfcCredential* dfc_credential);
 
-DfcApplication* dfc_credential_get_application(DfcCredential* credential, size_t app_index);
-const DfcApplication*
-    dfc_credential_get_application_const(const DfcCredential* credential, size_t app_index);
-DfcApplication* dfc_credential_get_primary_application(DfcCredential* credential);
-const DfcApplication*
-    dfc_credential_get_primary_application_const(const DfcCredential* credential);
-DfcApplication* dfc_credential_find_application(DfcCredential* credential, const uint8_t aid[3]);
-DfcApplication*
-    dfc_credential_find_application_desfire_order(DfcCredential* credential, const uint8_t aid[3]);
+DfcApplication *dfc_credential_get_application(DfcCredential* credential, size_t app_index);
+const DfcApplication *
+dfc_credential_get_application_const(const DfcCredential* credential, size_t app_index);
+DfcApplication *dfc_credential_get_primary_application(DfcCredential* credential);
+const DfcApplication *
+dfc_credential_get_primary_application_const(const DfcCredential* credential);
+DfcApplication *dfc_credential_find_application(DfcCredential* credential, const uint8_t aid[3]);
+DfcApplication *
+dfc_credential_find_application_desfire_order(DfcCredential* credential, const uint8_t aid[3]);
 size_t dfc_credential_application_index(DfcCredential* credential, DfcApplication* application);
-DfcApplication* dfc_credential_create_application_desfire_order(
+DfcApplication *dfc_credential_create_application_desfire_order(
     DfcCredential* credential,
     const uint8_t aid[3],
     uint8_t key_settings_1,
@@ -301,10 +301,10 @@ DfcApplication* dfc_credential_create_application_desfire_order(
 bool dfc_credential_delete_application_at(DfcCredential* credential, size_t app_index);
 void dfc_credential_format_picc(DfcCredential* credential);
 
-DfcFile* dfc_credential_find_file(DfcCredential* credential, uint8_t number);
-DfcFile*
-    dfc_credential_find_file_in_app(DfcCredential* credential, size_t app_index, uint8_t number);
-DfcFile* dfc_credential_create_file(DfcCredential* credential, size_t app_index, uint8_t number);
+DfcFile *dfc_credential_find_file(DfcCredential* credential, uint8_t number);
+DfcFile *
+dfc_credential_find_file_in_app(DfcCredential* credential, size_t app_index, uint8_t number);
+DfcFile *dfc_credential_create_file(DfcCredential* credential, size_t app_index, uint8_t number);
 bool dfc_credential_delete_file(DfcCredential* credential, size_t app_index, uint8_t number);
 size_t dfc_credential_count_files_in_app(const DfcCredential* credential, size_t app_index);
 
@@ -312,8 +312,8 @@ size_t dfc_credential_count_files_in_app(const DfcCredential* credential, size_t
 // NULL selects the PICC record. Reset clears an application to a blank state
 // with no pool slice, and is what callers use in place of a bare memset.
 void dfc_credential_reset_application(DfcApplication* application);
-uint8_t* dfc_credential_key(DfcCredential* credential, DfcApplication* application, size_t slot);
-const uint8_t* dfc_credential_key_const(
+uint8_t *dfc_credential_key(DfcCredential* credential, DfcApplication* application, size_t slot);
+const uint8_t *dfc_credential_key_const(
     const DfcCredential* credential,
     const DfcApplication* application,
     size_t slot);
@@ -334,17 +334,17 @@ bool dfc_credential_key_sets_resize(
     size_t num_keys,
     size_t active_key_len,
     size_t max_key_size);
-uint8_t* dfc_credential_key_in_set(
+uint8_t *dfc_credential_key_in_set(
     DfcCredential* credential,
     DfcApplication* application,
     size_t key_set_number,
     size_t slot);
-const uint8_t* dfc_credential_key_in_set_const(
+const uint8_t *dfc_credential_key_in_set_const(
     const DfcCredential* credential,
     const DfcApplication* application,
     size_t key_set_number,
     size_t slot);
-uint8_t* dfc_credential_key_version_in_set(
+uint8_t *dfc_credential_key_version_in_set(
     DfcApplication* application,
     size_t key_set_number,
     size_t slot);
@@ -357,8 +357,8 @@ void dfc_credential_keys_release(DfcCredential* credential, DfcApplication* appl
 size_t dfc_credential_key_pool_free(const DfcCredential* credential);
 
 // Shared-pool helpers for standard/backup data files.
-uint8_t* dfc_file_data(DfcCredential* credential, DfcFile* file);
-const uint8_t* dfc_file_data_const(const DfcCredential* credential, const DfcFile* file);
+uint8_t *dfc_file_data(DfcCredential* credential, DfcFile* file);
+const uint8_t *dfc_file_data_const(const DfcCredential* credential, const DfcFile* file);
 // Allocate or resize the file's pool slice to `data_len` (zero-filled on grow).
 // Returns false if the pool is exhausted or data_len exceeds DFC_MAX_FILE_DATA.
 bool dfc_file_resize(DfcCredential* credential, DfcFile* file, size_t data_len);
@@ -383,7 +383,7 @@ bool dfc_file_set_data_size(DfcCredential* credential, DfcFile* file, uint32_t s
 // reallocated, so it must be at least as long as the longest known prefix.
 bool dfc_credential_materialize_contents(
     DfcCredential* credential,
-    uint8_t* scratch,
+    uint8_t *scratch,
     size_t scratch_len);
 
 void dfc_credential_mark_dirty(DfcCredential* credential);

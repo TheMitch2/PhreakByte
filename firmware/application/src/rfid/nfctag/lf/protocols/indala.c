@@ -135,7 +135,7 @@ static bool indala_try_decode(indala_codec *d) {
     if (num_bits < INDALA_RAW_SIZE) return false;
 
     NRF_LOG_INFO("IND fc/2: off=%d nb=%d mag=%d",
-        best_off, num_bits, (int32_t)(best_mag >> 20));
+                 best_off, num_bits, (int32_t)(best_mag >> 20));
 
     // Phase 3: differential PSK1 — sign flip between adjacent bits = transition.
     uint8_t diff_bits[INDALA_MAX_BITS];
@@ -157,13 +157,15 @@ static bool indala_try_decode(indala_codec *d) {
         for (uint8_t j = 0; j < INDALA_RAW_SIZE; j++) reg = (reg << 1) | raw_bits[pos + j];
         if (indala_check_preamble(reg))  {
             NRF_LOG_INFO("IND fc/2: DONE pos=%d reg=%08x%08x",
-                pos, (uint32_t)(reg >> 32), (uint32_t)reg);
-            indala_extract_data(d, reg);  return true;
+                         pos, (uint32_t)(reg >> 32), (uint32_t)reg);
+            indala_extract_data(d, reg);
+            return true;
         }
         if (indala_check_preamble(~reg)) {
             NRF_LOG_INFO("IND fc/2: DONE pos=%d reg=%08x%08x (inv)",
-                pos, (uint32_t)((~reg) >> 32), (uint32_t)(~reg));
-            indala_extract_data(d, ~reg); return true;
+                         pos, (uint32_t)((~reg) >> 32), (uint32_t)(~reg));
+            indala_extract_data(d, ~reg);
+            return true;
         }
     }
     return false;
@@ -227,10 +229,10 @@ const protocol indala = {
     .get_data = (codec_get_data)indala_get_data,
     .modulator = (modulator)indala_modulator,
     .decoder =
-        {
-            .start = (decoder_start)indala_decoder_start,
-            .feed = (decoder_feed)indala_decoder_feed,
-        },
+    {
+        .start = (decoder_start)indala_decoder_start,
+        .feed = (decoder_feed)indala_decoder_feed,
+    },
 };
 
 // Encode Indala 64-bit data to T55xx blocks

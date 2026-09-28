@@ -36,11 +36,11 @@ typedef struct {
 // `initial_iv` seeds the chained IV for ISO/AES sessions (pass the final chained IV state
 // from the authentication handshake); ignored for legacy sessions. Pass NULL to start from
 // all-zero (e.g. legacy, or tests that don't care about IV chaining).
-DfcSecureMessaging* dfc_secure_messaging_alloc(
+DfcSecureMessaging *dfc_secure_messaging_alloc(
     uint8_t cipher,
-    const uint8_t* session_key,
+    const uint8_t *session_key,
     size_t session_key_len,
-    const uint8_t* initial_iv);
+    const uint8_t *initial_iv);
 
 void dfc_secure_messaging_free(DfcSecureMessaging* sm);
 void dfc_secure_messaging_reset_iv(DfcSecureMessaging* sm);
@@ -48,13 +48,13 @@ bool dfc_secure_messaging_applies_ev1(DfcSecureMessaging* sm, uint8_t cmd);
 void dfc_secure_messaging_update_ev1_command(
     DfcSecureMessaging* sm,
     uint8_t cmd,
-    const uint8_t* data,
+    const uint8_t *data,
     size_t data_len);
 // Accepts a contiguous command directly, including commands larger than the
 // session's scratch buffer.
 void dfc_secure_messaging_update_ev1_command_full(
     DfcSecureMessaging* sm,
-    const uint8_t* command,
+    const uint8_t *command,
     size_t command_len);
 // EV1 option-b commands (WriteData, Credit, …): verify trailing 8-byte truncated
 // CMAC over Cmd||data_without_mac, update IV from full CMAC. Returns clear length
@@ -62,12 +62,12 @@ void dfc_secure_messaging_update_ev1_command_full(
 size_t dfc_secure_messaging_verify_ev1_transmitted_command_mac(
     DfcSecureMessaging* sm,
     uint8_t cmd,
-    const uint8_t* data,
+    const uint8_t *data,
     size_t data_len);
 // As above, with Cmd included in `command`; avoids a copy for long writes.
 size_t dfc_secure_messaging_verify_ev1_transmitted_command_mac_full(
     DfcSecureMessaging* sm,
-    const uint8_t* command,
+    const uint8_t *command,
     size_t command_len);
 // True for WriteData / Credit / Debit / LimitedCredit / WriteRecord / UpdateRecord
 // (EV1 MAC-mode commands that place MACt on the wire).
@@ -75,24 +75,24 @@ bool dfc_secure_messaging_ev1_transmits_command_mac(uint8_t cmd);
 size_t dfc_secure_messaging_generate_ev1_response(
     DfcSecureMessaging* sm,
     uint8_t status,
-    const uint8_t* plain,
+    const uint8_t *plain,
     size_t plain_len,
-    uint8_t* out);
+    uint8_t *out);
 // Appends the response CMAC without copying the payload through the session's
 // small scratch buffer. `buffer` must have eight spare octets.
 size_t dfc_secure_messaging_generate_ev1_response_in_place(
     DfcSecureMessaging* sm,
     uint8_t status,
-    uint8_t* buffer,
+    uint8_t *buffer,
     size_t plain_len,
     size_t capacity);
 // Returns the cleartext length, or SIZE_MAX on CMAC/format failure.
 size_t dfc_secure_messaging_unwrap_ev1_response(
     DfcSecureMessaging* sm,
     uint8_t status,
-    const uint8_t* wrapped,
+    const uint8_t *wrapped,
     size_t wrapped_len,
-    uint8_t* out);
+    uint8_t *out);
 
 // Wraps a command payload under the given file's communication mode
 // (plain/MAC/enciphered). `header` is the cleartext head of the command - the
@@ -104,11 +104,11 @@ size_t dfc_secure_messaging_unwrap_ev1_response(
 size_t dfc_secure_messaging_wrap(
     DfcSecureMessaging* sm,
     uint8_t comm_mode,
-    const uint8_t* header,
+    const uint8_t *header,
     size_t header_len,
-    const uint8_t* plain,
+    const uint8_t *plain,
     size_t plain_len,
-    uint8_t* out);
+    uint8_t *out);
 
 // Unwraps a response payload (status byte NOT included) received under the given
 // communication mode. Returns the cleartext length, or 0 on MAC/format failure.
@@ -116,9 +116,9 @@ size_t dfc_secure_messaging_unwrap(
     DfcSecureMessaging* sm,
     uint8_t comm_mode,
     uint8_t status,
-    const uint8_t* wrapped,
+    const uint8_t *wrapped,
     size_t wrapped_len,
-    uint8_t* out);
+    uint8_t *out);
 
 // Emulator (PICC) side: generates a response payload under the given comm mode, matching
 // what dfc_secure_messaging_unwrap() on the reader side will accept.
@@ -126,16 +126,16 @@ size_t dfc_secure_messaging_generate_response(
     DfcSecureMessaging* sm,
     uint8_t comm_mode,
     uint8_t status,
-    const uint8_t* plain,
+    const uint8_t *plain,
     size_t plain_len,
-    uint8_t* out);
+    uint8_t *out);
 size_t dfc_secure_messaging_generate_response_with_length_marker(
     DfcSecureMessaging* sm,
     uint8_t comm_mode,
     uint8_t status,
-    const uint8_t* plain,
+    const uint8_t *plain,
     size_t plain_len,
-    uint8_t* out,
+    uint8_t *out,
     bool length_unknown);
 
 // Emulator (PICC) side: verifies/unwraps an incoming command payload under the given comm
@@ -143,8 +143,8 @@ size_t dfc_secure_messaging_generate_response_with_length_marker(
 size_t dfc_secure_messaging_verify_command(
     DfcSecureMessaging* sm,
     uint8_t comm_mode,
-    const uint8_t* header,
+    const uint8_t *header,
     size_t header_len,
-    const uint8_t* wrapped,
+    const uint8_t *wrapped,
     size_t wrapped_len,
-    uint8_t* out);
+    uint8_t *out);

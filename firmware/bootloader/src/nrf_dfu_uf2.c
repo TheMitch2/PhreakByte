@@ -51,9 +51,9 @@ NRF_LOG_MODULE_REGISTER();
 static nrf_dfu_observer_t m_observer;
 
 static void msc_user_ev_handler(app_usbd_class_inst_t const *p_inst,
-                                app_usbd_msc_user_event_t event)
-{
-    (void)p_inst; (void)event;
+                                app_usbd_msc_user_event_t event) {
+    (void)p_inst;
+    (void)event;
 }
 
 APP_USBD_MSC_GLOBAL_DEF(m_app_msc,
@@ -65,8 +65,7 @@ APP_USBD_MSC_GLOBAL_DEF(m_app_msc,
 
 /* ---- ghostfat -> flash glue ---- */
 
-void uf2_flash_read(uint32_t addr, void *buf, uint32_t len)
-{
+void uf2_flash_read(uint32_t addr, void *buf, uint32_t len) {
     if (addr >= UF2_FLASH_APP_START && addr + len <= UF2_FLASH_APP_END) {
         memcpy(buf, (const void *)addr, len);
     } else {
@@ -75,13 +74,11 @@ void uf2_flash_read(uint32_t addr, void *buf, uint32_t len)
 }
 
 /* Called by ghostfat on block rejection to reset the inactivity timer. */
-void uf2_ping_observer(void)
-{
+void uf2_ping_observer(void) {
     if (m_observer) m_observer(NRF_DFU_EVT_OBJECT_RECEIVED);
 }
 
-bool uf2_flash_write(uint32_t addr, const void *data, uint32_t len)
-{
+bool uf2_flash_write(uint32_t addr, const void *data, uint32_t len) {
     if (addr < UF2_FLASH_APP_START || addr + len > UF2_FLASH_APP_END) {
         NRF_LOG_WARNING("UF2 write outside app region 0x%08x", addr);
         return false;
@@ -103,8 +100,7 @@ bool uf2_flash_write(uint32_t addr, const void *data, uint32_t len)
 
 /* ---- DFU completion ---- */
 
-void uf2_dfu_complete(void)
-{
+void uf2_dfu_complete(void) {
     NRF_LOG_INFO("UF2 transfer complete (%u blocks)",
                  uf2_ghostfat_blocks_written());
 
@@ -121,14 +117,14 @@ void uf2_dfu_complete(void)
      * backup settings page stays consistent (as nrf_dfu_settings_write does). */
     s_dfu_settings.boot_validation_app.type = NO_VALIDATION;
     s_dfu_settings.boot_validation_crc = crc32_compute(
-        (const uint8_t *)&s_dfu_settings.boot_validation_softdevice,
-        3u * sizeof(boot_validation_t),
-        NULL);
+            (const uint8_t *)&s_dfu_settings.boot_validation_softdevice,
+            3u * sizeof(boot_validation_t),
+            NULL);
 
     s_dfu_settings.crc = crc32_compute(
-        (uint8_t const *)&s_dfu_settings + 4,
-        offsetof(nrf_dfu_settings_t, init_command) - 4,
-        NULL);
+                             (uint8_t const *)&s_dfu_settings + 4,
+                             offsetof(nrf_dfu_settings_t, init_command) - 4,
+                             NULL);
 
     nrf_nvmc_page_erase(BOOTLOADER_SETTINGS_ADDRESS);
     nrf_nvmc_write_bytes(BOOTLOADER_SETTINGS_ADDRESS,
@@ -153,8 +149,7 @@ void uf2_dfu_complete(void)
  * the only safe window to append MSC. GhostFAT is initialised here and
  * the observer is shared via uf2_set_observer(). */
 
-void usb_dfu_transport_class_register(void)
-{
+void usb_dfu_transport_class_register(void) {
     ret_code_t err;
 
     uf2_ghostfat_init();
@@ -167,7 +162,6 @@ void usb_dfu_transport_class_register(void)
     }
 }
 
-void uf2_set_observer(nrf_dfu_observer_t observer)
-{
+void uf2_set_observer(nrf_dfu_observer_t observer) {
     m_observer = observer;
 }

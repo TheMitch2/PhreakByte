@@ -1016,7 +1016,7 @@ static bool dispatch_chord_if_pending(void) {
         /* Malformed chord (one button released long ago, other never
          * triggered chord_active reset): abort. */
         if ((m_is_a_btn_release && !m_is_b_btn_press) ||
-            (m_is_b_btn_release && !m_is_a_btn_press)) {
+                (m_is_b_btn_release && !m_is_a_btn_press)) {
             NRF_LOG_INFO("CHORD_ABORT");
             m_chord_active = false;
             return false;
@@ -1025,7 +1025,7 @@ static bool dispatch_chord_if_pending(void) {
     }
 
     uint32_t dur = app_timer_cnt_diff_compute(app_timer_cnt_get(),
-                                              m_chord_start);
+        m_chord_start);
     standalone_button_evt_t evt;
     if (dur >= APP_TIMER_TICKS(5000)) {
         evt = STANDALONE_BTN_BOTH_VLONG;
@@ -1195,10 +1195,9 @@ static void fds_idle_gc_maybe(void) {
  * erase is needed and no REGOUT0 window is opened. Runs from USB normal-voltage
  * power even when battery boot is dead, so it self-heals on the next USB boot
  * and the unit works on battery again after one reset. */
-static void ensure_regout0_3v3(void)
-{
+static void ensure_regout0_3v3(void) {
     if ((NRF_UICR->REGOUT0 & UICR_REGOUT0_VOUT_Msk) !=
-        (UICR_REGOUT0_VOUT_DEFAULT << UICR_REGOUT0_VOUT_Pos)) {
+            (UICR_REGOUT0_VOUT_DEFAULT << UICR_REGOUT0_VOUT_Pos)) {
         return;                     /* already programmed — leave it */
     }
     NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos);

@@ -250,8 +250,8 @@ static void resolve_role(const uint8_t *peer_addr) {
  * Returns true if the advertisement contains valid relay data.
  * ----------------------------------------------------------------------- */
 static bool parse_relay_adv(const ble_gap_evt_adv_report_t *rep,
-                             uint8_t *out_type, uint8_t *out_seq,
-                             const uint8_t **out_data, uint8_t *out_len) {
+                            uint8_t *out_type, uint8_t *out_seq,
+                            const uint8_t **out_data, uint8_t *out_len) {
     const uint8_t *d = rep->data.p_data;
     uint16_t n = rep->data.len;
     if (d == NULL || n == 0) return false;
@@ -282,8 +282,8 @@ static bool parse_relay_adv(const ble_gap_evt_adv_report_t *rep,
              * safe for the caller to copy. */
             uint16_t cid = d[off + 2] | ((uint16_t)d[off + 3] << 8);
             if (cid == RELAY_MFR_COMPANY &&
-                d[off + 4] == RELAY_MFR_MAGIC_H &&
-                d[off + 5] == RELAY_MFR_MAGIC_L) {
+                    d[off + 4] == RELAY_MFR_MAGIC_H &&
+                    d[off + 5] == RELAY_MFR_MAGIC_L) {
                 *out_type = d[off + 6];
                 *out_seq  = d[off + 7];
                 *out_data = &d[off + 8];
@@ -328,7 +328,7 @@ static void relay_evt_handler(ble_evt_t const *p_evt, void *p_ctx) {
             if (memcmp(peer, m_ctx.my_addr, 6) != 0) {
                 /* Filter: if role resolved, only accept from known peer */
                 if (!m_ctx.role_resolved ||
-                    memcmp(peer, m_ctx.peer_addr, 6) == 0) {
+                        memcmp(peer, m_ctx.peer_addr, 6) == 0) {
                     /* Dedup: HELLO only once (until role resolved);
                      * all other message types dedup by seq number. */
                     bool should_queue = false;
@@ -356,100 +356,100 @@ static void relay_evt_handler(ble_evt_t const *p_evt, void *p_ctx) {
  * ----------------------------------------------------------------------- */
 static void dispatch(const relay_evt_t *e) {
     switch (e->type) {
-    case BLE_RELAY_MSG_HELLO:
-        if (!m_ctx.role_resolved) {
-            resolve_role(e->peer_addr);
-            /* Reply with HELLO so peer can resolve too */
-            adv_send(BLE_RELAY_MSG_HELLO, m_ctx.my_addr, 6);
-            if (m_cbs.on_connected) m_cbs.on_connected(m_ctx.role);
+        case BLE_RELAY_MSG_HELLO:
+            if (!m_ctx.role_resolved) {
+                resolve_role(e->peer_addr);
+                /* Reply with HELLO so peer can resolve too */
+                adv_send(BLE_RELAY_MSG_HELLO, m_ctx.my_addr, 6);
+                if (m_cbs.on_connected) m_cbs.on_connected(m_ctx.role);
+                m_ctx.state = BLE_RELAY_STATE_READY;
+            }
+            break;
+
+        case BLE_RELAY_MSG_ROLE_CONFIRM:
             m_ctx.state = BLE_RELAY_STATE_READY;
-        }
-        break;
+            break;
 
-    case BLE_RELAY_MSG_ROLE_CONFIRM:
-        m_ctx.state = BLE_RELAY_STATE_READY;
-        break;
-
-    case BLE_RELAY_MSG_CARD_IDENTITY:
-        if (e->len >= 4 && m_cbs.on_card_identity) {
-            relay_card_identity_t id;
-            memset(&id, 0, sizeof(id));
-            id.atqa[0] = e->buf[0];
-            id.atqa[1] = e->buf[1];
-            id.sak     = e->buf[2];
-            id.uid_len = e->buf[3];
-            uint8_t off = 4;
-            if (id.uid_len > 7) id.uid_len = 7;
-            if (off + id.uid_len <= e->len) {
-                memcpy(id.uid, e->buf + off, id.uid_len);
-                off += id.uid_len;
+        case BLE_RELAY_MSG_CARD_IDENTITY:
+            if (e->len >= 4 && m_cbs.on_card_identity) {
+                relay_card_identity_t id;
+                memset(&id, 0, sizeof(id));
+                id.atqa[0] = e->buf[0];
+                id.atqa[1] = e->buf[1];
+                id.sak     = e->buf[2];
+                id.uid_len = e->buf[3];
+                uint8_t off = 4;
+                if (id.uid_len > 7) id.uid_len = 7;
+                if (off + id.uid_len <= e->len) {
+                    memcpy(id.uid, e->buf + off, id.uid_len);
+                    off += id.uid_len;
+                }
+                if (off < e->len) {
+                    id.ats_len = e->buf[off++];
+                    if (id.ats_len > 32) id.ats_len = 32;
+                    if (off + id.ats_len <= e->len)
+                        memcpy(id.ats, e->buf + off, id.ats_len);
+                }
+                m_cbs.on_card_identity(&id);
             }
-            if (off < e->len) {
-                id.ats_len = e->buf[off++];
-                if (id.ats_len > 32) id.ats_len = 32;
-                if (off + id.ats_len <= e->len)
-                    memcpy(id.ats, e->buf + off, id.ats_len);
+            break;
+
+        case BLE_RELAY_MSG_RESCAN_REQ:
+            if (m_cbs.on_rescan_req) m_cbs.on_rescan_req();
+            break;
+        case BLE_RELAY_MSG_FIELD_ON:
+            if (m_cbs.on_field_on) m_cbs.on_field_on();
+            break;
+        case BLE_RELAY_MSG_FIELD_OFF:
+            if (m_cbs.on_field_off) m_cbs.on_field_off();
+            break;
+
+        case BLE_RELAY_MSG_PREAUTH:
+            if (e->len >= 6 && m_cbs.on_preauth) {
+                relay_preauth_t pa;
+                pa.block    = e->buf[0];
+                pa.key_type = e->buf[1];
+                memcpy(pa.nt, e->buf + 2, 4);
+                m_cbs.on_preauth(&pa);
             }
-            m_cbs.on_card_identity(&id);
-        }
-        break;
+            break;
 
-    case BLE_RELAY_MSG_RESCAN_REQ:
-        if (m_cbs.on_rescan_req) m_cbs.on_rescan_req();
-        break;
-    case BLE_RELAY_MSG_FIELD_ON:
-        if (m_cbs.on_field_on) m_cbs.on_field_on();
-        break;
-    case BLE_RELAY_MSG_FIELD_OFF:
-        if (m_cbs.on_field_off) m_cbs.on_field_off();
-        break;
+        case BLE_RELAY_MSG_READY:
+            if (m_cbs.on_ready) m_cbs.on_ready();
+            break;
 
-    case BLE_RELAY_MSG_PREAUTH:
-        if (e->len >= 6 && m_cbs.on_preauth) {
-            relay_preauth_t pa;
-            pa.block    = e->buf[0];
-            pa.key_type = e->buf[1];
-            memcpy(pa.nt, e->buf + 2, 4);
-            m_cbs.on_preauth(&pa);
-        }
-        break;
-
-    case BLE_RELAY_MSG_READY:
-        if (m_cbs.on_ready) m_cbs.on_ready();
-        break;
-
-    case BLE_RELAY_MSG_FRAME:
-        if (e->len > 0 && m_cbs.on_frame) {
-            uint16_t raw  = e->buf[0] | ((uint16_t)e->buf[1] << 8);
-            uint16_t bits = raw & BLE_RELAY_BITS_MASK;
-            const uint8_t *par = NULL;
-            if (raw & BLE_RELAY_BITS_PARITY_FLAG) {
-                uint8_t dlen = (bits + 7) / 8;
-                if (e->len >= (uint16_t)(2 + 2 * dlen)) par = e->buf + 2 + dlen;
+        case BLE_RELAY_MSG_FRAME:
+            if (e->len > 0 && m_cbs.on_frame) {
+                uint16_t raw  = e->buf[0] | ((uint16_t)e->buf[1] << 8);
+                uint16_t bits = raw & BLE_RELAY_BITS_MASK;
+                const uint8_t *par = NULL;
+                if (raw & BLE_RELAY_BITS_PARITY_FLAG) {
+                    uint8_t dlen = (bits + 7) / 8;
+                    if (e->len >= (uint16_t)(2 + 2 * dlen)) par = e->buf + 2 + dlen;
+                }
+                m_cbs.on_frame(e->buf + 2, bits, par);
             }
-            m_cbs.on_frame(e->buf + 2, bits, par);
-        }
-        break;
+            break;
 
-    case BLE_RELAY_MSG_RESPONSE:
-        if (e->len > 0 && m_cbs.on_response) {
-            uint16_t raw  = e->buf[0] | ((uint16_t)e->buf[1] << 8);
-            uint16_t bits = raw & BLE_RELAY_BITS_MASK;
-            const uint8_t *par = NULL;
-            if (raw & BLE_RELAY_BITS_PARITY_FLAG) {
-                uint8_t dlen = (bits + 7) / 8;
-                if (e->len >= (uint16_t)(2 + 2 * dlen)) par = e->buf + 2 + dlen;
+        case BLE_RELAY_MSG_RESPONSE:
+            if (e->len > 0 && m_cbs.on_response) {
+                uint16_t raw  = e->buf[0] | ((uint16_t)e->buf[1] << 8);
+                uint16_t bits = raw & BLE_RELAY_BITS_MASK;
+                const uint8_t *par = NULL;
+                if (raw & BLE_RELAY_BITS_PARITY_FLAG) {
+                    uint8_t dlen = (bits + 7) / 8;
+                    if (e->len >= (uint16_t)(2 + 2 * dlen)) par = e->buf + 2 + dlen;
+                }
+                m_cbs.on_response(e->buf + 2, bits, par);
             }
-            m_cbs.on_response(e->buf + 2, bits, par);
-        }
-        break;
+            break;
 
-    case BLE_RELAY_MSG_NO_RESPONSE:
-        if (m_cbs.on_no_response) m_cbs.on_no_response();
-        break;
+        case BLE_RELAY_MSG_NO_RESPONSE:
+            if (m_cbs.on_no_response) m_cbs.on_no_response();
+            break;
 
-    default:
-        break;
+        default:
+            break;
     }
 }
 
@@ -472,7 +472,7 @@ void ble_relay_init(const ble_relay_callbacks_t *cbs) {
 
 void ble_relay_start(void) {
     m_ctx.state        = BLE_RELAY_STATE_STARTING;
-    m_ctx.role_resolved= false;
+    m_ctx.role_resolved = false;
     m_ctx.tx_seq       = 0;
     m_ctx.rx_seq       = 0xFF;
 
@@ -535,8 +535,8 @@ bool ble_relay_send_frame(const uint8_t *data, uint16_t bits) {
     if (!data || (bits + 7) / 8 > RELAY_MAX_PAYLOAD - 2) return false;
     uint8_t buf[2 + RELAY_MAX_PAYLOAD];
     uint8_t dlen = (bits + 7) / 8;
-    buf[0] = (uint8_t)(bits      );
-    buf[1] = (uint8_t)(bits >> 8 );
+    buf[0] = (uint8_t)(bits);
+    buf[1] = (uint8_t)(bits >> 8);
     memcpy(buf + 2, data, dlen);
     adv_send(BLE_RELAY_MSG_FRAME, buf, 2 + dlen);
     return true;
@@ -548,7 +548,8 @@ bool ble_relay_send_frame_par(const uint8_t *data, uint16_t bits, const uint8_t 
     if ((size_t)(2 + 2 * dlen) > RELAY_MAX_PAYLOAD) return false;
     uint8_t buf[2 + RELAY_MAX_PAYLOAD];
     uint16_t bf = (bits & BLE_RELAY_BITS_MASK) | BLE_RELAY_BITS_PARITY_FLAG;
-    buf[0] = (uint8_t)(bf); buf[1] = (uint8_t)(bf >> 8);
+    buf[0] = (uint8_t)(bf);
+    buf[1] = (uint8_t)(bf >> 8);
     memcpy(buf + 2, data, dlen);
     memcpy(buf + 2 + dlen, parity, dlen);   /* one parity byte per data byte */
     adv_send(BLE_RELAY_MSG_FRAME, buf, 2 + 2 * dlen);
@@ -560,8 +561,8 @@ bool ble_relay_send_response(const uint8_t *data, uint16_t bits) {
     uint8_t buf[2 + RELAY_MAX_PAYLOAD];
     uint8_t dlen = (bits + 7) / 8;
     if (dlen > RELAY_MAX_PAYLOAD - 2) dlen = RELAY_MAX_PAYLOAD - 2;
-    buf[0] = (uint8_t)(bits      );
-    buf[1] = (uint8_t)(bits >> 8 );
+    buf[0] = (uint8_t)(bits);
+    buf[1] = (uint8_t)(bits >> 8);
     memcpy(buf + 2, data, dlen);
     adv_send(BLE_RELAY_MSG_RESPONSE, buf, 2 + dlen);
     return true;
@@ -573,7 +574,8 @@ bool ble_relay_send_response_par(const uint8_t *data, uint16_t bits, const uint8
     if ((size_t)(2 + 2 * dlen) > RELAY_MAX_PAYLOAD) return false;
     uint8_t buf[2 + RELAY_MAX_PAYLOAD];
     uint16_t bf = (bits & BLE_RELAY_BITS_MASK) | BLE_RELAY_BITS_PARITY_FLAG;
-    buf[0] = (uint8_t)(bf); buf[1] = (uint8_t)(bf >> 8);
+    buf[0] = (uint8_t)(bf);
+    buf[1] = (uint8_t)(bf >> 8);
     memcpy(buf + 2, data, dlen);
     memcpy(buf + 2 + dlen, parity, dlen);
     adv_send(BLE_RELAY_MSG_RESPONSE, buf, 2 + 2 * dlen);
@@ -598,7 +600,8 @@ bool ble_relay_send_card_identity(const relay_card_identity_t *id) {
     p[off++] = id->sak;
     p[off++] = id->uid_len;
     uint8_t ulen = id->uid_len > 7 ? 7 : id->uid_len;
-    memcpy(p + off, id->uid, ulen); off += ulen;
+    memcpy(p + off, id->uid, ulen);
+    off += ulen;
     uint8_t alen = id->ats_len > (24 - off - 1) ? (24 - off - 1) : id->ats_len;
     p[off++] = alen;
     if (alen) { memcpy(p + off, id->ats, alen); off += alen; }
@@ -612,7 +615,8 @@ bool ble_relay_send_field_off(void)  { adv_send(BLE_RELAY_MSG_FIELD_OFF, NULL, 0
 
 bool ble_relay_send_preauth(const relay_preauth_t *pa) {
     uint8_t p[6] = { pa->block, pa->key_type,
-                     pa->nt[0], pa->nt[1], pa->nt[2], pa->nt[3] };
+                     pa->nt[0], pa->nt[1], pa->nt[2], pa->nt[3]
+                   };
     adv_send(BLE_RELAY_MSG_PREAUTH, p, 6);
     return true;
 }

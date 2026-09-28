@@ -216,7 +216,7 @@ bool nfc_relay_tag_take_session_reset(void) {
 static nfc_tag_14a_handler_t s_relay_handler = {
     .cb_reset    = relay_cb_reset,
     .cb_state    = relay_cb_state,
-    .get_coll_res= relay_get_coll_res,
+    .get_coll_res = relay_get_coll_res,
 };
 
 /* -------------------------------------------------------------------------
@@ -233,7 +233,7 @@ void nfc_relay_tag_install(const uint8_t *uid, uint8_t uid_len,
     memcpy(s_atqa, atqa, 2);
     s_sak[0]  = sak;
     s_uid_size = (uid_len <= 4)
-        ? NFC_TAG_14A_UID_SINGLE_SIZE : NFC_TAG_14A_UID_DOUBLE_SIZE;
+                 ? NFC_TAG_14A_UID_SINGLE_SIZE : NFC_TAG_14A_UID_DOUBLE_SIZE;
 
     memset(&s_ats, 0, sizeof(s_ats));
     if (ats && ats_len > 0) {

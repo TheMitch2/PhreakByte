@@ -44,16 +44,21 @@ CHAMELEON = """
   ┣╸ N
   ╹
 """
+
+
 def _compose_banner(badge, anchor=13):
     rows = [list(l) for l in CHAMELEON.split("\n")]
     lines = [l for l in badge.split("\n") if l.strip()]
     for k, line in enumerate(lines):
         r = anchor + k
         for c, ch in enumerate(line):
-            if ch == " ": continue
-            while len(rows[r]) <= c: rows[r].append(" ")
+            if ch == " ":
+                continue
+            while len(rows[r]) <= c:
+                rows[r].append(" ")
             rows[r][c] = ch
     return "\n".join("".join(r).rstrip() for r in rows)
+
 
 ICEMAN = r"""
 ██╗ ██████╗███████╗███╗   ███╗ █████╗ ███╗   ██╗
@@ -64,11 +69,12 @@ ICEMAN = r"""
 ╚═╝ ╚═════╝╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
 """
 
+
 class ChameleonCLI:
     """
         CLI for chameleon
     """
-    
+
     def __init__(self):
         # new a device communication instance(only communication)
         self.device_com = chameleon_com.ChameleonCom()
@@ -104,7 +110,7 @@ class ChameleonCLI:
         else:
             status = color_string((CR, 'Offline'))
         return ANSI(f"[{status}] phreakbyte --> ")
-        
+
     @staticmethod
     def print_iceman_tribute():
         print(color_string((CY, ICEMAN)))
@@ -112,8 +118,8 @@ class ChameleonCLI:
         print("        Years of RFID research, the Proxmark3 iceman fork, and the")
         print("        generosity and encouragement that made this independent fork")
         print("        possible. Standing on the shoulders of giants.")
-        print(color_string((CY, "        Thank you."))) 
-        
+        print(color_string((CY, "        Thank you.")))
+
     def print_banner(self):
         model = None
         try:
@@ -123,7 +129,7 @@ class ChameleonCLI:
             pass
         badge = LITE if model == 1 else ULTRA
         print(color_string((CY, _compose_banner(badge))))
-        
+
     def exec_cmd(self, cmd_str):
         if cmd_str == '':
             return
@@ -196,7 +202,7 @@ class ChameleonCLI:
             print(color_string((CR, str(e))))
         except Exception:
             print(f"CLI exception: {color_string((CR, traceback.format_exc()))}")
-            
+
     def startCLI(self):
         """
             start listen input.

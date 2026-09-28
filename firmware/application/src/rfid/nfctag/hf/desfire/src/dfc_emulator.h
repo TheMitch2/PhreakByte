@@ -10,7 +10,7 @@ typedef enum {
 } DfcEmulatorSelectedApplication;
 
 typedef struct {
-    DfcByteBuf* tx_buffer;
+    DfcByteBuf *tx_buffer;
 
     uint8_t auth_cipher;
     uint8_t auth_key_no;
@@ -51,7 +51,7 @@ typedef struct {
     bool command_chain_active;
     size_t command_chain_len;
     size_t command_chain_expected;
-    uint8_t* command_chain;
+    uint8_t *command_chain;
     // GetDFNames answers one application per frame; the next one to send.
     bool df_names_pending;
     size_t df_names_next;
@@ -71,7 +71,7 @@ typedef struct {
     size_t transaction_snapshot_app_index;
     size_t transaction_snapshot_pool_length;
     bool transaction_snapshot_dirty;
-    uint8_t* transaction_snapshot_pool;
+    uint8_t *transaction_snapshot_pool;
     uint32_t transaction_snapshot_record_counts[DFC_MAX_FILES];
     // 0 none, 1 WriteRecord, 2 UpdateRecord, 3 ClearRecordFile.
     uint8_t transaction_record_operations[DFC_MAX_FILES];
@@ -83,7 +83,7 @@ typedef struct {
     uint32_t transaction_timer_elapsed_milliseconds;
 #endif
 
-    DfcSecureMessaging* secure_messaging;
+    DfcSecureMessaging *secure_messaging;
 
 #if DFC_ENABLE_PROXIMITY_CHECK
     bool proximity_active;
@@ -138,13 +138,13 @@ typedef struct {
     uint16_t ev2_command_counter;
 #endif
 
-    DfcCredential* credential;
+    DfcCredential *credential;
 } DfcEmulator;
 
 
 #if DFC_ENABLE_EMULATOR
 
-DfcEmulator* dfc_emulator_alloc(DfcCredential* credential);
+DfcEmulator *dfc_emulator_alloc(DfcCredential* credential);
 
 void dfc_emulator_free(DfcEmulator* dfc_emulator);
 
@@ -166,9 +166,9 @@ bool dfc_emulator_render_sdm_read(DfcEmulator* emulator, DfcFile* file);
 // The engine never inspects it. Pass NULL to skip event dispatch.
 bool dfc_emulator_handle_command(
     DfcEmulator* emulator,
-    const uint8_t* buffer,
+    const uint8_t *buffer,
     size_t buffer_len,
     DfcByteBuf* tx_buffer,
-    void* context);
+    void *context);
 
 #endif // DFC_ENABLE_EMULATOR

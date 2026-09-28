@@ -206,10 +206,9 @@ static void dfu_observer(nrf_dfu_evt_type_t evt_type) {
  * erase is needed and no REGOUT0 window is opened. Runs from USB normal-voltage
  * power even when battery boot is dead, so it self-heals on the next USB boot
  * and the unit works on battery again after one reset. */
-static void ensure_regout0_3v3(void)
-{
+static void ensure_regout0_3v3(void) {
     if ((NRF_UICR->REGOUT0 & UICR_REGOUT0_VOUT_Msk) !=
-        (UICR_REGOUT0_VOUT_DEFAULT << UICR_REGOUT0_VOUT_Pos)) {
+            (UICR_REGOUT0_VOUT_DEFAULT << UICR_REGOUT0_VOUT_Pos)) {
         return;                     /* already programmed — leave it */
     }
     NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos);

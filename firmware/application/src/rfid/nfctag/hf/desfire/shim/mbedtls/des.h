@@ -61,8 +61,8 @@ int mbedtls_des_crypt_cbc(
     int mode,
     size_t length,
     uint8_t iv[8],
-    const uint8_t* input,
-    uint8_t* output);
+    const uint8_t *input,
+    uint8_t *output);
 
 void mbedtls_des3_init(mbedtls_des3_context* ctx);
 void mbedtls_des3_free(mbedtls_des3_context* ctx);
@@ -76,5 +76,5 @@ int mbedtls_des3_crypt_cbc(
     int mode,
     size_t length,
     uint8_t iv[8],
-    const uint8_t* input,
-    uint8_t* output);
+    const uint8_t *input,
+    uint8_t *output);

@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-static MunitResult test_resize_allocate_and_release(const MunitParameter params[], void* data) {
+static MunitResult test_resize_allocate_and_release(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     DfcCredential credential;
@@ -24,8 +24,8 @@ static MunitResult test_resize_allocate_and_release(const MunitParameter params[
     munit_assert_size(credential.file_pool_used, ==, 300);
     munit_assert_size(dfc_credential_file_pool_free(&credential), ==, DFC_FILE_POOL_SIZE - 300);
 
-    uint8_t* pa = dfc_file_data(&credential, a);
-    uint8_t* pb = dfc_file_data(&credential, b);
+    uint8_t *pa = dfc_file_data(&credential, a);
+    uint8_t *pb = dfc_file_data(&credential, b);
     munit_assert_not_null(pa);
     munit_assert_not_null(pb);
     memset(pa, 0xAA, 100);
@@ -42,7 +42,7 @@ static MunitResult test_resize_allocate_and_release(const MunitParameter params[
     return MUNIT_OK;
 }
 
-static MunitResult test_pool_exhaustion(const MunitParameter params[], void* data) {
+static MunitResult test_pool_exhaustion(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     DfcCredential credential;
@@ -55,24 +55,24 @@ static MunitResult test_pool_exhaustion(const MunitParameter params[], void* dat
     // Fill the pool with as many max-sized slices as fit (single-file cap may
     // be smaller than the pool).
     size_t chunk = DFC_MAX_FILE_DATA;
-    if(chunk > DFC_FILE_POOL_SIZE) {
+    if (chunk > DFC_FILE_POOL_SIZE) {
         chunk = DFC_FILE_POOL_SIZE;
     }
     uint8_t next_no = 0;
-    while(dfc_credential_file_pool_free(&credential) >= chunk && next_no < DFC_MAX_FILES) {
+    while (dfc_credential_file_pool_free(&credential) >= chunk && next_no < DFC_MAX_FILES) {
         DfcFile* file = dfc_credential_create_file(&credential, 0, next_no++);
         munit_assert_not_null(file);
         munit_assert_true(dfc_file_resize(&credential, file, chunk));
     }
     // Leftover smaller than chunk, or full: one more byte must fail.
-    if(dfc_credential_file_pool_free(&credential) > 0 && next_no < DFC_MAX_FILES) {
+    if (dfc_credential_file_pool_free(&credential) > 0 && next_no < DFC_MAX_FILES) {
         size_t rem = dfc_credential_file_pool_free(&credential);
         DfcFile* mid = dfc_credential_create_file(&credential, 0, next_no++);
         munit_assert_not_null(mid);
         munit_assert_true(dfc_file_resize(&credential, mid, rem));
     }
     munit_assert_size(dfc_credential_file_pool_free(&credential), ==, 0);
-    if(next_no < DFC_MAX_FILES) {
+    if (next_no < DFC_MAX_FILES) {
         DfcFile* other = dfc_credential_create_file(&credential, 0, next_no);
         munit_assert_not_null(other);
         munit_assert_false(dfc_file_resize(&credential, other, 1));
@@ -86,7 +86,7 @@ static MunitResult test_pool_exhaustion(const MunitParameter params[], void* dat
 // leaves every data_offset pointing into a pool that was never populated, and
 // dfc_file_data then fails its bounds check and hands back NULL, which reads as
 // "this file is empty" rather than as an error.
-static MunitResult test_copy_model_carries_pool(const MunitParameter params[], void* data) {
+static MunitResult test_copy_model_carries_pool(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     DfcCredential src;
@@ -99,7 +99,7 @@ static MunitResult test_copy_model_carries_pool(const MunitParameter params[], v
     DfcFile* file = dfc_credential_create_file(&src, 0, 0x01);
     munit_assert_not_null(file);
     munit_assert_true(dfc_file_resize(&src, file, 8));
-    uint8_t* payload = dfc_file_data(&src, file);
+    uint8_t *payload = dfc_file_data(&src, file);
     munit_assert_not_null(payload);
     memcpy(payload, "\xDE\xAD\xBE\xEF\x01\x02\x03\x04", 8);
 
@@ -115,7 +115,7 @@ static MunitResult test_copy_model_carries_pool(const MunitParameter params[], v
     const DfcFile* copied = dfc_credential_find_file_in_app(&dst, 0, 0x01);
     munit_assert_not_null(copied);
     munit_assert_size(copied->data_len, ==, 8);
-    const uint8_t* copied_payload = dfc_file_data_const(&dst, copied);
+    const uint8_t *copied_payload = dfc_file_data_const(&dst, copied);
     munit_assert_not_null(copied_payload);
     munit_assert_memory_equal(8, copied_payload, payload);
 
@@ -123,19 +123,23 @@ static MunitResult test_copy_model_carries_pool(const MunitParameter params[], v
 }
 
 static MunitTest tests[] = {
-    {"/resize-allocate-and-release",
-     test_resize_allocate_and_release,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
+    {
+        "/resize-allocate-and-release",
+        test_resize_allocate_and_release,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
     {"/pool-exhaustion", test_pool_exhaustion, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {"/copy-model-carries-pool",
-     test_copy_model_carries_pool,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
+    {
+        "/copy-model-carries-pool",
+        test_copy_model_carries_pool,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };
 
@@ -147,6 +151,6 @@ static const MunitSuite suite = {
     MUNIT_SUITE_OPTION_NONE,
 };
 
-int main(int argc, char* argv[MUNIT_ARRAY_PARAM(argc + 1)]) {
+int main(int argc, char *argv[MUNIT_ARRAY_PARAM(argc + 1)]) {
     return munit_suite_main(&suite, NULL, argc, argv);
 }

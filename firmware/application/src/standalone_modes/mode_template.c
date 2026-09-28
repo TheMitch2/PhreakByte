@@ -88,7 +88,8 @@ typedef struct __attribute__((packed)) {
     uint8_t  my_param;      /* TODO: replace with your config fields */
     uint16_t my_timeout_ms;
     uint8_t  reserved[12];  /* pad to a round size */
-} cfg_t;
+}
+cfg_t;
 
 _Static_assert(sizeof(cfg_t) <= 64, "config blob must be <= 64 bytes");
 

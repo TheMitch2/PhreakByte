@@ -7,18 +7,23 @@ dfc_decode_probe harness). A mismatch — codec says "fine", engine says
 "malformed" — is exactly the tag-order class of bug the engine-only C suite
 cannot see. Run:  python3 test_codec_roundtrip.py /path/to/probe /path/to/*.dfc
 """
-import subprocess, sys, tempfile, os, glob
+import chameleon_dfc as D
+import subprocess
+import sys
+import tempfile
+import os
+import glob
 
 SCRIPT_DIR = os.environ.get("DFC_SCRIPT_DIR",
-    os.path.join(os.path.dirname(__file__),
-                 "../../../../../../../software/script"))
+                            os.path.join(os.path.dirname(__file__),
+                                         "../../../../../../../software/script"))
 sys.path.insert(0, os.path.abspath(SCRIPT_DIR))
-import chameleon_dfc as D
 
 
 def probe(path_probe, blob):
     with tempfile.NamedTemporaryFile(suffix=".dfcb", delete=False) as t:
-        t.write(blob); name = t.name
+        t.write(blob)
+        name = t.name
     try:
         r = subprocess.run([path_probe, name], capture_output=True, text=True)
         return r.returncode, r.stdout.strip()

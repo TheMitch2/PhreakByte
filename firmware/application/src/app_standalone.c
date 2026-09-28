@@ -63,7 +63,8 @@ typedef struct __attribute__((packed)) {
     uint8_t  mode;
     uint8_t  flags;
     uint8_t  reserved;
-} standalone_persist_t;
+}
+standalone_persist_t;
 
 _Static_assert(sizeof(standalone_persist_t) == 4,
                "standalone_persist_t must be 4 bytes (FDS word alignment)");
@@ -92,7 +93,7 @@ static volatile bool m_disarm_pending = false;
  * Mode registry
  * ------------------------------------------------------------------------- */
 
-static const standalone_mode_iface_t * const m_modes[] = {
+static const standalone_mode_iface_t *const m_modes[] = {
 #if CONFIG_STANDALONE_AUTOCLONE
     &mode_autoclone_iface,
 #endif
@@ -174,8 +175,8 @@ static void persist_state_load(void) {
                             FDS_KEY_STANDALONE_STATE,
                             &len, (uint8_t *)&rec);
     if (!ok || len != sizeof(rec) ||
-        rec.version != STANDALONE_PERSIST_VERSION ||
-        rec.mode    >= STANDALONE_MODE__COUNT) {
+            rec.version != STANDALONE_PERSIST_VERSION ||
+            rec.mode    >= STANDALONE_MODE__COUNT) {
         m_ctx.mode  = STANDALONE_MODE_DISABLED;
         m_ctx.flags = 0;
         return;
@@ -192,7 +193,7 @@ static void persist_state_load(void) {
 static uint32_t m_cfg_save_buf[(STANDALONE_CONFIG_MAX_BYTES + 3) / 4];
 
 static standalone_rc_t persist_config_save(standalone_mode_t mode,
-                                           const uint8_t *cfg, size_t len) {
+        const uint8_t *cfg, size_t len) {
     if (len > STANDALONE_CONFIG_MAX_BYTES) return STANDALONE_RC_INVALID_CFG;
     if (len == 0) return STANDALONE_RC_OK;   /* nothing to write */
 
@@ -210,8 +211,8 @@ static standalone_rc_t persist_config_save(standalone_mode_t mode,
 }
 
 static standalone_rc_t persist_config_load(standalone_mode_t mode,
-                                           uint8_t *out, size_t out_max,
-                                           size_t *out_len) {
+        uint8_t *out, size_t out_max,
+        size_t *out_len) {
     if (out == NULL || out_len == NULL) return STANDALONE_RC_INVALID_CFG;
     uint16_t len = (uint16_t)out_max;
     bool ok = fds_read_sync(FDS_STANDALONE_FILE_ID,
@@ -238,8 +239,8 @@ static standalone_rc_t persist_config_load(standalone_mode_t mode,
 static uint32_t m_result_save_buf[(STANDALONE_RESULT_PERSIST_MAX + 3) / 4];
 
 standalone_rc_t app_standalone_save_result_buf(standalone_mode_t mode,
-                                               const uint32_t *buf_words,
-                                               size_t byte_len) {
+        const uint32_t *buf_words,
+        size_t byte_len) {
     if (mode >= STANDALONE_MODE__COUNT) return STANDALONE_RC_INVALID_CFG;
 
     /* Pack header + data into the staging buffer */
@@ -251,7 +252,7 @@ standalone_rc_t app_standalone_save_result_buf(standalone_mode_t mode,
     }
 
     uint8_t *p = (uint8_t *)m_result_save_buf;
-    p[0] = (uint8_t)(byte_len      );
+    p[0] = (uint8_t)(byte_len);
     p[1] = (uint8_t)(byte_len >>  8);
     p[2] = (uint8_t)(byte_len >> 16);
     p[3] = (uint8_t)(byte_len >> 24);
@@ -271,9 +272,9 @@ standalone_rc_t app_standalone_save_result_buf(standalone_mode_t mode,
 }
 
 standalone_rc_t app_standalone_load_result_buf(standalone_mode_t mode,
-                                               uint32_t *buf_words,
-                                               size_t word_buf_bytes,
-                                               size_t *out_byte_len) {
+        uint32_t *buf_words,
+        size_t word_buf_bytes,
+        size_t *out_byte_len) {
     if (mode >= STANDALONE_MODE__COUNT) return STANDALONE_RC_INVALID_CFG;
     if (buf_words == NULL || out_byte_len == NULL) return STANDALONE_RC_INVALID_CFG;
 
@@ -288,9 +289,9 @@ standalone_rc_t app_standalone_load_result_buf(standalone_mode_t mode,
 
     uint8_t *p = (uint8_t *)m_result_save_buf;
     size_t data_len = (size_t)p[0]
-                    | ((size_t)p[1] <<  8)
-                    | ((size_t)p[2] << 16)
-                    | ((size_t)p[3] << 24);
+                      | ((size_t)p[1] <<  8)
+                      | ((size_t)p[2] << 16)
+                      | ((size_t)p[3] << 24);
 
     if (data_len == 0) {
         *out_byte_len = 0;
@@ -315,7 +316,7 @@ standalone_rc_t app_standalone_load_result_buf(standalone_mode_t mode,
 
 static bool mode_permitted(const standalone_mode_iface_t *m, uint8_t flags) {
     if ((m->writes_tag || m->writes_slot) &&
-        !(flags & STANDALONE_FLAG_HOST_OPTED_IN)) {
+            !(flags & STANDALONE_FLAG_HOST_OPTED_IN)) {
         return false;
     }
     return true;
@@ -390,7 +391,7 @@ void app_standalone_init(void) {
 }
 
 standalone_state_t app_standalone_get_state(void) { return m_ctx.state; }
-standalone_mode_t  app_standalone_get_mode (void) { return m_ctx.mode;  }
+standalone_mode_t  app_standalone_get_mode(void) { return m_ctx.mode;  }
 uint8_t            app_standalone_get_flags(void) { return m_ctx.flags; }
 
 standalone_rc_t app_standalone_set_mode(standalone_mode_t mode, uint8_t flags) {
@@ -418,15 +419,15 @@ standalone_rc_t app_standalone_set_mode(standalone_mode_t mode, uint8_t flags) {
 }
 
 standalone_rc_t app_standalone_set_config(standalone_mode_t mode,
-                                          const uint8_t *cfg, size_t cfg_len) {
+        const uint8_t *cfg, size_t cfg_len) {
     if (mode >= STANDALONE_MODE__COUNT) return STANDALONE_RC_INVALID_CFG;
     if (cfg == NULL && cfg_len > 0)     return STANDALONE_RC_INVALID_CFG;
     return persist_config_save(mode, cfg, cfg_len);
 }
 
 standalone_rc_t app_standalone_get_config(standalone_mode_t mode,
-                                          uint8_t *cfg, size_t cfg_max,
-                                          size_t *cfg_len) {
+        uint8_t *cfg, size_t cfg_max,
+        size_t *cfg_len) {
     if (mode >= STANDALONE_MODE__COUNT) return STANDALONE_RC_INVALID_CFG;
     if (cfg == NULL || cfg_len == NULL) return STANDALONE_RC_INVALID_CFG;
     return persist_config_load(mode, cfg, cfg_max, cfg_len);
@@ -478,7 +479,7 @@ void app_standalone_tick(uint32_t now_ticks) {
      * (100 ticks @32768Hz) instead of every 100ms. Modes needing a faster tick
      * set standalone_mode_iface_t.tick_interval_ms (e.g. relay = 5ms). */
     uint32_t period_ms = m->tick_interval_ms ? m->tick_interval_ms
-                                             : STANDALONE_TICK_THROTTLE_MS;
+                         : STANDALONE_TICK_THROTTLE_MS;
     if (app_timer_cnt_diff_compute(now_ticks, m_ctx.last_tick_ticks)
             < APP_TIMER_TICKS(period_ms)) return;
     m_ctx.last_tick_ticks = now_ticks;
@@ -487,7 +488,7 @@ void app_standalone_tick(uint32_t now_ticks) {
 }
 
 standalone_rc_t app_standalone_read_result(uint8_t *out, size_t out_max,
-                                           size_t *out_len) {
+        size_t *out_len) {
     if (out == NULL || out_len == NULL) return STANDALONE_RC_INVALID_CFG;
 
     const standalone_mode_iface_t *m = active_mode();
@@ -514,9 +515,9 @@ size_t app_standalone_get_stored_size(standalone_mode_t mode) {
                             &len, (uint8_t *)&hdr);
     if (!ok || len < 4) return 0;
     size_t byte_len = (size_t)((hdr >>  0) & 0xFF)
-                    | (size_t)((hdr >>  8) & 0xFF) << 8
-                    | (size_t)((hdr >> 16) & 0xFF) << 16
-                    | (size_t)((hdr >> 24) & 0xFF) << 24;
+                      | (size_t)((hdr >>  8) & 0xFF) << 8
+                      | (size_t)((hdr >> 16) & 0xFF) << 16
+                      | (size_t)((hdr >> 24) & 0xFF) << 24;
     return byte_len;
 }
 

@@ -60,11 +60,11 @@ static bool generate_cryptogram(uint8_t *key, bool use_iv, uint8_t *input, size_
 
     if (algorithm == SEOS_ENCRYPTION_AES) {
         ret_code_t result = nrf_crypto_aes_crypt(
-            &nrf_aes_ctx, &g_nrf_crypto_aes_cbc_128_info, NRF_CRYPTO_ENCRYPT,
-            key, cryptogram_iv,
-            input, length,
-            output, &length
-        );
+                                &nrf_aes_ctx, &g_nrf_crypto_aes_cbc_128_info, NRF_CRYPTO_ENCRYPT,
+                                key, cryptogram_iv,
+                                input, length,
+                                output, &length
+                            );
 
         if (result != NRF_SUCCESS) {
             NRF_LOG_ERROR("Seos: Error decrypting cryptogram: %s", nrf_crypto_error_string_get(result));
@@ -83,11 +83,11 @@ static bool decrypt_cryptogram(uint8_t *key, uint8_t *input, size_t length, uint
 
     if (algorithm == SEOS_ENCRYPTION_AES) {
         ret_code_t result = nrf_crypto_aes_crypt(
-            &nrf_aes_ctx, &g_nrf_crypto_aes_cbc_128_info, NRF_CRYPTO_DECRYPT,
-            key, cryptogram_iv,
-            input, length,
-            output, &length
-        );
+                                &nrf_aes_ctx, &g_nrf_crypto_aes_cbc_128_info, NRF_CRYPTO_DECRYPT,
+                                key, cryptogram_iv,
+                                input, length,
+                                output, &length
+                            );
 
         if (result != NRF_SUCCESS) {
             NRF_LOG_ERROR("Seos: Error decrypting cryptogram: %s", nrf_crypto_error_string_get(result));
@@ -107,11 +107,11 @@ static bool generate_cmac(uint8_t *key, uint8_t *input, size_t length, uint8_t *
     if (encryption_algorithm == SEOS_ENCRYPTION_AES) {
         size_t hash_size = NRF_CRYPTO_AES_BLOCK_SIZE;
         ret_code_t result = nrf_crypto_aes_crypt(
-            &nrf_aes_ctx, &g_nrf_crypto_aes_cmac_128_info, NRF_CRYPTO_MAC_CALCULATE,
-            key, cryptogram_iv,
-            input, length,
-            output, &hash_size
-        );
+                                &nrf_aes_ctx, &g_nrf_crypto_aes_cmac_128_info, NRF_CRYPTO_MAC_CALCULATE,
+                                key, cryptogram_iv,
+                                input, length,
+                                output, &hash_size
+                            );
 
         if (result != NRF_SUCCESS) {
             NRF_LOG_ERROR("Seos: Error generating CMAC: %s", nrf_crypto_error_string_get(result));
@@ -282,8 +282,8 @@ static void nfc_tag_seos_state_handler(uint8_t *data, uint16_t szBytes) {
                 // Synthesized IV: half a block of random data followed by half of the CMAC of that data
                 memset(cryptogram_iv, 0, half_bs); // TODO: Maybe actually use random data?
                 if (!generate_cmac(m_tag_information->privmac, cryptogram_iv, half_bs, work_buffer_a, m_tag_information->encr_alg)) {
-                   NRF_LOG_ERROR("Seos: Select ADF failed: Failed to create IV CMAC.");
-                   break;
+                    NRF_LOG_ERROR("Seos: Select ADF failed: Failed to create IV CMAC.");
+                    break;
                 }
                 memcpy(cryptogram_iv + half_bs, work_buffer_a, half_bs);
 
@@ -320,7 +320,7 @@ static void nfc_tag_seos_state_handler(uint8_t *data, uint16_t szBytes) {
                 m_tcl_session_state.m_resp_buf[tlv_idx++] = reply_len + bs; // Length
                 memcpy(m_tcl_session_state.m_resp_buf + tlv_idx, cryptogram_iv, bs);
                 tlv_idx += bs;
-                
+
                 // Generate cryptogram directly into response buffer
                 if (!generate_cryptogram(m_tag_information->privenc, true, reply, reply_len, m_tcl_session_state.m_resp_buf + tlv_idx, m_tag_information->encr_alg)) {
                     NRF_LOG_ERROR("Select ADF failed: Failed to create reply cryptogram.");
@@ -486,7 +486,7 @@ static void nfc_tag_seos_state_handler(uint8_t *data, uint16_t szBytes) {
                     ret_code_t result = nrf_crypto_hash_calculate(&nrf_hash_ctx,
                         &g_nrf_crypto_hash_sha256_info,
                         hash_input, hash_idx, hash_output, &hash_size
-                    );
+                                                                 );
 
                     if (result != NRF_SUCCESS) {
                         NRF_LOG_ERROR("Seos: Error generating SHA256 hash: %s", nrf_crypto_error_string_get(result));

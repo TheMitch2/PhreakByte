@@ -5,11 +5,11 @@ static void init_value_credential(DfcCredential* credential) {
     credential->uid_len = DFC_DESFIRE_UID_LEN;
     memcpy(
         credential->uid,
-        ((uint8_t[]){0x04, 0x76, 0x61, 0x6C, 0x75, 0x65, 0x31}),
-        DFC_DESFIRE_UID_LEN);
+    ((uint8_t[]) {0x04, 0x76, 0x61, 0x6C, 0x75, 0x65, 0x31}),
+    DFC_DESFIRE_UID_LEN);
 }
 
-static void put_i32_le(uint8_t* out, int32_t value) {
+static void put_i32_le(uint8_t *out, int32_t value) {
     uint32_t raw = (uint32_t)value;
     out[0] = (uint8_t)(raw & 0xFF);
     out[1] = (uint8_t)((raw >> 8) & 0xFF);
@@ -17,13 +17,13 @@ static void put_i32_le(uint8_t* out, int32_t value) {
     out[3] = (uint8_t)((raw >> 24) & 0xFF);
 }
 
-static size_t wrap(uint8_t ins, const uint8_t* data, size_t data_len, uint8_t* out) {
+static size_t wrap(uint8_t ins, const uint8_t *data, size_t data_len, uint8_t *out) {
     out[0] = 0x90;
     out[1] = ins;
     out[2] = 0x00;
     out[3] = 0x00;
     out[4] = (uint8_t)data_len;
-    if(data_len > 0) {
+    if (data_len > 0) {
         memcpy(out + 5, data, data_len);
         out[5 + data_len] = 0x00;
         return data_len + 6;
@@ -39,7 +39,7 @@ static size_t build_value_payload(
     int32_t upper_limit,
     int32_t value,
     uint8_t limited_credit,
-    uint8_t* out) {
+    uint8_t *out) {
     out[0] = file_no;
     out[1] = comm_settings;
     // `access_rights` is logical; the wire takes it least-significant octet first.
@@ -52,7 +52,7 @@ static size_t build_value_payload(
     return 17;
 }
 
-static size_t build_value_command(uint8_t ins, uint8_t file_no, int32_t amount, uint8_t* out) {
+static size_t build_value_command(uint8_t ins, uint8_t file_no, int32_t amount, uint8_t *out) {
     uint8_t data[5];
     data[0] = file_no;
     put_i32_le(data + 1, amount);
@@ -61,10 +61,10 @@ static size_t build_value_command(uint8_t ins, uint8_t file_no, int32_t amount, 
 
 static void exchange(
     DfcVirtualPiccSession* session,
-    const uint8_t* command,
+    const uint8_t *command,
     size_t command_len,
-    uint8_t* response,
-    size_t* response_len) {
+    uint8_t *response,
+    size_t *response_len) {
     munit_assert_int(
         dfc_virtual_picc_iso_dep_exchange(
             session, command, command_len, response, 128, response_len),
@@ -74,9 +74,9 @@ static void exchange(
 
 static void assert_response(
     DfcVirtualPiccSession* session,
-    const uint8_t* command,
+    const uint8_t *command,
     size_t command_len,
-    const uint8_t* expected,
+    const uint8_t *expected,
     size_t expected_len) {
     uint8_t response[128];
     size_t response_len = 0;
@@ -87,10 +87,10 @@ static void assert_response(
 
 static void assert_status(
     DfcVirtualPiccSession* session,
-    const uint8_t* command,
+    const uint8_t *command,
     size_t command_len,
     uint8_t status) {
-    assert_response(session, command, command_len, ((uint8_t[]){0x91, status}), 2);
+    assert_response(session, command, command_len, ((uint8_t[]) {0x91, status}), 2);
 }
 
 static void assert_get_value(DfcVirtualPiccSession* session, uint8_t file_no, int32_t value) {
@@ -128,19 +128,19 @@ static void create_value_file(
     uint8_t data[17];
     uint8_t command[24];
     size_t data_len = build_value_payload(
-        file_no,
-        comm_settings,
-        access_rights,
-        lower_limit,
-        upper_limit,
-        value,
-        limited_credit,
-        data);
+                          file_no,
+                          comm_settings,
+                          access_rights,
+                          lower_limit,
+                          upper_limit,
+                          value,
+                          limited_credit,
+                          data);
     size_t command_len = wrap(DFC_CMD_CREATE_VALUE_FILE, data, data_len, command);
     assert_status(session, command, command_len, expected_status);
 }
 
-static void setup_app(DfcCredential* credential, DfcVirtualPiccSession** session) {
+static void setup_app(DfcCredential* credential, DfcVirtualPiccSession **session) {
     init_value_credential(credential);
     *session = dfc_virtual_picc_session_alloc(credential);
 
@@ -149,23 +149,27 @@ static void setup_app(DfcCredential* credential, DfcVirtualPiccSession** session
         dfc_virtual_picc_scan_iso14443a(*session, &activation), ==, DfcVirtualPiccStatusOk);
 
     const uint8_t create_app[] = {
-        0x90, DFC_CMD_CREATE_APPLICATION, 0x00, 0x00, 0x05, 0xA1, 0xB2, 0xC3, 0x0F, 0x01, 0x00};
+        0x90, DFC_CMD_CREATE_APPLICATION, 0x00, 0x00, 0x05, 0xA1, 0xB2, 0xC3, 0x0F, 0x01, 0x00
+    };
     assert_status(*session, create_app, sizeof(create_app), DFC_STATUS_OK);
 
     const uint8_t select_app[] = {
-        0x90, DFC_CMD_SELECT_APPLICATION, 0x00, 0x00, 0x03, 0xA1, 0xB2, 0xC3, 0x00};
+        0x90, DFC_CMD_SELECT_APPLICATION, 0x00, 0x00, 0x03, 0xA1, 0xB2, 0xC3, 0x00
+    };
     assert_status(*session, select_app, sizeof(select_app), DFC_STATUS_OK);
 }
 
 static void select_picc(DfcVirtualPiccSession* session) {
     const uint8_t select_picc_command[] = {
-        0x90, DFC_CMD_SELECT_APPLICATION, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00};
+        0x90, DFC_CMD_SELECT_APPLICATION, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00
+    };
     assert_status(session, select_picc_command, sizeof(select_picc_command), DFC_STATUS_OK);
 }
 
 static void select_app(DfcVirtualPiccSession* session) {
     const uint8_t select_app_command[] = {
-        0x90, DFC_CMD_SELECT_APPLICATION, 0x00, 0x00, 0x03, 0xA1, 0xB2, 0xC3, 0x00};
+        0x90, DFC_CMD_SELECT_APPLICATION, 0x00, 0x00, 0x03, 0xA1, 0xB2, 0xC3, 0x00
+    };
     assert_status(session, select_app_command, sizeof(select_app_command), DFC_STATUS_OK);
 }
 
@@ -180,7 +184,7 @@ static void abort_transaction(DfcVirtualPiccSession* session, uint8_t expected_s
 }
 
 static MunitResult
-    test_value_create_status_vectors(const MunitParameter params[], void* user_data) {
+test_value_create_status_vectors(const MunitParameter params[], void *user_data) {
     (void)params;
     (void)user_data;
 
@@ -205,7 +209,7 @@ static MunitResult
 }
 
 static MunitResult
-    test_value_transaction_vectors_from_card(const MunitParameter params[], void* user_data) {
+test_value_transaction_vectors_from_card(const MunitParameter params[], void *user_data) {
     (void)params;
     (void)user_data;
 
@@ -253,7 +257,7 @@ static MunitResult
     return MUNIT_OK;
 }
 
-static MunitResult test_value_file_access_vectors(const MunitParameter params[], void* user_data) {
+static MunitResult test_value_file_access_vectors(const MunitParameter params[], void *user_data) {
     (void)params;
     (void)user_data;
 
@@ -280,7 +284,8 @@ static MunitResult test_value_file_access_vectors(const MunitParameter params[],
         0x04,
         0x00,
         0x00,
-        0x00};
+        0x00
+    };
     assert_status(session, create_std, sizeof(create_std), DFC_STATUS_OK);
     // File 0x0A is a standard data file, so value commands do not apply to it at
     // all. That is not an access-rights refusal and stays 0x9D; measured on a
@@ -331,7 +336,7 @@ static MunitResult test_value_file_access_vectors(const MunitParameter params[],
 }
 
 static MunitResult
-    test_value_comm_limited_and_option_vectors(const MunitParameter params[], void* user_data) {
+test_value_comm_limited_and_option_vectors(const MunitParameter params[], void *user_data) {
     (void)params;
     (void)user_data;
 
@@ -363,7 +368,8 @@ static MunitResult
 
     assert_value_status(session, DFC_CMD_CREDIT, 0x0F, 1, DFC_STATUS_OK);
     const uint8_t commit_with_option[] = {
-        0x90, DFC_CMD_COMMIT_TRANSACTION, 0x00, 0x00, 0x01, 0x00, 0x00};
+        0x90, DFC_CMD_COMMIT_TRANSACTION, 0x00, 0x00, 0x01, 0x00, 0x00
+    };
     assert_status(
         session, commit_with_option, sizeof(commit_with_option), DFC_STATUS_LENGTH_ERROR);
     assert_get_value(session, 0x0F, 10);
@@ -371,7 +377,8 @@ static MunitResult
 
     assert_value_status(session, DFC_CMD_CREDIT, 0x0F, 1, DFC_STATUS_OK);
     const uint8_t abort_with_option[] = {
-        0x90, DFC_CMD_ABORT_TRANSACTION, 0x00, 0x00, 0x01, 0x00, 0x00};
+        0x90, DFC_CMD_ABORT_TRANSACTION, 0x00, 0x00, 0x01, 0x00, 0x00
+    };
     assert_status(session, abort_with_option, sizeof(abort_with_option), DFC_STATUS_LENGTH_ERROR);
     assert_get_value(session, 0x0F, 10);
     commit(session, DFC_STATUS_NO_CHANGES);
@@ -381,7 +388,7 @@ static MunitResult
 }
 
 static MunitResult
-    test_value_multi_file_delete_vectors(const MunitParameter params[], void* user_data) {
+test_value_multi_file_delete_vectors(const MunitParameter params[], void *user_data) {
     (void)params;
     (void)user_data;
 
@@ -408,7 +415,7 @@ static MunitResult
     return MUNIT_OK;
 }
 
-static MunitResult test_value_malformed_vectors(const MunitParameter params[], void* user_data) {
+static MunitResult test_value_malformed_vectors(const MunitParameter params[], void *user_data) {
     (void)params;
     (void)user_data;
 
@@ -417,12 +424,14 @@ static MunitResult test_value_malformed_vectors(const MunitParameter params[], v
     setup_app(&credential, &session);
 
     const uint8_t create_short[] = {
-        0x90, DFC_CMD_CREATE_VALUE_FILE, 0x00, 0x00, 0x04, 0x01, 0x00, 0xEE, 0xEE, 0x00};
+        0x90, DFC_CMD_CREATE_VALUE_FILE, 0x00, 0x00, 0x04, 0x01, 0x00, 0xEE, 0xEE, 0x00
+    };
     assert_status(session, create_short, sizeof(create_short), DFC_STATUS_LENGTH_ERROR);
     const uint8_t get_no_file_no[] = {0x90, DFC_CMD_GET_VALUE, 0x00, 0x00, 0x00};
     assert_status(session, get_no_file_no, sizeof(get_no_file_no), DFC_STATUS_LENGTH_ERROR);
     const uint8_t credit_short[] = {
-        0x90, DFC_CMD_CREDIT, 0x00, 0x00, 0x04, 0x01, 0x01, 0x00, 0x00, 0x00};
+        0x90, DFC_CMD_CREDIT, 0x00, 0x00, 0x04, 0x01, 0x01, 0x00, 0x00, 0x00
+    };
     assert_status(session, credit_short, sizeof(credit_short), DFC_STATUS_LENGTH_ERROR);
 
     create_value_file(session, 0x01, DFC_COMM_PLAIN, 0xEEEE, 0, 100, 10, 1, DFC_STATUS_OK);
@@ -435,38 +444,46 @@ static MunitResult test_value_malformed_vectors(const MunitParameter params[], v
 }
 
 static MunitTest tests[] = {
-    {"/create-status-vectors",
-     test_value_create_status_vectors,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
-    {"/transactions",
-     test_value_transaction_vectors_from_card,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
+    {
+        "/create-status-vectors",
+        test_value_create_status_vectors,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
+    {
+        "/transactions",
+        test_value_transaction_vectors_from_card,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
     {"/access", test_value_file_access_vectors, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {"/comm-limited-options",
-     test_value_comm_limited_and_option_vectors,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
-    {"/multi-file-delete",
-     test_value_multi_file_delete_vectors,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
+    {
+        "/comm-limited-options",
+        test_value_comm_limited_and_option_vectors,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
+    {
+        "/multi-file-delete",
+        test_value_multi_file_delete_vectors,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
     {"/malformed", test_value_malformed_vectors, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };
 
 static const MunitSuite suite =
-    {"/dfc_virtual_picc_value_vectors", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE};
+{"/dfc_virtual_picc_value_vectors", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE};
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     return munit_suite_main(&suite, NULL, argc, argv);
 }

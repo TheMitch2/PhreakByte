@@ -38,25 +38,24 @@ static struct {
 } m_session;
 
 
-static char *put_str(char *dst, const char *src)
-{
+static char *put_str(char *dst, const char *src) {
     while (*src) *dst++ = *src++;
     return dst;
 }
 
-static char *put_hex32(char *dst, uint32_t val)
-{
+static char *put_hex32(char *dst, uint32_t val) {
     static const char hex[] = "0123456789ABCDEF";
-    *dst++ = '0'; *dst++ = 'x';
+    *dst++ = '0';
+    *dst++ = 'x';
     for (int i = 28; i >= 0; i -= 4)
-        *dst++ = hex[(val >> i) & 0xF];
+        * dst++ = hex[(val >> i) & 0xF];
     return dst;
 }
 
-static char *put_dec32(char *dst, uint32_t val)
-{
+static char *put_dec32(char *dst, uint32_t val) {
     if (val == 0) { *dst++ = '0'; return dst; }
-    char tmp[10]; int len = 0;
+    char tmp[10];
+    int len = 0;
     while (val > 0 && len < (int)sizeof(tmp)) {
         tmp[len++] = (char)('0' + (val % 10));
         val /= 10;
@@ -65,53 +64,55 @@ static char *put_dec32(char *dst, uint32_t val)
     return dst;
 }
 
-static const char *reason_label(uf2_reject_reason_t r)
-{
+static const char *reason_label(uf2_reject_reason_t r) {
     switch (r) {
-        case UF2_REJECT_MAGIC:  return "MAGIC";
-        case UF2_REJECT_FAMILY: return "FAMILY";
-        case UF2_REJECT_BOUNDS: return "BOUNDS";
-        case UF2_REJECT_WRITE:  return "WRITE";
-        case UF2_REJECT_SEQ:    return "SEQ";
-        default:                return "UNKNOWN";
+        case UF2_REJECT_MAGIC:
+            return "MAGIC";
+        case UF2_REJECT_FAMILY:
+            return "FAMILY";
+        case UF2_REJECT_BOUNDS:
+            return "BOUNDS";
+        case UF2_REJECT_WRITE:
+            return "WRITE";
+        case UF2_REJECT_SEQ:
+            return "SEQ";
+        default:
+            return "UNKNOWN";
     }
 }
 
-static const char *reason_hint(uf2_reject_reason_t r)
-{
+static const char *reason_hint(uf2_reject_reason_t r) {
     switch (r) {
-    case UF2_REJECT_MAGIC:
-        return "  UF2 file truncated or corrupted.\r\n"
-               "  Regenerate it from source.";
-    case UF2_REJECT_FAMILY:
-        return "  Wrong family ID. Use uf2conv.py\r\n"
-               "  with -f 0x1B57745F (nRF52840).";
-    case UF2_REJECT_BOUNDS:
-        return "  Target address outside app region\r\n"
-               "  [0x27000, 0xEB000). Most common:\r\n"
-               "  uf2conv.py missing Intel HEX type 02\r\n"
-               "  records. Add elif rtype==0x02 case\r\n"
-               "  in parse_hex().";
-    case UF2_REJECT_WRITE:
-        return "  Flash write failed. BPROT engaged or\r\n"
-               "  flash worn out. Needs SWD to recover.";
-    case UF2_REJECT_SEQ:
-        return "  Bad block sequence. UF2 malformed,\r\n"
-               "  regenerate it.";
-    default:
-        return "  Unknown rejection reason.";
+        case UF2_REJECT_MAGIC:
+            return "  UF2 file truncated or corrupted.\r\n"
+                   "  Regenerate it from source.";
+        case UF2_REJECT_FAMILY:
+            return "  Wrong family ID. Use uf2conv.py\r\n"
+                   "  with -f 0x1B57745F (nRF52840).";
+        case UF2_REJECT_BOUNDS:
+            return "  Target address outside app region\r\n"
+                   "  [0x27000, 0xEB000). Most common:\r\n"
+                   "  uf2conv.py missing Intel HEX type 02\r\n"
+                   "  records. Add elif rtype==0x02 case\r\n"
+                   "  in parse_hex().";
+        case UF2_REJECT_WRITE:
+            return "  Flash write failed. BPROT engaged or\r\n"
+                   "  flash worn out. Needs SWD to recover.";
+        case UF2_REJECT_SEQ:
+            return "  Bad block sequence. UF2 malformed,\r\n"
+                   "  regenerate it.";
+        default:
+            return "  Unknown rejection reason.";
     }
 }
 
-void uf2_status_init(void)
-{
+void uf2_status_init(void) {
     memset(&m_session, 0, sizeof(m_session));
     m_session.first_fail_reason = UF2_REJECT_NONE;
     m_fail_len = 0;
 }
 
-static void session_begin_if_needed(uint32_t num_blocks)
-{
+static void session_begin_if_needed(uint32_t num_blocks) {
     if (!m_session.transfer_in_progress) {
         m_session.blocks_accepted      = 0;
         m_session.blocks_rejected      = 0;
@@ -127,9 +128,9 @@ static void session_begin_if_needed(uint32_t num_blocks)
 
 void uf2_status_record_accepted(uint32_t block_no,
                                 uint32_t num_blocks,
-                                uint32_t target_addr)
-{
-    (void)block_no; (void)target_addr;
+                                uint32_t target_addr) {
+    (void)block_no;
+    (void)target_addr;
     session_begin_if_needed(num_blocks);
     m_session.blocks_accepted++;
 }
@@ -137,8 +138,7 @@ void uf2_status_record_accepted(uint32_t block_no,
 void uf2_status_record_rejected(uint32_t block_no,
                                 uint32_t num_blocks,
                                 uint32_t target_addr,
-                                uf2_reject_reason_t reason)
-{
+                                uf2_reject_reason_t reason) {
     session_begin_if_needed(num_blocks);
 
     if (m_session.blocks_rejected == 0) {
@@ -176,14 +176,12 @@ void uf2_status_record_rejected(uint32_t block_no,
 
 bool uf2_status_has_failure(void) { return m_session.has_failure; }
 
-const char *uf2_status_get_info_txt(uint32_t *out_size)
-{
+const char *uf2_status_get_info_txt(uint32_t *out_size) {
     if (out_size) *out_size = sizeof(m_info_txt) - 1;
     return m_info_txt;
 }
 
-const char *uf2_status_get_fail_txt(uint32_t *out_size)
-{
+const char *uf2_status_get_fail_txt(uint32_t *out_size) {
     if (out_size) *out_size = m_fail_len;
     return m_fail_txt;
 }

@@ -10,5 +10,5 @@ extern const protocol em410x_electra;
 extern const protocol *em410x_protocols[];
 extern size_t em410x_protocols_size;
 
-uint8_t em410x_t55xx_writer(uint8_t* uid, uint32_t* blks);
-uint8_t em410x_electra_t55xx_writer(uint8_t* uid, uint32_t* blks);
+uint8_t em410x_t55xx_writer(uint8_t *uid, uint32_t *blks);
+uint8_t em410x_electra_t55xx_writer(uint8_t *uid, uint32_t *blks);

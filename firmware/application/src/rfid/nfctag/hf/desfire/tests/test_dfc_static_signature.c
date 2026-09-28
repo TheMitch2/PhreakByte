@@ -7,8 +7,8 @@
 #include <string.h>
 
 #if DFC_ENABLE_STATIC_SIGNATURE
-static void read_signature(DfcCredential* credential, const uint8_t* apdu, size_t apdu_len,
-                           uint8_t* response, size_t* response_len) {
+static void read_signature(DfcCredential* credential, const uint8_t *apdu, size_t apdu_len,
+                           uint8_t *response, size_t *response_len) {
     DfcVirtualPiccSession* session = dfc_virtual_picc_session_alloc(credential);
     munit_assert_not_null(session);
     DfcVirtualPiccActivation activation;
@@ -23,7 +23,7 @@ static void read_signature(DfcCredential* credential, const uint8_t* apdu, size_
 }
 
 static MunitResult test_ev2_signature_round_trip_and_command(
-    const MunitParameter params[], void* data) {
+    const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     munit_assert_true(dfc_build_capabilities().static_signature);
@@ -38,7 +38,7 @@ static MunitResult test_ev2_signature_round_trip_and_command(
     original.picc_auth_command = DFC_CMD_AUTHENTICATE_AES;
     munit_assert_true(dfc_credential_keys_resize(&original, NULL, 1, DFC_AES_KEY_LENGTH));
     original.picc_has_static_signature = true;
-    for(size_t i = 0; i < DFC_STATIC_SIGNATURE_LENGTH; i++) {
+    for (size_t i = 0; i < DFC_STATIC_SIGNATURE_LENGTH; i++) {
         original.picc_static_signature[i] = (uint8_t)i;
     }
 
@@ -93,8 +93,10 @@ static MunitResult test_ev2_signature_round_trip_and_command(
 }
 
 static MunitTest tests[] = {
-    {"/ev2_signature_round_trip_and_command", test_ev2_signature_round_trip_and_command,
-     NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {
+        "/ev2_signature_round_trip_and_command", test_ev2_signature_round_trip_and_command,
+        NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL
+    },
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };
 #else
@@ -103,6 +105,6 @@ static MunitTest tests[] = {{NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NUL
 
 static const MunitSuite suite = {"/dfc_static_signature", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE};
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     return munit_suite_main(&suite, NULL, argc, argv);
 }

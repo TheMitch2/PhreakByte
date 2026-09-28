@@ -27,7 +27,7 @@
 #endif
 
 #ifdef DFC_FIRMWARE_BUILD
-void dfc_assert_fail(const char* file, int line);
+void dfc_assert_fail(const char *file, int line);
 #define DFC_ASSERT(expr)                          \
     do {                                          \
         if(!(expr)) dfc_assert_fail(__FILE__, __LINE__); \
@@ -53,7 +53,7 @@ void dfc_assert_fail(const char* file, int line);
  * SVC from a high-priority context. The firmware satisfies this by draining a
  * ring that the main loop keeps topped up. Never returns predictable bytes:
  * DESFire authentication security rests on RndB being unguessable. */
-void dfc_random_fill(uint8_t* buf, size_t len);
+void dfc_random_fill(uint8_t *buf, size_t len);
 
 /* Object allocation.
  *
@@ -72,8 +72,8 @@ typedef enum {
     DfcAllocSession,
 } DfcAllocTag;
 
-void* dfc_platform_alloc(size_t size, DfcAllocTag tag);
-void dfc_platform_free(void* ptr);
+void *dfc_platform_alloc(size_t size, DfcAllocTag tag);
+void dfc_platform_free(void *ptr);
 
 /* Points in the exchange a user interface may want to react to.
  *
@@ -87,4 +87,4 @@ typedef enum {
     DfcEventFileRequested,
 } DfcEvent;
 
-void dfc_port_notify(void* context, DfcEvent event);
+void dfc_port_notify(void *context, DfcEvent event);

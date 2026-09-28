@@ -28,7 +28,7 @@ void uf2_ghostfat_init(void);
 
 /* MSC read/write hooks. Each reads/writes one 512-byte sector at logical
  * block address `lba`. Return 0 on success, negative on error. */
-int  uf2_ghostfat_read_block (uint32_t lba, uint8_t *buf);
+int  uf2_ghostfat_read_block(uint32_t lba, uint8_t *buf);
 int  uf2_ghostfat_write_block(uint32_t lba, const uint8_t *buf);
 
 /* Progress / completion. */
@@ -38,7 +38,7 @@ bool     uf2_ghostfat_has_failure(void);
 
 /* Implemented by the integrator (nrf_dfu_uf2.c) — actually write to flash. */
 extern bool uf2_flash_write(uint32_t addr, const void *data, uint32_t len);
-extern void uf2_flash_read (uint32_t addr,       void *data, uint32_t len);
+extern void uf2_flash_read(uint32_t addr,       void *data, uint32_t len);
 
 /* Called by ghostfat exactly once when the last UF2 block has been written.
  * Implemented by nrf_dfu_uf2.c — finalise (mark app valid, reset). */

@@ -78,10 +78,10 @@ const protocol idteck = {
     .get_data = (codec_get_data)idteck_get_data,
     .modulator = (modulator)idteck_modulator,
     .decoder =
-        {
-            .start = (decoder_start)idteck_decoder_start,
-            .feed = (decoder_feed)idteck_decoder_feed,
-        },
+    {
+        .start = (decoder_start)idteck_decoder_start,
+        .feed = (decoder_feed)idteck_decoder_feed,
+    },
 };
 
 // T5577 writer: block 0 holds the PSK1 RF/32 configuration, blocks 1-2 hold

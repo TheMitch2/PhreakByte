@@ -17,9 +17,9 @@
 static const uint8_t select_app[] = {0x90, 0x5A, 0x00, 0x00, 0x03, 0x01, 0x00, 0x00, 0x00};
 
 static MunitResult
-    test_blank_card_is_selectable_authenticable_and_writable(
-        const MunitParameter params[],
-        void* user_data) {
+test_blank_card_is_selectable_authenticable_and_writable(
+    const MunitParameter params[],
+    void *user_data) {
     (void)params;
     (void)user_data;
 
@@ -80,7 +80,8 @@ static MunitResult
         0x00, 0x00, 0x00, /* offset 0 */
         0x04, 0x00, 0x00, /* length 4 */
         0xDE, 0xAD, 0xBE, 0xEF,
-        0x00};
+        0x00
+    };
     munit_assert_int(
         dfc_virtual_picc_iso_dep_exchange(
             session, write_data, sizeof(write_data), response, sizeof(response), &response_len),
@@ -91,7 +92,8 @@ static MunitResult
 
     /* Read it back. */
     const uint8_t read_data[] = {
-        0x90, 0xBD, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00};
+        0x90, 0xBD, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00
+    };
     munit_assert_int(
         dfc_virtual_picc_iso_dep_exchange(
             session, read_data, sizeof(read_data), response, sizeof(response), &response_len),
@@ -109,7 +111,7 @@ static MunitResult
     return MUNIT_OK;
 }
 
-static MunitResult test_factory_card(const MunitParameter params[], void* user_data) {
+static MunitResult test_factory_card(const MunitParameter params[], void *user_data) {
     (void)params;
     (void)user_data;
     DfcCredential credential;
@@ -127,26 +129,28 @@ static MunitResult test_factory_card(const MunitParameter params[], void* user_d
     uint8_t response[16];
     size_t response_len = 0;
     munit_assert_int(dfc_virtual_picc_iso_dep_exchange(
-        session, list_apps, sizeof(list_apps), response, sizeof(response), &response_len), ==, DfcVirtualPiccStatusOk);
+                         session, list_apps, sizeof(list_apps), response, sizeof(response), &response_len), ==, DfcVirtualPiccStatusOk);
     munit_assert_size(response_len, ==, 2);
-    munit_assert_memory_equal(2, response, ((uint8_t[]){0x91, 0}));
+    munit_assert_memory_equal(2, response, ((uint8_t[]) {0x91, 0}));
     dfc_virtual_picc_session_free(session);
     return MUNIT_OK;
 }
 
 static MunitTest tests[] = {
     {"/factory_card", test_factory_card, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {"/blank_card_selectable_authenticable_writable",
-     test_blank_card_is_selectable_authenticable_and_writable,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
+    {
+        "/blank_card_selectable_authenticable_writable",
+        test_blank_card_is_selectable_authenticable_and_writable,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };
 
 static const MunitSuite suite = {"/dfc_blank_card", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE};
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     return munit_suite_main(&suite, NULL, argc, argv);
 }

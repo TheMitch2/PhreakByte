@@ -602,13 +602,13 @@ def _read_tlv(blob: bytes, pos: int) -> tuple[int, bytes, int]:
             raise DfcError("indefinite or over-long length")
         if pos + 2 + count > len(blob):
             raise DfcError("truncated length")
-        n = int.from_bytes(blob[pos + 2 : pos + 2 + count], "big")
+        n = int.from_bytes(blob[pos + 2: pos + 2 + count], "big")
         hdr = 2 + count
         if n < 128 or (count == 2 and n < 256):
             raise DfcError("non-minimal length")
     if pos + hdr + n > len(blob):
         raise DfcError("truncated value")
-    return tag, blob[pos + hdr : pos + hdr + n], pos + hdr + n
+    return tag, blob[pos + hdr: pos + hdr + n], pos + hdr + n
 
 
 def _split(body: bytes) -> list[tuple[int, bytes]]:
@@ -931,7 +931,7 @@ def _scan_fields(text: str) -> dict[str, str]:
         if sep < 0:
             raise DfcError(f"text line has no key separator: {line!r}")
         key = line[:sep]
-        value = line[sep + 1 :]
+        value = line[sep + 1:]
         if key != key.rstrip() or not value.startswith(" "):
             raise DfcError(f"text line is not canonical: {line!r}")
         value = value[1:]

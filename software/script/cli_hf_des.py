@@ -31,6 +31,7 @@ from cli_core import (
     hf_des,
 )
 
+
 def _des_raw(cmd, keep_field=True, activate=False, wait_resp=True, append_crc=False,
              data=b'', timeout_ms=200):
     """Helper used inside HfDes* commands — wraps cmd.hf14a_raw options."""
@@ -307,45 +308,65 @@ def _desfire_get_version(cmd) -> dict:
     info: dict = {}
     hw = resp[:-1]
     # HW frame — individual guards so a short frame still populates what it has
-    if len(hw) >= 1: info['hw_vendor']  = hw[0]
-    if len(hw) >= 2: info['hw_type']    = hw[1]
-    if len(hw) >= 3: info['hw_subtype'] = hw[2]
-    if len(hw) >= 4: info['hw_major']   = hw[3]
-    if len(hw) >= 5: info['hw_minor']   = hw[4]
-    if len(hw) >= 6: info['hw_storage'] = hw[5]
-    if len(hw) >= 7: info['hw_proto']   = hw[6]
+    if len(hw) >= 1:
+        info['hw_vendor'] = hw[0]
+    if len(hw) >= 2:
+        info['hw_type'] = hw[1]
+    if len(hw) >= 3:
+        info['hw_subtype'] = hw[2]
+    if len(hw) >= 4:
+        info['hw_major'] = hw[3]
+    if len(hw) >= 5:
+        info['hw_minor'] = hw[4]
+    if len(hw) >= 6:
+        info['hw_storage'] = hw[5]
+    if len(hw) >= 7:
+        info['hw_proto'] = hw[6]
 
     if resp[-1] == 0xAF:
         resp2 = _des_transceive(cmd, 0xAF)
         sw = resp2[:-1]
         # SW frame — same per-field guards
-        if len(sw) >= 1: info['sw_vendor']  = sw[0]
-        if len(sw) >= 2: info['sw_type']    = sw[1]
-        if len(sw) >= 3: info['sw_subtype'] = sw[2]
-        if len(sw) >= 4: info['sw_major']   = sw[3]
-        if len(sw) >= 5: info['sw_minor']   = sw[4]
-        if len(sw) >= 6: info['sw_storage'] = sw[5]
-        if len(sw) >= 7: info['sw_proto']   = sw[6]
+        if len(sw) >= 1:
+            info['sw_vendor'] = sw[0]
+        if len(sw) >= 2:
+            info['sw_type'] = sw[1]
+        if len(sw) >= 3:
+            info['sw_subtype'] = sw[2]
+        if len(sw) >= 4:
+            info['sw_major'] = sw[3]
+        if len(sw) >= 5:
+            info['sw_minor'] = sw[4]
+        if len(sw) >= 6:
+            info['sw_storage'] = sw[5]
+        if len(sw) >= 7:
+            info['sw_proto'] = sw[6]
 
         # Fallback: derive SW fields from HW when SW frame payload is empty
         if 'sw_major' not in info and 'hw_major' in info:
             info['sw_major'] = _DESFIRE_HW_MAJOR_TO_SW_MAJOR.get(
                 info['hw_major'], info['hw_major'])
             info['sw_minor'] = 0
-        if 'sw_storage' not in info: info['sw_storage'] = info.get('hw_storage')
-        if 'sw_proto'   not in info: info['sw_proto']   = info.get('hw_proto')
+        if 'sw_storage' not in info:
+            info['sw_storage'] = info.get('hw_storage')
+        if 'sw_proto' not in info:
+            info['sw_proto'] = info.get('hw_proto')
 
         if resp2[-1] == 0xAF:
             resp3 = _des_transceive(cmd, 0xAF)
             p3 = resp3[:-1]
-            if len(p3) >= 7:  info['uid']       = p3[:7].hex().upper()
-            if len(p3) >= 12: info['batch']     = p3[7:12].hex().upper()
-            if len(p3) >= 13: info['prod_week'] = p3[12]
-            if len(p3) >= 14: info['prod_year'] = p3[13]
+            if len(p3) >= 7:
+                info['uid'] = p3[:7].hex().upper()
+            if len(p3) >= 12:
+                info['batch'] = p3[7:12].hex().upper()
+            if len(p3) >= 13:
+                info['prod_week'] = p3[12]
+            if len(p3) >= 14:
+                info['prod_year'] = p3[13]
     return info
 
 
-_DESFIRE_HW_TYPE  = {0x01: "DESFire", 0x81: "DESFire (SW)"}
+_DESFIRE_HW_TYPE = {0x01: "DESFire", 0x81: "DESFire (SW)"}
 # Keyed on hw_major (payload[3]), matching PM3 logic.
 # hw_subtype (payload[2]) is always 0x01 for all EV variants and cannot
 # distinguish EV1 from EV2/EV3.
@@ -356,7 +377,7 @@ _DESFIRE_HW_MAJOR = {
     0x30: "Light",
     0x33: "EV3",
 }
-_DESFIRE_STORAGE  = {0x16: "2 KB", 0x18: "4 KB", 0x1A: "8 KB"}
+_DESFIRE_STORAGE = {0x16: "2 KB", 0x18: "4 KB", 0x1A: "8 KB"}
 _DESFIRE_PROTOCOL = {
     0x03: "ISO 14443-3",
     0x04: "ISO 14443-4",
@@ -554,9 +575,9 @@ examples:
                 return Cipher(algorithms.TripleDES(key_arg), modes.CBC(iv), backend=default_backend())
             raise RuntimeError(f"Unsupported auth_type {auth_type}")
 
-        block_sz   = 16 if auth_type == "aes" else 8
-        rnd_len    = 16 if auth_type == "aes" else (16 if auth_type == "3k3des" else 8)
-        auth_cmd   = {"des": 0x0A, "aes": 0xAA, "3k3des": 0x1A}[auth_type]
+        block_sz = 16 if auth_type == "aes" else 8
+        rnd_len = 16 if auth_type == "aes" else (16 if auth_type == "3k3des" else 8)
+        auth_cmd = {"des": 0x0A, "aes": 0xAA, "3k3des": 0x1A}[auth_type]
 
         # ---------- scan + keep field, poll until present or timeout ---------
         print(f" Running DESFire {auth_type.upper()} auth-trace: "
@@ -602,7 +623,7 @@ examples:
             nonlocal block_num
             pcb = 0x02 | block_num
             tx_inner = bytes([pcb]) + payload
-            tx_wire  = tx_inner + _crc14a(tx_inner)
+            tx_wire = tx_inner + _crc14a(tx_inner)
             options = {
                 'activate_rf_field':  0,
                 'wait_response':      1,
@@ -727,7 +748,7 @@ examples:
             ses_key = rnda[:4] + rndb[:4] + rnda[12:16] + rndb[12:16]
         elif auth_type == "3k3des":
             # EV1 3K3DES: 24-byte key
-            ses_key = (rnda[:4]   + rndb[:4]   +
+            ses_key = (rnda[:4] + rndb[:4] +
                        rnda[6:10] + rndb[6:10] +
                        rnda[12:16] + rndb[12:16])
         else:
@@ -889,7 +910,7 @@ class HfDesELoad(SlotIndexArgsAndGoUnit):
         # field), the default card would remain and be silently emulated in
         # place of the intended credential. desfire_set_credential establishes
         # the slot from the credential itself and now raises on rejection.
-        
+
         # The slot's anti-collision record is the device's to settle: it is the
         # only party that knows what the engine answers activation with for the
         # fields a credential leaves out. Setting it from here would mean
@@ -941,7 +962,8 @@ class HfDesEDump(SlotIndexArgsAndGoUnit):
         parser = ArgumentParserNoExit()
         parser.description = "Read a DESFire emulation slot's credential back."
         self.add_slot_args(parser)
-        parser.add_argument("-f", "--file", help="write the credential here; .json -> Proxmark3 mfdes-v1 dump, else raw .dfcb")
+        parser.add_argument(
+            "-f", "--file", help="write the credential here; .json -> Proxmark3 mfdes-v1 dump, else raw .dfcb")
         parser.epilog = ("examples:\n  hf des edump\n  hf des edump -f slot.dfcb\n"
                          "  hf des edump -f hf-mfdes-dump.json\n")
         return parser
@@ -1003,7 +1025,7 @@ class HfDesEBlank(SlotIndexArgsAndGoUnit):
         )
         self.add_slot_args(parser)
         parser.add_argument("-u", "--uid", type=str,
-                           help="7-byte UID in hex, must start with 04. Random if omitted.")
+                            help="7-byte UID in hex, must start with 04. Random if omitted.")
         parser.epilog = "examples:\n  hf des eblank\n  hf des eblank -u 04112233445566\n"
         return parser
 
@@ -1084,14 +1106,14 @@ class HfDesInfo(ReaderRequiredUnit):
             sw_maj = ver.get('sw_major')
             sw_min = ver.get('sw_minor', 0)
 
-            hw_gen  = _DESFIRE_HW_MAJOR.get(hw_maj, f"hw_major 0x{hw_maj:02X}") \
-                      if hw_maj is not None else "?"
+            hw_gen = _DESFIRE_HW_MAJOR.get(hw_maj, f"hw_major 0x{hw_maj:02X}") \
+                if hw_maj is not None else "?"
             hw_stor = _DESFIRE_STORAGE.get(ver.get('hw_storage'),
-                      f"0x{ver['hw_storage']:02X}" if 'hw_storage' in ver else "?")
+                                           f"0x{ver['hw_storage']:02X}" if 'hw_storage' in ver else "?")
             sw_stor = _DESFIRE_STORAGE.get(ver.get('sw_storage'),
-                      f"0x{ver['sw_storage']:02X}" if 'sw_storage' in ver else "?")
-            proto   = _DESFIRE_PROTOCOL.get(ver.get('sw_proto'),
-                      f"0x{ver['sw_proto']:02X}" if 'sw_proto' in ver else "?")
+                                           f"0x{ver['sw_storage']:02X}" if 'sw_storage' in ver else "?")
+            proto = _DESFIRE_PROTOCOL.get(ver.get('sw_proto'),
+                                          f"0x{ver['sw_proto']:02X}" if 'sw_proto' in ver else "?")
 
             hw_ver_str = _fmtver(hw_maj, hw_min) if hw_maj is not None else "?"
             sw_ver_str = _fmtver(sw_maj, sw_min) if sw_maj is not None else "?"
@@ -1170,18 +1192,18 @@ class HfDesReaderAuth(ReaderRequiredUnit):
             "legacy D40 single-DES cards, use `hf des auth-trace` instead."
         )
         parser.add_argument("--aid", type=str, default=None, metavar="<hex>",
-                             help="3-byte AID to select first -> application-level "
-                                  "auth. Omit for PICC master-key auth.")
+                            help="3-byte AID to select first -> application-level "
+                            "auth. Omit for PICC master-key auth.")
         parser.add_argument("-n", "--key-no", type=int, required=True, metavar="<0-31>",
-                             help="Key number to authenticate with.")
+                            help="Key number to authenticate with.")
         parser.add_argument("-a", "--algo", type=str, required=True,
-                             choices=["2tdea", "3tdea", "aes"],
-                             help="2tdea = 2-key 3DES, EV1+ 16-byte key "
+                            choices=["2tdea", "3tdea", "aes"],
+                            help="2tdea = 2-key 3DES, EV1+ 16-byte key "
                                   "(for legacy D40 single-DES use hf des auth-trace); "
                                   "3tdea = 3-key 3DES (24-byte key); "
                                   "aes = AES-128 (16-byte key)")
         parser.add_argument("-k", "--key", type=str, required=True, metavar="<hex>",
-                             help="Key bytes in hex; length must match --algo")
+                            help="Key bytes in hex; length must match --algo")
         parser.epilog = (
             "examples:\n"
             "  hf des readerauth -n 0 -a aes -k 00000000000000000000000000000000\n"
@@ -1281,7 +1303,7 @@ class HfDesChk(ReaderRequiredUnit):
     # AES-128 keys (16 bytes each)
     AES_DEFAULTS = [
         bytes(16),                                                       # NXP Default AES
-        bytes([0x79,0x70,0x25,0x53]*4),                                  # TI TRF7970A
+        bytes([0x79, 0x70, 0x25, 0x53]*4),                                  # TI TRF7970A
         bytes.fromhex('00112233445566778899AABBCCDDEEFF'),               # TI TRF7970A sloa213
         bytes.fromhex('4E617468616E2E4C6920546564647920'),
         bytes.fromhex('43464F494D48504E4C4359454E528841'),               # NHIF
@@ -1315,20 +1337,20 @@ class HfDesChk(ReaderRequiredUnit):
         bytes([0xFF]*16),
         bytes(range(16)),                                                # 000102...0f
         bytes(range(1, 17)),                                             # 010203...10
-        bytes([0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
-               0x08,0x09,0x10,0x11,0x12,0x13,0x14,0x15]),
-        bytes([0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,
-               0x09,0x10,0x11,0x12,0x13,0x14,0x15,0x16]),
-        bytes([0x16,0x15,0x14,0x13,0x12,0x11,0x10,0x09,
-               0x08,0x07,0x06,0x05,0x04,0x03,0x02,0x01]),
-        bytes([0x15,0x14,0x13,0x12,0x11,0x10,0x09,0x08,
-               0x07,0x06,0x05,0x04,0x03,0x02,0x01,0x00]),
-        bytes([0x0f,0x0e,0x0d,0x0c,0x0b,0x0a,0x09,0x08,
-               0x07,0x06,0x05,0x04,0x03,0x02,0x01,0x00]),
-        bytes([0x10,0x0f,0x0e,0x0d,0x0c,0x0b,0x0a,0x09,
-               0x08,0x07,0x06,0x05,0x04,0x03,0x02,0x01]),
-        bytes([0x30,0x31,0x32,0x33,0x34,0x35,0x36,0x37,
-               0x38,0x39,0x3a,0x3b,0x3c,0x3d,0x3e,0x3f]),
+        bytes([0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+               0x08, 0x09, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15]),
+        bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+               0x09, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16]),
+        bytes([0x16, 0x15, 0x14, 0x13, 0x12, 0x11, 0x10, 0x09,
+               0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01]),
+        bytes([0x15, 0x14, 0x13, 0x12, 0x11, 0x10, 0x09, 0x08,
+               0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00]),
+        bytes([0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09, 0x08,
+               0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00]),
+        bytes([0x10, 0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09,
+               0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01]),
+        bytes([0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+               0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f]),
         bytes.fromhex('9CABF398358405AE2F0E2B3D31C99A8A'),
         bytes.fromhex('605F5E5D5C5B5A59605F5E5D5C5B5A59'),              # access control
         bytes.fromhex('22094904FF22677E5D28C6E3ED4F694C'),
@@ -1343,8 +1365,8 @@ class HfDesChk(ReaderRequiredUnit):
     ]
 
     def _build_key_lists(self, args):
-        des_keys   = list(self.DES_DEFAULTS)
-        aes_keys   = list(self.AES_DEFAULTS)
+        des_keys = list(self.DES_DEFAULTS)
+        aes_keys = list(self.AES_DEFAULTS)
         tdea3_keys = list(self.TDEA3_DEFAULTS)
 
         if args.key:
@@ -1379,8 +1401,8 @@ class HfDesChk(ReaderRequiredUnit):
             return des_keys, aes_keys, tdea3_keys
 
         if args.pattern1b:
-            des_keys   = [bytes([i]*8)  for i in range(256)]
-            aes_keys   = [bytes([i]*16) for i in range(256)]
+            des_keys = [bytes([i]*8) for i in range(256)]
+            aes_keys = [bytes([i]*16) for i in range(256)]
             tdea3_keys = [bytes([i]*24) for i in range(256)]
             return des_keys, aes_keys, tdea3_keys
 
@@ -1469,10 +1491,10 @@ class HfDesChk(ReaderRequiredUnit):
                 print(f" {CY}[!] Could not enumerate AIDs: {e} — trying PICC only{C0}")
                 aid_list = ["000000"]
 
-        total_des   = len(des_keys)
-        total_aes   = len(aes_keys)
+        total_des = len(des_keys)
+        total_aes = len(aes_keys)
         total_tdea3 = len(tdea3_keys)
-        total_keys  = (total_des + total_aes + total_tdea3) * len(aid_list)
+        total_keys = (total_des + total_aes + total_tdea3) * len(aid_list)
         print(f" AIDs to check  : {len(aid_list)}  ({', '.join(aid_list)})")
         print(f" DES keys       : {total_des}")
         print(f" AES-128 keys   : {total_aes}")

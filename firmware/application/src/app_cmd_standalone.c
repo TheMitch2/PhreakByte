@@ -30,19 +30,31 @@
 
 static uint16_t rc_to_status(standalone_rc_t rc) {
     switch (rc) {
-        case STANDALONE_RC_OK:               return STATUS_SUCCESS;
-        case STANDALONE_RC_BUSY:             return STATUS_DEVICE_MODE_ERROR;
-        case STANDALONE_RC_INVALID_STATE:    return STATUS_DEVICE_MODE_ERROR;
-        case STANDALONE_RC_NOT_PERMITTED:    return STATUS_PAR_ERR;
-        case STANDALONE_RC_MODE_UNAVAILABLE: return STATUS_NOT_IMPLEMENTED;
-        case STANDALONE_RC_INVALID_CFG:      return STATUS_PAR_ERR;
-        case STANDALONE_RC_NO_TAG:           return STATUS_HF_TAG_NO;
-        case STANDALONE_RC_NO_FREE_SLOT:     return STATUS_PAR_ERR;
-        case STANDALONE_RC_WRITE_FAIL:       return STATUS_FLASH_WRITE_FAIL;
-        case STANDALONE_RC_BUFFER_FULL:      return STATUS_PAR_ERR;
-        case STANDALONE_RC_NO_RESULT:        return STATUS_SUCCESS;  /* empty */
+        case STANDALONE_RC_OK:
+            return STATUS_SUCCESS;
+        case STANDALONE_RC_BUSY:
+            return STATUS_DEVICE_MODE_ERROR;
+        case STANDALONE_RC_INVALID_STATE:
+            return STATUS_DEVICE_MODE_ERROR;
+        case STANDALONE_RC_NOT_PERMITTED:
+            return STATUS_PAR_ERR;
+        case STANDALONE_RC_MODE_UNAVAILABLE:
+            return STATUS_NOT_IMPLEMENTED;
+        case STANDALONE_RC_INVALID_CFG:
+            return STATUS_PAR_ERR;
+        case STANDALONE_RC_NO_TAG:
+            return STATUS_HF_TAG_NO;
+        case STANDALONE_RC_NO_FREE_SLOT:
+            return STATUS_PAR_ERR;
+        case STANDALONE_RC_WRITE_FAIL:
+            return STATUS_FLASH_WRITE_FAIL;
+        case STANDALONE_RC_BUFFER_FULL:
+            return STATUS_PAR_ERR;
+        case STANDALONE_RC_NO_RESULT:
+            return STATUS_SUCCESS;  /* empty */
         case STANDALONE_RC_INTERNAL:         /* fallthrough */
-        default:                             return STATUS_NOT_IMPLEMENTED;
+        default:
+            return STATUS_NOT_IMPLEMENTED;
     }
 }
 
@@ -57,8 +69,10 @@ static uint16_t rc_to_status(standalone_rc_t rc) {
  *             u8 fds_valid_records, u8 fds_dirty_records }  (10 bytes)
  */
 data_frame_tx_t *cmd_handler_standalone_get_mode(uint16_t cmd, uint16_t status,
-                                                 uint16_t length, uint8_t *data) {
-    (void)status; (void)length; (void)data;
+        uint16_t length, uint8_t *data) {
+    (void)status;
+    (void)length;
+    (void)data;
     uint8_t resp[10] = {
         (uint8_t)app_standalone_get_state(),
         (uint8_t)app_standalone_get_mode(),
@@ -68,9 +82,9 @@ data_frame_tx_t *cmd_handler_standalone_get_mode(uint16_t cmd, uint16_t status,
     };
     fds_stat_t stat;
     if (fds_stat(&stat) == NRF_SUCCESS) {
-        resp[4] = (uint8_t)(stat.words_used          );
+        resp[4] = (uint8_t)(stat.words_used);
         resp[5] = (uint8_t)(stat.words_used       >> 8);
-        resp[6] = (uint8_t)(stat.pages_available     );
+        resp[6] = (uint8_t)(stat.pages_available);
         resp[7] = (uint8_t)(stat.pages_available  >> 8);
         resp[8] = (uint8_t)(stat.valid_records);
         resp[9] = (uint8_t)(stat.dirty_records);
@@ -83,7 +97,7 @@ data_frame_tx_t *cmd_handler_standalone_get_mode(uint16_t cmd, uint16_t status,
  * Response: { u8 state, u8 mode, u8 flags, u8 reserved }
  */
 data_frame_tx_t *cmd_handler_standalone_set_mode(uint16_t cmd, uint16_t status,
-                                                 uint16_t length, uint8_t *data) {
+        uint16_t length, uint8_t *data) {
     (void)status;
     if (length != 2 || data == NULL) {
         return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
@@ -110,7 +124,7 @@ data_frame_tx_t *cmd_handler_standalone_set_mode(uint16_t cmd, uint16_t status,
  * Response: { u8 mode, u8 cfg_len, u8[cfg_len] cfg }
  */
 data_frame_tx_t *cmd_handler_standalone_get_config(uint16_t cmd, uint16_t status,
-                                                   uint16_t length, uint8_t *data) {
+        uint16_t length, uint8_t *data) {
     (void)status;
     if (length != 1 || data == NULL) {
         return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
@@ -120,7 +134,7 @@ data_frame_tx_t *cmd_handler_standalone_get_config(uint16_t cmd, uint16_t status
     size_t   cfg_len = 0;
 
     standalone_rc_t rc = app_standalone_get_config(mode, resp + 2,
-                                                   sizeof(resp) - 2, &cfg_len);
+        sizeof(resp) - 2, &cfg_len);
     if (rc == STANDALONE_RC_NO_RESULT) {
         resp[0] = (uint8_t)mode;
         resp[1] = 0;
@@ -140,7 +154,7 @@ data_frame_tx_t *cmd_handler_standalone_get_config(uint16_t cmd, uint16_t status
  * Response: empty
  */
 data_frame_tx_t *cmd_handler_standalone_set_config(uint16_t cmd, uint16_t status,
-                                                   uint16_t length, uint8_t *data) {
+        uint16_t length, uint8_t *data) {
     (void)status;
     if (length < 1 || data == NULL) {
         return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
@@ -168,15 +182,17 @@ data_frame_tx_t *cmd_handler_standalone_set_config(uint16_t cmd, uint16_t status
  * Read cursor is mode-internal. Repeat-call until chunk is empty.
  */
 data_frame_tx_t *cmd_handler_standalone_get_result(uint16_t cmd, uint16_t status,
-                                                   uint16_t length, uint8_t *data) {
-    (void)status; (void)length; (void)data;
+        uint16_t length, uint8_t *data) {
+    (void)status;
+    (void)length;
+    (void)data;
 
     uint8_t resp[4 + STANDALONE_RESULT_CHUNK_MAX];
     size_t  chunk_len = 0;
 
     standalone_rc_t rc = app_standalone_read_result(resp + 4,
-                                                    STANDALONE_RESULT_CHUNK_MAX,
-                                                    &chunk_len);
+        STANDALONE_RESULT_CHUNK_MAX,
+        &chunk_len);
     if (rc == STANDALONE_RC_NO_RESULT) {
         memset(resp, 0, 4);
         return data_frame_make(cmd, STATUS_SUCCESS, 4, resp);
@@ -189,7 +205,7 @@ data_frame_tx_t *cmd_handler_standalone_get_result(uint16_t cmd, uint16_t status
      * an empty chunk (4 zero bytes), which the firmware sends when the
      * read cursor reaches the end of the buffer. */
     uint32_t total = (uint32_t)chunk_len;
-    resp[0] = (uint8_t)(total      );
+    resp[0] = (uint8_t)(total);
     resp[1] = (uint8_t)(total >>  8);
     resp[2] = (uint8_t)(total >> 16);
     resp[3] = (uint8_t)(total >> 24);
@@ -199,16 +215,20 @@ data_frame_tx_t *cmd_handler_standalone_get_result(uint16_t cmd, uint16_t status
 
 /* 7005 CLEAR_RESULT */
 data_frame_tx_t *cmd_handler_standalone_clear_result(uint16_t cmd, uint16_t status,
-                                                     uint16_t length, uint8_t *data) {
-    (void)status; (void)length; (void)data;
+        uint16_t length, uint8_t *data) {
+    (void)status;
+    (void)length;
+    (void)data;
     standalone_rc_t rc = app_standalone_clear_result();
     return data_frame_make(cmd, rc_to_status(rc), 0, NULL);
 }
 
 /* 7006 TRIGGER */
 data_frame_tx_t *cmd_handler_standalone_trigger(uint16_t cmd, uint16_t status,
-                                                uint16_t length, uint8_t *data) {
-    (void)status; (void)length; (void)data;
+        uint16_t length, uint8_t *data) {
+    (void)status;
+    (void)length;
+    (void)data;
     standalone_rc_t rc = app_standalone_trigger();
     return data_frame_make(cmd, rc_to_status(rc), 0, NULL);
 }
@@ -217,8 +237,10 @@ data_frame_tx_t *cmd_handler_standalone_trigger(uint16_t cmd, uint16_t status,
  * Disarm the currently armed standalone mode, triggering on_exit (result save).
  */
 data_frame_tx_t *cmd_handler_standalone_disarm(uint16_t cmd, uint16_t status,
-                                               uint16_t length, uint8_t *data) {
-    (void)status; (void)length; (void)data;
+        uint16_t length, uint8_t *data) {
+    (void)status;
+    (void)length;
+    (void)data;
     /* Defer the actual disarm: relay's on_exit does a synchronous FDS save that
      * can block for seconds on flash GC. Returning now lets the dispatcher send
      * this ack before that save runs (on the next standalone tick). */
@@ -233,13 +255,15 @@ data_frame_tx_t *cmd_handler_standalone_disarm(uint16_t cmd, uint16_t status,
  *           Zero = no data stored for that mode.
  */
 data_frame_tx_t *cmd_handler_standalone_get_sizes(uint16_t cmd, uint16_t status,
-                                                  uint16_t length, uint8_t *data) {
-    (void)status; (void)length; (void)data;
+        uint16_t length, uint8_t *data) {
+    (void)status;
+    (void)length;
+    (void)data;
     uint8_t resp[STANDALONE_MODE__COUNT * 4];
     for (int m = 0; m < STANDALONE_MODE__COUNT; m++) {
         size_t sz = app_standalone_get_result_avail((standalone_mode_t)m);
         int off = m * 4;
-        resp[off + 0] = (uint8_t)(sz      );
+        resp[off + 0] = (uint8_t)(sz);
         resp[off + 1] = (uint8_t)(sz >>  8);
         resp[off + 2] = (uint8_t)(sz >> 16);
         resp[off + 3] = (uint8_t)(sz >> 24);
@@ -255,12 +279,14 @@ data_frame_tx_t *cmd_handler_standalone_get_sizes(uint16_t cmd, uint16_t status,
  *             u8[2] atqa, u8 sak, u8 cascade }   (25 bytes)
  */
 extern void mode_relay_get_diag(uint8_t *out_sub, uint8_t *out_card_found,
-                                 uint8_t *out_identity_rx,
-                                 uint8_t *out_uid, uint8_t *out_uid_len);
+                                uint8_t *out_identity_rx,
+                                uint8_t *out_uid, uint8_t *out_uid_len);
 
 data_frame_tx_t *cmd_handler_standalone_relay_diag(uint16_t cmd, uint16_t status,
-                                                   uint16_t length, uint8_t *data) {
-    (void)status; (void)length; (void)data;
+        uint16_t length, uint8_t *data) {
+    (void)status;
+    (void)length;
+    (void)data;
     uint32_t reports = ble_relay_get_adv_reports();
     uint32_t hits    = ble_relay_get_relay_hits();
     uint8_t  ble_state   = (uint8_t)ble_relay_get_state();
@@ -272,10 +298,14 @@ data_frame_tx_t *cmd_handler_standalone_relay_diag(uint16_t cmd, uint16_t status
         mode_relay_get_diag(&sub, &card_found, &identity_rx, uid, &uid_len);
     }
     uint8_t resp[21];  /* 4+4+1+1+1+1+1+1+7 = 21 bytes */
-    resp[0] = (uint8_t)(reports      ); resp[1]  = (uint8_t)(reports >>  8);
-    resp[2] = (uint8_t)(reports >> 16); resp[3]  = (uint8_t)(reports >> 24);
-    resp[4] = (uint8_t)(hits         ); resp[5]  = (uint8_t)(hits    >>  8);
-    resp[6] = (uint8_t)(hits    >> 16); resp[7]  = (uint8_t)(hits    >> 24);
+    resp[0] = (uint8_t)(reports);
+    resp[1]  = (uint8_t)(reports >>  8);
+    resp[2] = (uint8_t)(reports >> 16);
+    resp[3]  = (uint8_t)(reports >> 24);
+    resp[4] = (uint8_t)(hits);
+    resp[5]  = (uint8_t)(hits    >>  8);
+    resp[6] = (uint8_t)(hits    >> 16);
+    resp[7]  = (uint8_t)(hits    >> 24);
     resp[8]  = ble_state;
     resp[9]  = ble_role;
     resp[10] = sub;

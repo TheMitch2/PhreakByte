@@ -235,7 +235,7 @@ typedef struct {
 } DfcBuildCapabilities;
 
 static inline DfcBuildCapabilities dfc_build_capabilities(void) {
-    return (DfcBuildCapabilities){
+    return (DfcBuildCapabilities) {
         .generation_ev1 = DFC_ENABLE_GENERATION_EV1,
         .generation_ev2 = DFC_ENABLE_GENERATION_EV2,
         .generation_ev3 = DFC_ENABLE_GENERATION_EV3,

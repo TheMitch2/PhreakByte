@@ -19,7 +19,9 @@ int main(int argc, char **argv) {
     if (argc < 2) { fprintf(stderr, "usage: %s <file.dfcb>\n", argv[0]); return 99; }
     FILE *f = fopen(argv[1], "rb");
     if (!f) { perror("open"); return 98; }
-    fseek(f, 0, SEEK_END); long n = ftell(f); fseek(f, 0, SEEK_SET);
+    fseek(f, 0, SEEK_END);
+    long n = ftell(f);
+    fseek(f, 0, SEEK_SET);
     unsigned char *buf = malloc(n);
     if (fread(buf, 1, n, f) != (size_t)n) { fclose(f); return 97; }
     fclose(f);
@@ -27,9 +29,9 @@ int main(int argc, char **argv) {
     memset(&cred, 0, sizeof(cred));
     DfcDerStatus st = dfc_der_decode(&cred, buf, n);
     const char *name = st == DfcDerOk ? "Ok"
-                     : st == DfcDerMalformed ? "Malformed"
-                     : st == DfcDerUnsupported ? "Unsupported"
-                     : st == DfcDerCapacity ? "Capacity" : "Unknown";
+                       : st == DfcDerMalformed ? "Malformed"
+                       : st == DfcDerUnsupported ? "Unsupported"
+                       : st == DfcDerCapacity ? "Capacity" : "Unknown";
     printf("%s\n", name);
     free(buf);
     return (int)st;

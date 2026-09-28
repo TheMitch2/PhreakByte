@@ -29,8 +29,8 @@ void mbedtls_aes_free(mbedtls_aes_context* ctx);
  * MBEDTLS_ERR_AES_INVALID_KEY_LENGTH rather than silently truncating.
  * setkey_enc and setkey_dec are deliberately identical: tiny-AES-c derives the
  * inverse schedule internally, so there is no decrypt-specific setup. */
-int mbedtls_aes_setkey_enc(mbedtls_aes_context* ctx, const uint8_t* key, unsigned int keybits);
-int mbedtls_aes_setkey_dec(mbedtls_aes_context* ctx, const uint8_t* key, unsigned int keybits);
+int mbedtls_aes_setkey_enc(mbedtls_aes_context* ctx, const uint8_t *key, unsigned int keybits);
+int mbedtls_aes_setkey_dec(mbedtls_aes_context* ctx, const uint8_t *key, unsigned int keybits);
 
 /* `input` and `output` must be identical or non-overlapping. `length` must be
  * a multiple of 16. `iv` is updated in place to the trailing ciphertext block. */
@@ -39,5 +39,5 @@ int mbedtls_aes_crypt_cbc(
     int mode,
     size_t length,
     uint8_t iv[16],
-    const uint8_t* input,
-    uint8_t* output);
+    const uint8_t *input,
+    uint8_t *output);

@@ -436,10 +436,10 @@ typedef struct {
 size_t dfc_key_len_for_cipher(uint8_t cipher);
 size_t dfc_block_size_for_cipher(uint8_t cipher);
 
-void dfc_log_buffer(char* TAG, char* prefix, uint8_t* buffer, size_t buffer_len);
-bool dfc_desfire_uid_is_detectable(const uint8_t* uid, size_t uid_len);
-const char* dfc_authentication_mode_to_string(uint8_t auth_command);
-bool dfc_authentication_mode_from_string(const char* value, uint8_t* auth_command);
+void dfc_log_buffer(char *TAG, char *prefix, uint8_t *buffer, size_t buffer_len);
+bool dfc_desfire_uid_is_detectable(const uint8_t *uid, size_t uid_len);
+const char *dfc_authentication_mode_to_string(uint8_t auth_command);
+bool dfc_authentication_mode_from_string(const char *value, uint8_t *auth_command);
 bool dfc_authentication_mode_matches_key_settings(uint8_t auth_command, uint8_t key_settings_2);
 void dfc_encode_standard_data_file_settings(
     uint8_t file_type,
@@ -457,45 +457,45 @@ void dfc_build_read_data_frame(
     uint8_t output[DFC_READ_DATA_FRAME_SIZE]);
 void dfc_build_wrapped_get_version_frame(uint8_t output[DFC_WRAPPED_GET_VERSION_FRAME_SIZE]);
 bool dfc_wrap_native_response_as_iso7816(
-    const uint8_t* native_response,
+    const uint8_t *native_response,
     size_t native_response_len,
     size_t prefix_len,
-    uint8_t* output,
+    uint8_t *output,
     size_t output_capacity,
-    size_t* output_len);
+    size_t *output_len);
 
 // Rotate an N-byte buffer left by one byte (used in the RndA/RndB challenge rotation).
-void dfc_rotate_left(uint8_t* buffer, size_t len);
+void dfc_rotate_left(uint8_t *buffer, size_t len);
 
 void dfc_worker_aes_cbc_decrypt(
-    const uint8_t* key,
+    const uint8_t *key,
     size_t key_len,
     uint8_t iv[16],
     size_t length,
-    const uint8_t* encrypted,
-    uint8_t* clear);
+    const uint8_t *encrypted,
+    uint8_t *clear);
 void dfc_worker_aes_cbc_encrypt(
-    const uint8_t* key,
+    const uint8_t *key,
     size_t key_len,
     uint8_t iv[16],
     size_t length,
-    const uint8_t* clear,
-    uint8_t* encrypted);
+    const uint8_t *clear,
+    uint8_t *encrypted);
 
 void dfc_worker_des_cbc_decrypt(
-    const uint8_t* key,
+    const uint8_t *key,
     size_t key_len,
     uint8_t iv[8],
     size_t length,
-    const uint8_t* encrypted,
-    uint8_t* clear);
+    const uint8_t *encrypted,
+    uint8_t *clear);
 void dfc_worker_des_cbc_encrypt(
-    const uint8_t* key,
+    const uint8_t *key,
     size_t key_len,
     uint8_t iv[8],
     size_t length,
-    const uint8_t* clear,
-    uint8_t* encrypted);
+    const uint8_t *clear,
+    uint8_t *encrypted);
 
 // Session-key derivation from RndA/RndB per DESFire authentication cipher.
 // key_len is the authentication key's length (8=DES, 16=2K3DES or AES, 24=3K3DES);
@@ -510,9 +510,9 @@ void dfc_worker_des_cbc_encrypt(
 // Measured against a genuine EV1 4K.
 void dfc_derive_session_key(
     uint8_t cipher,
-    const uint8_t* key,
+    const uint8_t *key,
     size_t key_len,
-    const uint8_t* rnd_a,
-    const uint8_t* rnd_b,
-    uint8_t* session_key,
-    size_t* out_len);
+    const uint8_t *rnd_a,
+    const uint8_t *rnd_b,
+    uint8_t *session_key,
+    size_t *out_len);

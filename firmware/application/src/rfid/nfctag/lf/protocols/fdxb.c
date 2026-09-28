@@ -244,17 +244,17 @@ static bool fdxb_decode_feed(fdxb_codec *d, bool bit) {
 uint8_t fdxb_t55xx_writer(uint8_t *fdxb_data, uint32_t *blks) {
     /**
      * Encode FDX-B frame for T55xx programming.
-     * 
+     *
      * Reconstructs the full 128-bit FDX-B frame from the 13-byte destuffed data,
      * then packs it into T55xx blocks with Diphase/RF32 config.
-     * 
+     *
      * Block layout:
      *   Block 0: T5577_FDXB_CONFIG
      *   Block 1: bits 0-31 of 128-bit raw frame
      *   Block 2: bits 32-63 of 128-bit raw frame
      *   Block 3: bits 64-95 of 128-bit raw frame
      *   Block 4: bits 96-127 of 128-bit raw frame
-     * 
+     *
      * @param fdxb_data: 13-byte FDX-B destuffed frame
      * @param blks: output array (must hold at least 5 elements)
      * @return: number of blocks used (5: config + 4 data blocks)
@@ -262,13 +262,13 @@ uint8_t fdxb_t55xx_writer(uint8_t *fdxb_data, uint32_t *blks) {
     if (fdxb_data == NULL) {
         return 0;
     }
-    
+
     // Reconstruct the full 128-bit frame from destuffed data
     uint64_t raw_hi, raw_lo;
     if (!fdxb_raw_frame(fdxb_data, &raw_hi, &raw_lo)) {
         return 0;
     }
-    
+
     // Block 0: T55xx configuration for FDX-B (Diphase, RF/32)
     blks[0] = T5577_FDXB_CONFIG;
 
@@ -280,7 +280,7 @@ uint8_t fdxb_t55xx_writer(uint8_t *fdxb_data, uint32_t *blks) {
     blks[2] = (uint32_t)(raw_hi & 0xFFFFFFFF);   // positions 32-63
     blks[3] = (uint32_t)(raw_lo >> 32);          // positions 64-95
     blks[4] = (uint32_t)(raw_lo & 0xFFFFFFFF);   // positions 96-127
-    
+
     return 5;  // config + 4 data blocks (full 128-bit encoded frame)
 }
 
@@ -315,10 +315,10 @@ const protocol fdxb = {
      * so this NULL is not reachable from the tag_emulation path. */
     .modulator = NULL,
     .decoder =
-        {
-            .start = (decoder_start)fdxb_decoder_start,
-            .feed = (decoder_feed)fdxb_decoder_feed,
-        },
+    {
+        .start = (decoder_start)fdxb_decoder_start,
+        .feed = (decoder_feed)fdxb_decoder_feed,
+    },
 };
 
 const protocol *fdxb_protocols[] = {

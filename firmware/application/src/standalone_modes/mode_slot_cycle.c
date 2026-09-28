@@ -43,7 +43,8 @@ typedef struct __attribute__((packed)) {
     uint8_t  start_slot;
     uint8_t  reserved;
     uint16_t interval_ms;
-} cfg_t;
+}
+cfg_t;
 
 static struct {
     cfg_t    cfg;
@@ -164,7 +165,7 @@ static standalone_rc_t on_button(standalone_button_evt_t evt) {
             return STANDALONE_RC_OK;
 
         case STANDALONE_BTN_BOTH_LONG:
-            /* arm/disarm handled by framework */
+        /* arm/disarm handled by framework */
         default:
             return STANDALONE_RC_OK;
     }

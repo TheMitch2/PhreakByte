@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-static DfcApplication* add_app(DfcCredential* c, uint8_t aid0, uint8_t key_settings_2) {
+static DfcApplication *add_app(DfcCredential* c, uint8_t aid0, uint8_t key_settings_2) {
     const uint8_t aid[] = {aid0, 0x02, 0x03};
     return dfc_credential_create_application_desfire_order(c, aid, 0x0F, key_settings_2);
 }
@@ -11,14 +11,14 @@ static DfcApplication* add_app(DfcCredential* c, uint8_t aid0, uint8_t key_setti
 static void fill_keys(DfcCredential* c, DfcApplication* app, uint8_t pattern) {
     size_t n = app ? app->num_keys : c->picc_num_keys;
     size_t len = app ? app->key_len : c->picc_key_len;
-    for(size_t i = 0; i < n; i++) {
-        uint8_t* key = dfc_credential_key(c, app, i);
+    for (size_t i = 0; i < n; i++) {
+        uint8_t *key = dfc_credential_key(c, app, i);
         munit_assert_not_null(key);
         memset(key, (int)(pattern + i), dfc_credential_stored_key_length(len));
     }
 }
 
-static MunitResult test_resize_allocate_and_release(const MunitParameter params[], void* data) {
+static MunitResult test_resize_allocate_and_release(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     DfcCredential c;
@@ -65,7 +65,7 @@ static MunitResult test_resize_allocate_and_release(const MunitParameter params[
     return MUNIT_OK;
 }
 
-static MunitResult test_format_picc_keeps_picc_keys(const MunitParameter params[], void* data) {
+static MunitResult test_format_picc_keeps_picc_keys(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     DfcCredential c;
@@ -81,14 +81,14 @@ static MunitResult test_format_picc_keeps_picc_keys(const MunitParameter params[
     munit_assert_size(c.num_apps, ==, 0);
     // The PICC record survives a format, so its slice has to survive with it.
     munit_assert_size(c.key_pool_used, ==, 16);
-    const uint8_t* picc_key = dfc_credential_key_const(&c, NULL, 0);
+    const uint8_t *picc_key = dfc_credential_key_const(&c, NULL, 0);
     munit_assert_not_null(picc_key);
     munit_assert_uint8(picc_key[0], ==, 0x77);
 
     return MUNIT_OK;
 }
 
-static MunitResult test_pool_exhaustion(const MunitParameter params[], void* data) {
+static MunitResult test_pool_exhaustion(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     DfcCredential c;
@@ -96,16 +96,16 @@ static MunitResult test_pool_exhaustion(const MunitParameter params[], void* dat
     dfc_credential_clear(&c);
 
     size_t created = 0;
-    for(size_t i = 0; i < DFC_MAX_APPS; i++) {
+    for (size_t i = 0; i < DFC_MAX_APPS; i++) {
         DfcApplication* app = add_app(&c, (uint8_t)(0x10 + i), DFC_KEY_TYPE_3K3DES | DFC_MAX_KEYS);
-        if(!app) break;
+        if (!app) break;
         created++;
     }
     // Either the application limit or the pool stops it, and whichever it was,
     // the refusal is clean: nothing was half-created.
     munit_assert_size(c.num_apps, ==, created);
     munit_assert_size(c.key_pool_used, <=, DFC_KEY_POOL_SIZE);
-    for(size_t i = 0; i < c.num_apps; i++) {
+    for (size_t i = 0; i < c.num_apps; i++) {
         munit_assert_not_null(dfc_credential_key(&c, &c.apps[i], 0));
         munit_assert_not_null(dfc_credential_key(&c, &c.apps[i], DFC_MAX_KEYS - 1));
     }
@@ -115,7 +115,7 @@ static MunitResult test_pool_exhaustion(const MunitParameter params[], void* dat
 
 // A copy of the model has to bring the key pool with it, for the same reason the
 // file pool does: applications hold offsets, not keys.
-static MunitResult test_copy_model_carries_pool(const MunitParameter params[], void* data) {
+static MunitResult test_copy_model_carries_pool(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     DfcCredential src;
@@ -144,12 +144,12 @@ static MunitResult test_copy_model_carries_pool(const MunitParameter params[], v
     munit_assert_true(dst.picc_has_preferred_auth_command);
     munit_assert_uint8(dst.picc_preferred_auth_command, ==, src.picc_preferred_auth_command);
 
-    const uint8_t* copied_picc = dfc_credential_key_const(&dst, NULL, 0);
+    const uint8_t *copied_picc = dfc_credential_key_const(&dst, NULL, 0);
     munit_assert_not_null(copied_picc);
     munit_assert_memory_equal(16, copied_picc, dfc_credential_key_const(&src, NULL, 0));
 
-    for(size_t i = 0; i < 2; i++) {
-        const uint8_t* copied = dfc_credential_key_const(&dst, &dst.apps[0], i);
+    for (size_t i = 0; i < 2; i++) {
+        const uint8_t *copied = dfc_credential_key_const(&dst, &dst.apps[0], i);
         munit_assert_not_null(copied);
         munit_assert_memory_equal(16, copied, dfc_credential_key_const(&src, &src.apps[0], i));
     }
@@ -159,7 +159,7 @@ static MunitResult test_copy_model_carries_pool(const MunitParameter params[], v
 
 // Growing a slice in place has to keep the records that follow it addressable,
 // and shrinking has to give the space back.
-static MunitResult test_resize_moves_slice(const MunitParameter params[], void* data) {
+static MunitResult test_resize_moves_slice(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     DfcCredential c;
@@ -190,25 +190,31 @@ static MunitResult test_resize_moves_slice(const MunitParameter params[], void* 
 }
 
 static MunitTest tests[] = {
-    {"/resize-allocate-and-release",
-     test_resize_allocate_and_release,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
-    {"/format-picc-keeps-picc-keys",
-     test_format_picc_keeps_picc_keys,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
+    {
+        "/resize-allocate-and-release",
+        test_resize_allocate_and_release,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
+    {
+        "/format-picc-keeps-picc-keys",
+        test_format_picc_keeps_picc_keys,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
     {"/pool-exhaustion", test_pool_exhaustion, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {"/copy-model-carries-pool",
-     test_copy_model_carries_pool,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
+    {
+        "/copy-model-carries-pool",
+        test_copy_model_carries_pool,
+        NULL,
+        NULL,
+        MUNIT_TEST_OPTION_NONE,
+        NULL
+    },
     {"/resize-moves-slice", test_resize_moves_slice, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };
@@ -221,6 +227,6 @@ static const MunitSuite suite = {
     MUNIT_SUITE_OPTION_NONE,
 };
 
-int main(int argc, char* argv[MUNIT_ARRAY_PARAM(argc + 1)]) {
+int main(int argc, char *argv[MUNIT_ARRAY_PARAM(argc + 1)]) {
     return munit_suite_main(&suite, NULL, argc, argv);
 }

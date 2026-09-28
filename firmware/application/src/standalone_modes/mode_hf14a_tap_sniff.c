@@ -78,7 +78,8 @@ typedef struct __attribute__((packed)) {
     uint8_t  reserved0;
     uint16_t timeout_ms;
     uint8_t  reserved1[4];
-} cfg_t;
+}
+cfg_t;
 
 _Static_assert(sizeof(cfg_t) == 8, "hf14a_tap_sniff cfg_t must be 8 bytes");
 
@@ -130,7 +131,7 @@ static bool append_session(uint8_t status, const uint8_t *trace, uint16_t trace_
     uint8_t *p = &m_result_buf[m_st.write_cursor];
     p[0] = m_st.session_count;
     p[1] = status;
-    p[2] = (uint8_t)(trace_len      );
+    p[2] = (uint8_t)(trace_len);
     p[3] = (uint8_t)(trace_len >>  8);
     if (trace_len) memcpy(p + 4, trace, trace_len);
 
@@ -156,8 +157,8 @@ static void ensure_result_loaded(void) {
 
     size_t loaded = 0;
     standalone_rc_t rc = app_standalone_load_result_buf(
-        STANDALONE_MODE_HF14A_TAP_SNIFF,
-        m_result_words, RESULT_BUFFER_BYTES, &loaded);
+                             STANDALONE_MODE_HF14A_TAP_SNIFF,
+                             m_result_words, RESULT_BUFFER_BYTES, &loaded);
 
     if (rc == STANDALONE_RC_OK && loaded > 0) {
         m_st.write_cursor = loaded;
@@ -167,7 +168,7 @@ static void ensure_result_loaded(void) {
         m_st.session_count = 0;
         while (off + 4 <= m_st.write_cursor) {
             uint16_t tlen = (uint16_t)m_result_buf[off + 2]
-                          | ((uint16_t)m_result_buf[off + 3] << 8);
+                            | ((uint16_t)m_result_buf[off + 3] << 8);
             off += 4 + tlen;
             m_st.session_count++;
         }
@@ -300,7 +301,7 @@ static standalone_rc_t on_button(standalone_button_evt_t evt) {
             return STANDALONE_RC_OK;
 
         case STANDALONE_BTN_BOTH_LONG:
-            /* arm/disarm handled by framework */
+        /* arm/disarm handled by framework */
         default:
             return STANDALONE_RC_OK;
     }

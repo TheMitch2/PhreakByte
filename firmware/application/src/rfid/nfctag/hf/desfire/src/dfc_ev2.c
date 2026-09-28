@@ -17,41 +17,41 @@ enum {
     DfcEv2ChangeKeyHeaderLength = DFC_CHANGE_KEY_EV2_HEADER_LENGTH - 1,
 };
 
-static DfcFile* target_file(DfcEmulator* emulator, const uint8_t* command, size_t command_len) {
-    if(command_len < 2 || emulator->selected_application != DfcEmulatorSelectedApplicationApp)
+static DfcFile *target_file(DfcEmulator* emulator, const uint8_t *command, size_t command_len) {
+    if (command_len < 2 || emulator->selected_application != DfcEmulatorSelectedApplicationApp)
         return NULL;
-    switch(command[0]) {
-    case DFC_CMD_READ_DATA:
-    case DFC_CMD_WRITE_DATA:
-    case DFC_CMD_READ_RECORDS:
-    case DFC_CMD_WRITE_RECORD:
-    case DFC_CMD_UPDATE_RECORD:
-    case DFC_CMD_UPDATE_RECORD_ISO:
-    case DFC_CMD_GET_VALUE:
-    case DFC_CMD_CREDIT:
-    case DFC_CMD_DEBIT:
-    case DFC_CMD_LIMITED_CREDIT:
-        return dfc_credential_find_file_in_app(
-            emulator->credential, emulator->selected_app_index, command[1]);
-    default:
-        return NULL;
+    switch (command[0]) {
+        case DFC_CMD_READ_DATA:
+        case DFC_CMD_WRITE_DATA:
+        case DFC_CMD_READ_RECORDS:
+        case DFC_CMD_WRITE_RECORD:
+        case DFC_CMD_UPDATE_RECORD:
+        case DFC_CMD_UPDATE_RECORD_ISO:
+        case DFC_CMD_GET_VALUE:
+        case DFC_CMD_CREDIT:
+        case DFC_CMD_DEBIT:
+        case DFC_CMD_LIMITED_CREDIT:
+            return dfc_credential_find_file_in_app(
+                       emulator->credential, emulator->selected_app_index, command[1]);
+        default:
+            return NULL;
     }
 }
 
 static bool bypass_secure_messaging(
     DfcEmulator* emulator,
-    const uint8_t* command,
+    const uint8_t *command,
     size_t command_len) {
-    switch(command[0]) {
-    case DFC_CMD_ADDITIONAL_FRAME:
-    case DFC_CMD_AUTHENTICATE_EV2_FIRST:
-    case DFC_CMD_AUTHENTICATE_EV2_NON_FIRST:
+    switch (command[0]) {
+        case DFC_CMD_ADDITIONAL_FRAME:
+        case DFC_CMD_AUTHENTICATE_EV2_FIRST:
+        case DFC_CMD_AUTHENTICATE_EV2_NON_FIRST:
 #if DFC_ENABLE_DELEGATED_APPLICATIONS
-    case DFC_CMD_CREATE_DELEGATED_APPLICATION:
+        case DFC_CMD_CREATE_DELEGATED_APPLICATION:
 #endif
-        return true;
-    default:
-        break;
+            return true;
+        default:
+            break;
     }
     DfcFile* file = target_file(emulator, command, command_len);
     return file && file->comm_settings == DFC_COMM_PLAIN;
@@ -60,112 +60,112 @@ static bool bypass_secure_messaging(
 static bool command_mac(
     const DfcEmulator* emulator,
     uint8_t instruction,
-    const uint8_t* data,
+    const uint8_t *data,
     size_t data_len,
     uint8_t output[DFC_WIRE_MAC_LENGTH]) {
     return dfc_ev2_mac(
-        emulator->ev2_session_mac_key,
-        instruction,
-        emulator->ev2_command_counter,
-        emulator->ev2_transaction_identifier,
-        data,
-        data_len,
-        NULL,
-        0,
-        output);
+               emulator->ev2_session_mac_key,
+               instruction,
+               emulator->ev2_command_counter,
+               emulator->ev2_transaction_identifier,
+               data,
+               data_len,
+               NULL,
+               0,
+               output);
 }
 
 bool dfc_ev2_verify_chained_command_mac(
     const DfcEmulator* emulator,
     uint8_t instruction,
-    const uint8_t* data,
+    const uint8_t *data,
     size_t data_len,
     const uint8_t mac[DFC_WIRE_MAC_LENGTH]) {
     uint8_t expected[DFC_WIRE_MAC_LENGTH];
-    if(!command_mac(emulator, instruction, data, data_len, expected)) return false;
+    if (!command_mac(emulator, instruction, data, data_len, expected)) return false;
     return dfc_ev2_equal(expected, mac, sizeof(expected));
 }
 
 static bool response_mac(
     const DfcEmulator* emulator,
     uint8_t status,
-    const uint8_t* data,
+    const uint8_t *data,
     size_t data_len,
     uint8_t output[DFC_WIRE_MAC_LENGTH]) {
     return dfc_ev2_mac(
-        emulator->ev2_session_mac_key,
-        status,
-        emulator->ev2_command_counter,
-        emulator->ev2_transaction_identifier,
-        data,
-        data_len,
-        NULL,
-        0,
-        output);
+               emulator->ev2_session_mac_key,
+               status,
+               emulator->ev2_command_counter,
+               emulator->ev2_transaction_identifier,
+               data,
+               data_len,
+               NULL,
+               0,
+               output);
 }
 
 static bool decrypt_command_data(
     const DfcEmulator* emulator,
-    const uint8_t* encrypted,
+    const uint8_t *encrypted,
     size_t encrypted_len,
-    uint8_t* clear,
-    size_t* clear_len,
+    uint8_t *clear,
+    size_t *clear_len,
     bool allow_unpadded) {
     return dfc_ev2_decrypt_data(
-        emulator->ev2_session_encryption_key,
-        DfcEv2DirectionCommand,
-        emulator->ev2_command_counter,
-        emulator->ev2_transaction_identifier,
-        encrypted,
-        encrypted_len,
-        clear,
-        clear_len,
-        allow_unpadded);
+               emulator->ev2_session_encryption_key,
+               DfcEv2DirectionCommand,
+               emulator->ev2_command_counter,
+               emulator->ev2_transaction_identifier,
+               encrypted,
+               encrypted_len,
+               clear,
+               clear_len,
+               allow_unpadded);
 }
 
 static bool encrypt_response_data(
     const DfcEmulator* emulator,
-    const uint8_t* clear,
+    const uint8_t *clear,
     size_t clear_len,
-    uint8_t* encrypted,
+    uint8_t *encrypted,
     size_t encrypted_capacity,
-    size_t* encrypted_len) {
+    size_t *encrypted_len) {
     return dfc_ev2_encrypt_data(
-        emulator->ev2_session_encryption_key,
-        DfcEv2DirectionResponse,
-        emulator->ev2_command_counter,
-        emulator->ev2_transaction_identifier,
-        clear,
-        clear_len,
-        encrypted,
-        encrypted_capacity,
-        encrypted_len);
+               emulator->ev2_session_encryption_key,
+               DfcEv2DirectionResponse,
+               emulator->ev2_command_counter,
+               emulator->ev2_transaction_identifier,
+               clear,
+               clear_len,
+               encrypted,
+               encrypted_capacity,
+               encrypted_len);
 }
 
 DfcEv2CommandSecurity dfc_ev2_prepare_command(
     DfcEmulator* emulator,
-    const uint8_t* command,
+    const uint8_t *command,
     size_t command_len,
-    uint8_t* clear_command,
+    uint8_t *clear_command,
     size_t clear_capacity,
-    size_t* clear_len) {
-    if(!emulator->ev2_session_active || bypass_secure_messaging(emulator, command, command_len)) {
-        if(command_len > clear_capacity) return DfcEv2CommandInvalid;
+    size_t *clear_len) {
+    if (!emulator->ev2_session_active || bypass_secure_messaging(emulator, command, command_len)) {
+        if (command_len > clear_capacity) return DfcEv2CommandInvalid;
         memcpy(clear_command, command, command_len);
         *clear_len = command_len;
         return DfcEv2CommandPlain;
     }
-    if(command_len < 1 + DFC_WIRE_MAC_LENGTH) return DfcEv2CommandInvalid;
+    if (command_len < 1 + DFC_WIRE_MAC_LENGTH) return DfcEv2CommandInvalid;
 
     size_t secured_data_len = command_len - 1 - DFC_WIRE_MAC_LENGTH;
-    const uint8_t* secured_data = command + 1;
+    const uint8_t *secured_data = command + 1;
     uint8_t expected[DFC_WIRE_MAC_LENGTH];
-    if(!command_mac(emulator, command[0], secured_data, secured_data_len, expected))
+    if (!command_mac(emulator, command[0], secured_data, secured_data_len, expected))
         return DfcEv2CommandInvalid;
-    if(!dfc_ev2_equal(expected, command + 1 + secured_data_len, sizeof(expected)))
+    if (!dfc_ev2_equal(expected, command + 1 + secured_data_len, sizeof(expected)))
         return DfcEv2CommandInvalid;
 
-    if(1 + secured_data_len > clear_capacity) return DfcEv2CommandInvalid;
+    if (1 + secured_data_len > clear_capacity) return DfcEv2CommandInvalid;
     clear_command[0] = command[0];
     memcpy(clear_command + 1, secured_data, secured_data_len);
     *clear_len = 1 + secured_data_len;
@@ -173,33 +173,33 @@ DfcEv2CommandSecurity dfc_ev2_prepare_command(
     DfcFile* file = target_file(emulator, command, command_len);
     size_t encrypted_header_len = 0;
     bool decrypt_data = false;
-    if(file && file->comm_settings == DFC_COMM_ENCIPHERED) {
-        if(command[0] == DFC_CMD_WRITE_DATA || command[0] == DFC_CMD_WRITE_RECORD)
+    if (file && file->comm_settings == DFC_COMM_ENCIPHERED) {
+        if (command[0] == DFC_CMD_WRITE_DATA || command[0] == DFC_CMD_WRITE_RECORD)
             encrypted_header_len = DfcEv2FileCommandHeaderLength, decrypt_data = true;
-        if(command[0] == DFC_CMD_UPDATE_RECORD || command[0] == DFC_CMD_UPDATE_RECORD_ISO)
+        if (command[0] == DFC_CMD_UPDATE_RECORD || command[0] == DFC_CMD_UPDATE_RECORD_ISO)
             encrypted_header_len = DfcEv2UpdateRecordHeaderLength, decrypt_data = true;
-        if(command[0] == DFC_CMD_CREDIT || command[0] == DFC_CMD_DEBIT ||
-           command[0] == DFC_CMD_LIMITED_CREDIT)
+        if (command[0] == DFC_CMD_CREDIT || command[0] == DFC_CMD_DEBIT ||
+                command[0] == DFC_CMD_LIMITED_CREDIT)
             encrypted_header_len = DfcEv2ValueCommandHeaderLength, decrypt_data = true;
     }
-    if(command[0] == DFC_CMD_SET_CONFIGURATION)
+    if (command[0] == DFC_CMD_SET_CONFIGURATION)
         encrypted_header_len = DfcEv2SetConfigurationHeaderLength, decrypt_data = true;
-    if(command[0] == DFC_CMD_CREATE_TRANSACTION_MAC_FILE)
+    if (command[0] == DFC_CMD_CREATE_TRANSACTION_MAC_FILE)
         encrypted_header_len = DfcEv2CreateTransactionMacHeaderLength, decrypt_data = true;
-    if(command[0] == DFC_CMD_COMMIT_READER_ID)
+    if (command[0] == DFC_CMD_COMMIT_READER_ID)
         encrypted_header_len = DfcEv2CommitReaderIdHeaderLength, decrypt_data = true;
-    if(command[0] == DFC_CMD_CHANGE_KEY_EV2)
+    if (command[0] == DFC_CMD_CHANGE_KEY_EV2)
         encrypted_header_len = DfcEv2ChangeKeyHeaderLength, decrypt_data = true;
-    if(decrypt_data) {
-        if(secured_data_len <= encrypted_header_len) return DfcEv2CommandInvalid;
+    if (decrypt_data) {
+        if (secured_data_len <= encrypted_header_len) return DfcEv2CommandInvalid;
         size_t decrypted_len = 0;
-        if(!decrypt_command_data(
-               emulator,
-               secured_data + encrypted_header_len,
-               secured_data_len - encrypted_header_len,
-               clear_command + 1 + encrypted_header_len,
-               &decrypted_len,
-               command[0] == DFC_CMD_COMMIT_READER_ID))
+        if (!decrypt_command_data(
+                    emulator,
+                    secured_data + encrypted_header_len,
+                    secured_data_len - encrypted_header_len,
+                    clear_command + 1 + encrypted_header_len,
+                    &decrypted_len,
+                    command[0] == DFC_CMD_COMMIT_READER_ID))
             return DfcEv2CommandInvalid;
         *clear_len = 1 + encrypted_header_len + decrypted_len;
     }
@@ -208,16 +208,16 @@ DfcEv2CommandSecurity dfc_ev2_prepare_command(
 
 bool dfc_ev2_protect_response(
     DfcEmulator* emulator,
-    const uint8_t* clear_command,
+    const uint8_t *clear_command,
     size_t clear_command_len,
-    const uint8_t* clear_response,
+    const uint8_t *clear_response,
     size_t clear_response_len,
-    uint8_t* secured_response,
+    uint8_t *secured_response,
     size_t secured_capacity,
-    size_t* secured_len) {
-    if(clear_response_len == 0 || emulator->ev2_command_counter == UINT16_MAX) return false;
+    size_t *secured_len) {
+    if (clear_response_len == 0 || emulator->ev2_command_counter == UINT16_MAX) return false;
     uint8_t status = clear_response[0];
-    const uint8_t* response_data = clear_response + 1;
+    const uint8_t *response_data = clear_response + 1;
     size_t response_data_len = clear_response_len - 1;
     emulator->ev2_command_counter++;
 
@@ -228,22 +228,22 @@ bool dfc_ev2_protect_response(
                    (clear_command[0] == DFC_CMD_READ_DATA ||
                     clear_command[0] == DFC_CMD_READ_RECORDS ||
                     clear_command[0] == DFC_CMD_GET_VALUE);
-    if(encrypt) {
-        if(!encrypt_response_data(
-               emulator,
-               response_data,
-               response_data_len,
-               protected_data,
-               sizeof(protected_data),
-               &protected_data_len))
+    if (encrypt) {
+        if (!encrypt_response_data(
+                    emulator,
+                    response_data,
+                    response_data_len,
+                    protected_data,
+                    sizeof(protected_data),
+                    &protected_data_len))
             return false;
     } else {
         memcpy(protected_data, response_data, response_data_len);
     }
 
-    if(1 + protected_data_len + DFC_WIRE_MAC_LENGTH > secured_capacity) return false;
+    if (1 + protected_data_len + DFC_WIRE_MAC_LENGTH > secured_capacity) return false;
     uint8_t mac[DFC_WIRE_MAC_LENGTH];
-    if(!response_mac(emulator, status, protected_data, protected_data_len, mac)) return false;
+    if (!response_mac(emulator, status, protected_data, protected_data_len, mac)) return false;
     secured_response[0] = status;
     memcpy(secured_response + 1, protected_data, protected_data_len);
     memcpy(secured_response + 1 + protected_data_len, mac, sizeof(mac));
@@ -256,7 +256,7 @@ bool dfc_ev2_protect_response(
 bool dfc_ev2_verify_chained_command_mac(
     const DfcEmulator* emulator,
     uint8_t instruction,
-    const uint8_t* data,
+    const uint8_t *data,
     size_t data_len,
     const uint8_t mac[DFC_WIRE_MAC_LENGTH]) {
     DFC_UNUSED(emulator);
@@ -269,13 +269,13 @@ bool dfc_ev2_verify_chained_command_mac(
 
 DfcEv2CommandSecurity dfc_ev2_prepare_command(
     DfcEmulator* emulator,
-    const uint8_t* command,
+    const uint8_t *command,
     size_t command_len,
-    uint8_t* clear_command,
+    uint8_t *clear_command,
     size_t clear_capacity,
-    size_t* clear_len) {
+    size_t *clear_len) {
     DFC_UNUSED(emulator);
-    if(command_len > clear_capacity) return DfcEv2CommandInvalid;
+    if (command_len > clear_capacity) return DfcEv2CommandInvalid;
     memcpy(clear_command, command, command_len);
     *clear_len = command_len;
     return DfcEv2CommandPlain;
@@ -283,17 +283,17 @@ DfcEv2CommandSecurity dfc_ev2_prepare_command(
 
 bool dfc_ev2_protect_response(
     DfcEmulator* emulator,
-    const uint8_t* clear_command,
+    const uint8_t *clear_command,
     size_t clear_command_len,
-    const uint8_t* clear_response,
+    const uint8_t *clear_response,
     size_t clear_response_len,
-    uint8_t* secured_response,
+    uint8_t *secured_response,
     size_t secured_capacity,
-    size_t* secured_len) {
+    size_t *secured_len) {
     DFC_UNUSED(emulator);
     DFC_UNUSED(clear_command);
     DFC_UNUSED(clear_command_len);
-    if(clear_response_len > secured_capacity) return false;
+    if (clear_response_len > secured_capacity) return false;
     memcpy(secured_response, clear_response, clear_response_len);
     *secured_len = clear_response_len;
     return true;

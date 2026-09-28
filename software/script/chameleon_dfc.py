@@ -147,6 +147,8 @@ def native_cmd_to_mask(native_cmd: int) -> int:
     if name == "ISO":
         return AUTH_CMD_BITS["ISO"] | AUTH_CMD_BITS["ISO7816"]
     return AUTH_CMD_BITS["D40"]
+
+
 AUTH_COMMANDS_BY_CODE = {0: 0x0A, 1: 0x1A, 2: 0xAA}
 
 
@@ -469,7 +471,7 @@ def _encode_app(cred: DfcCredential, index: int, app: DfcApplication) -> bytes:
         _tlv(0x83, bytes([app.key_settings_1]))
         + _tlv(0x84, bytes([app.key_settings_2]))
         + _int(0x85, (app.auth_mask or native_cmd_to_mask(app.auth_command))
-                     if _target_v6(cred) else AUTH_MODE_CODES.get(app.auth_command, 0))
+               if _target_v6(cred) else AUTH_MODE_CODES.get(app.auth_command, 0))
         + _encode_keys(0xA6, app.keys, app.key_len)
         + _encode_files(0xA7, cred, index)
         # v6 APP_SM_DISABLE=P(11)=0x8B, APP_PREFERRED_AUTH=P(12)=0x8C,
@@ -506,8 +508,8 @@ def der_encode(cred: DfcCredential) -> bytes:
         _tlv(0x80, bytes([cred.picc_key_settings_1]))
         + _tlv(0x81, bytes([cred.picc_key_settings_2]))
         + _int(0x82, (cred.picc_auth_mask or native_cmd_to_mask(cred.picc_auth_command))
-                     if _target_v6(cred)
-                     else AUTH_MODE_CODES.get(cred.picc_auth_command, 0))
+               if _target_v6(cred)
+               else AUTH_MODE_CODES.get(cred.picc_auth_command, 0))
     )
     # DEFAULT FALSE: omit rather than emit an explicit false.
     if cred.picc_random_id:
@@ -673,13 +675,13 @@ def _read_tlv(blob: bytes, pos: int) -> tuple[int, bytes, int]:
             raise DfcError("indefinite or over-long length")
         if pos + 2 + count > len(blob):
             raise DfcError("truncated length")
-        n = int.from_bytes(blob[pos + 2 : pos + 2 + count], "big")
+        n = int.from_bytes(blob[pos + 2: pos + 2 + count], "big")
         hdr = 2 + count
         if n < 128 or (count == 2 and n < 256):
             raise DfcError("non-minimal length")
     if pos + hdr + n > len(blob):
         raise DfcError("truncated value")
-    return tag, blob[pos + hdr : pos + hdr + n], pos + hdr + n
+    return tag, blob[pos + hdr: pos + hdr + n], pos + hdr + n
 
 
 def _split(body: bytes) -> list[tuple[int, bytes]]:
@@ -1035,7 +1037,7 @@ def _scan_fields(text: str) -> dict[str, str]:
         if sep < 0:
             raise DfcError(f"text line has no key separator: {line!r}")
         key = line[:sep]
-        value = line[sep + 1 :]
+        value = line[sep + 1:]
         if key != key.rstrip() or not value.startswith(" "):
             raise DfcError(f"text line is not canonical: {line!r}")
         value = value[1:]

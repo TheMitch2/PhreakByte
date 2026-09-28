@@ -59,6 +59,7 @@ class BLESerialShim:
         # pyserial-compatible attributes the CLI touches:
         self.timeout = 0.1
         self.dtr = True                     # no-op for BLE; present so serial code paths don't fail
+
     @property
     def payload_size(self) -> int:
         """Negotiated ATT payload size in bytes (ATT MTU - 3)."""

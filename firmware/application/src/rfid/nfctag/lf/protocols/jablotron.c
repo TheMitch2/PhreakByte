@@ -239,10 +239,10 @@ const protocol jablotron = {
     .get_data = (codec_get_data)jablotron_get_data,
     .modulator = (modulator)jablotron_modulator,
     .decoder =
-        {
-            .start = (decoder_start)jablotron_decoder_start,
-            .feed = (decoder_feed)jablotron_decoder_feed,
-        },
+    {
+        .start = (decoder_start)jablotron_decoder_start,
+        .feed = (decoder_feed)jablotron_decoder_feed,
+    },
 };
 
 uint8_t jablotron_t55xx_writer(uint8_t *uid, uint32_t *blks) {

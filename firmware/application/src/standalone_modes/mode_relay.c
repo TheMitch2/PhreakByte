@@ -115,7 +115,7 @@ static void trace_append(bool tag_to_reader, const uint8_t *data, uint16_t bits)
     if (m_trace_len + needed > RELAY_TRACE_BUF_BYTES) return;
     uint16_t hdr = (tag_to_reader ? 0x8000u : 0u) | (bits & 0x7FFFu);
     m_trace_buf[m_trace_len++] = (uint8_t)(hdr >> 8);
-    m_trace_buf[m_trace_len++] = (uint8_t)(hdr     );
+    m_trace_buf[m_trace_len++] = (uint8_t)(hdr);
     if (bytes && data) memcpy(m_trace_buf + m_trace_len, data, bytes);
     m_trace_len += bytes;
     m_trace_frame_count++;
@@ -209,7 +209,7 @@ static void result_ensure_loaded(void) {
     m_st.result_loaded = true;
     size_t loaded = 0;
     standalone_rc_t rc = app_standalone_load_result_buf(
-        STANDALONE_MODE_RELAY, m_result_words, RELAY_RESULT_BUF_BYTES, &loaded);
+                             STANDALONE_MODE_RELAY, m_result_words, RELAY_RESULT_BUF_BYTES, &loaded);
     if (rc == STANDALONE_RC_OK && loaded > 0) {
         m_st.result_write = loaded;
         m_st.result_read  = 0;
@@ -240,10 +240,10 @@ static void result_save_session(uint8_t status) {
     /* Make sure trace fits; if not, drop oldest session */
     uint16_t needed = RH_HEADER_SIZE + m_trace_len;
     while (m_st.result_write + needed > RELAY_RESULT_BUF_BYTES
-           && m_st.result_write >= RH_HEADER_SIZE) {
+            && m_st.result_write >= RH_HEADER_SIZE) {
         /* Drop oldest session: read its trace_len from header */
         uint16_t oldest_trace = (uint16_t)m_result_buf[RH_TRACE_LEN]
-                              | ((uint16_t)m_result_buf[RH_TRACE_LEN+1] << 8);
+                                | ((uint16_t)m_result_buf[RH_TRACE_LEN + 1] << 8);
         uint16_t oldest_total = RH_HEADER_SIZE + oldest_trace;
         if (oldest_total > m_st.result_write) break;
         memmove(m_result_buf, m_result_buf + oldest_total,
@@ -263,7 +263,8 @@ static void result_save_session(uint8_t status) {
     uint8_t own[6] = {0}, peer[6] = {0};
     ble_relay_get_my_addr(own);
     ble_relay_get_peer_addr(peer);
-    (void)own; (void)peer;
+    (void)own;
+    (void)peer;
 
     h[RH_ROLE]   = m_st.role;
     h[RH_STATUS] = status;
@@ -282,9 +283,9 @@ static void result_save_session(uint8_t status) {
         h[RH_SAK] = m_st.identity.sak;
     }
 
-    h[RH_FRAME_COUNT    ] = (uint8_t)(m_trace_frame_count     );
+    h[RH_FRAME_COUNT    ] = (uint8_t)(m_trace_frame_count);
     h[RH_FRAME_COUNT + 1] = (uint8_t)(m_trace_frame_count >> 8);
-    h[RH_TRACE_LEN      ] = (uint8_t)(m_trace_len             );
+    h[RH_TRACE_LEN      ] = (uint8_t)(m_trace_len);
     h[RH_TRACE_LEN   + 1] = (uint8_t)(m_trace_len          >> 8);
 
     m_st.result_write += RH_HEADER_SIZE;
@@ -299,7 +300,7 @@ static void result_save_session(uint8_t status) {
      * Cancel sleep timer before blocking so it can't fire mid-write. */
     sleep_timer_stop();
     standalone_rc_t save_rc = app_standalone_save_result_buf(STANDALONE_MODE_RELAY,
-                                   m_result_words, m_st.result_write);
+        m_result_words, m_st.result_write);
     if (save_rc != STANDALONE_RC_OK) {
         NRF_LOG_WARNING("relay: FDS save failed rc=%d write=%u", save_rc, m_st.result_write);
         standalone_feedback(SL_FB_ERROR);
@@ -559,7 +560,7 @@ static void reader_relay_frame(const uint8_t *data, uint16_t bits) {
             uint8_t al = fresh.ats_len < sizeof(m_st.identity.ats)
                          ? fresh.ats_len : sizeof(m_st.identity.ats);
             if (al > 0 && (al != m_st.identity.ats_len ||
-                memcmp(fresh.ats, m_st.identity.ats, al) != 0)) {
+                           memcmp(fresh.ats, m_st.identity.ats, al) != 0)) {
                 m_st.identity.ats_len = al;
                 memcpy(m_st.identity.ats, fresh.ats, al);
                 ble_relay_send_card_identity(&m_st.identity);
@@ -595,18 +596,18 @@ static void reader_relay_frame(const uint8_t *data, uint16_t bits) {
                             * checkCrc=false (it overwrites the bit count with
                             * finalRecvBytes). Do NOT treat this as bits. */
     uint8_t status = pcd_14a_reader_raw_cmd(
-        false,  /* openRFField */
-        true,   /* waitResp */
-        false,  /* appendCrc */
-        false,  /* autoSelect */
-        true,   /* keepField */
-        false,  /* checkCrc */
-        300,    /* waitRespTimeout ms */
-        tx_bytes * 8,
-        tx_buf,
-        rx_buf,
-        &rx_len,
-        sizeof(rx_buf) * 8);
+                         false,  /* openRFField */
+                         true,   /* waitResp */
+                         false,  /* appendCrc */
+                         false,  /* autoSelect */
+                         true,   /* keepField */
+                         false,  /* checkCrc */
+                         300,    /* waitRespTimeout ms */
+                         tx_bytes * 8,
+                         tx_buf,
+                         rx_buf,
+                         &rx_len,
+                         sizeof(rx_buf) * 8);
 
     /* Convert the byte count to a bit count for the relay protocol, which
      * carries frame lengths in bits. Treating bytes as bits truncated the
@@ -771,7 +772,7 @@ static standalone_rc_t on_enter(const uint8_t *cfg, size_t cfg_len) {
 
     if (cfg != NULL && cfg_len >= 4) {
         m_st.wtx_ms = (uint32_t)cfg[0] | ((uint32_t)cfg[1] << 8)
-                    | ((uint32_t)cfg[2] << 16) | ((uint32_t)cfg[3] << 24);
+                      | ((uint32_t)cfg[2] << 16) | ((uint32_t)cfg[3] << 24);
     }
 
     m_st.link_start_ticks = app_timer_cnt_get();
@@ -850,7 +851,7 @@ static standalone_rc_t on_tick(uint32_t now_ticks) {
     /* Keep scan + HELLO alive every 2s */
     static uint32_t s_last_scan_restart = 0;
     if (ble_relay_get_state() != BLE_RELAY_STATE_IDLE &&
-        app_timer_cnt_diff_compute(now_ticks, s_last_scan_restart)
+            app_timer_cnt_diff_compute(now_ticks, s_last_scan_restart)
             >= APP_TIMER_TICKS(2000)) {
         s_last_scan_restart = now_ticks;
         ble_relay_restart_scan();
@@ -859,40 +860,40 @@ static standalone_rc_t on_tick(uint32_t now_ticks) {
 
     switch (m_st.sub) {
 
-    case RS_LINKING: {
-        static uint32_t s_last_pulse = 0;
-        if (app_timer_cnt_diff_compute(now_ticks, s_last_pulse)
-                >= APP_TIMER_TICKS(1000)) {
-            s_last_pulse = now_ticks;
-            standalone_feedback(SL_FB_BUSY_START);
-        }
-        if (app_timer_cnt_diff_compute(now_ticks, m_st.link_start_ticks)
-                >= APP_TIMER_TICKS(RELAY_LINK_TIMEOUT_MS)) {
-            m_st.sub = RS_ERROR;
-            standalone_feedback(SL_FB_ERROR);
-        }
-        break;
-    }
-
-    case RS_CARD_AWAIT_IDENTITY:
-        if (m_st.identity_received) {
-            card_setup_emulation();
-            if (m_st.reader_sent_ready) {
-                m_st.sub = RS_CARD_READY;
-                ble_relay_set_fast_mode(true);  /* max scan rate for relay latency */
-                standalone_feedback(SL_FB_ARMED);
+        case RS_LINKING: {
+            static uint32_t s_last_pulse = 0;
+            if (app_timer_cnt_diff_compute(now_ticks, s_last_pulse)
+                    >= APP_TIMER_TICKS(1000)) {
+                s_last_pulse = now_ticks;
+                standalone_feedback(SL_FB_BUSY_START);
             }
+            if (app_timer_cnt_diff_compute(now_ticks, m_st.link_start_ticks)
+                    >= APP_TIMER_TICKS(RELAY_LINK_TIMEOUT_MS)) {
+                m_st.sub = RS_ERROR;
+                standalone_feedback(SL_FB_ERROR);
+            }
+            break;
         }
-        break;
 
-    case RS_CARD_READY:
-        /* Periodic autosave — guard s_last_autosave==0 so it doesn't
-         * fire immediately on first tick (diff from 0 >> 15s at boot). */
+        case RS_CARD_AWAIT_IDENTITY:
+            if (m_st.identity_received) {
+                card_setup_emulation();
+                if (m_st.reader_sent_ready) {
+                    m_st.sub = RS_CARD_READY;
+                    ble_relay_set_fast_mode(true);  /* max scan rate for relay latency */
+                    standalone_feedback(SL_FB_ARMED);
+                }
+            }
+            break;
+
+        case RS_CARD_READY:
+            /* Periodic autosave — guard s_last_autosave==0 so it doesn't
+             * fire immediately on first tick (diff from 0 >> 15s at boot). */
         {
             static uint32_t s_last_autosave = 0;
             if (s_last_autosave == 0) s_last_autosave = now_ticks;
             if (m_st.was_connected &&
-                app_timer_cnt_diff_compute(now_ticks, s_last_autosave)
+                    app_timer_cnt_diff_compute(now_ticks, s_last_autosave)
                     >= APP_TIMER_TICKS(15000)) {
                 s_last_autosave = now_ticks;
                 /* Periodic safety commit of the in-flight session (non-destructive;
@@ -902,14 +903,14 @@ static standalone_rc_t on_tick(uint32_t now_ticks) {
                 result_commit_live(RELAY_SESSION_OK);
             }
         }
-        /* A reader that ignores our S(WTX) never opens the window the buffered
-         * response needs, so the bytes sit in nfc_relay_tag until its next
-         * frame clears them — the exchange is lost with no diagnostic. Give up
-         * after a bounded wait and say so, rather than leaving stale bytes
-         * that could be transmitted against a later exchange. */
+            /* A reader that ignores our S(WTX) never opens the window the buffered
+             * response needs, so the bytes sit in nfc_relay_tag until its next
+             * frame clears them — the exchange is lost with no diagnostic. Give up
+             * after a bounded wait and say so, rather than leaving stale bytes
+             * that could be transmitted against a later exchange. */
         if (nfc_relay_tag_response_pending()) {
             if (m_st.response_tx_ticks != 0 &&
-                app_timer_cnt_diff_compute(now_ticks, m_st.response_tx_ticks)
+                    app_timer_cnt_diff_compute(now_ticks, m_st.response_tx_ticks)
                     >= APP_TIMER_TICKS(RELAY_WTX_ACK_TIMEOUT_MS)) {
                 nfc_relay_tag_abort_pending();
                 m_st.response_tx_ticks = 0;
@@ -919,10 +920,10 @@ static standalone_rc_t on_tick(uint32_t now_ticks) {
             m_st.response_tx_ticks = 0;
         }
 
-        /* Frame ISR set frame_pending when reader sends a command */
+            /* Frame ISR set frame_pending when reader sends a command */
         if (m_st.frame_pending) {
             __DMB();  /* ensure frame_buf/frame_bits writes (ISR) are visible
-                       * before we read them — pairs with the ISR's flag set */
+                   * before we read them — pairs with the ISR's flag set */
             m_st.frame_pending = false;
 
             /* Log reader→tag frame in trace */
@@ -949,14 +950,14 @@ static standalone_rc_t on_tick(uint32_t now_ticks) {
             m_st.sub              = RS_CARD_AWAIT_RESPONSE;
             m_st.frame_sent_ticks = now_ticks;
         }
-        /* Detect reader field drop: signal CU2 to scan for a new card so CU1
-         * is ready for the next presentation. The timeout must be comfortably
-         * longer than a full multi-round authentication (which, with WTX
-         * extensions over the relay, can span well over a second). Firing this
-         * mid-auth would send RESCAN_REQ → set needs_reselect on the READER →
-         * re-select the real card → reset its half-finished auth state, so
-         * round 2 of a DESFire AES auth would then fail. 6s is safely beyond
-         * any real exchange while still detecting an actually-removed reader. */
+            /* Detect reader field drop: signal CU2 to scan for a new card so CU1
+             * is ready for the next presentation. The timeout must be comfortably
+             * longer than a full multi-round authentication (which, with WTX
+             * extensions over the relay, can span well over a second). Firing this
+             * mid-auth would send RESCAN_REQ → set needs_reselect on the READER →
+             * re-select the real card → reset its half-finished auth state, so
+             * round 2 of a DESFire AES auth would then fail. 6s is safely beyond
+             * any real exchange while still detecting an actually-removed reader. */
         {
             static uint32_t s_last_frame_tick = 0;
             static bool     s_had_frames      = false;
@@ -967,7 +968,7 @@ static standalone_rc_t on_tick(uint32_t now_ticks) {
                 s_rescan_sent     = false;
             }
             if (s_had_frames && !s_rescan_sent &&
-                app_timer_cnt_diff_compute(now_ticks, s_last_frame_tick)
+                    app_timer_cnt_diff_compute(now_ticks, s_last_frame_tick)
                     >= APP_TIMER_TICKS(6000)) {
                 s_rescan_sent = true;
                 ble_relay_send_rescan_req();
@@ -977,179 +978,179 @@ static standalone_rc_t on_tick(uint32_t now_ticks) {
 
         break;
 
-    case RS_CARD_AWAIT_RESPONSE:
-        if (m_st.response_ready) {
-            __DMB();  /* response_buf/bits written in BLE callback — order after flag */
-            m_st.response_ready = false;
-            m_st.sub            = RS_CARD_READY;
+        case RS_CARD_AWAIT_RESPONSE:
+            if (m_st.response_ready) {
+                __DMB();  /* response_buf/bits written in BLE callback — order after flag */
+                m_st.response_ready = false;
+                m_st.sub            = RS_CARD_READY;
 
-            if (!m_st.no_response && m_st.response_bits > 0) {
-                /* Log tag→reader response in trace */
-                trace_append(true, m_st.response_buf, m_st.response_bits);
-                /* Inject response into NFCT for transmission to reader.
-                 * On the WTX path this only buffers the bytes — they go out
-                 * when the reader ACKs. Stamp the time so RS_CARD_READY can
-                 * abandon it if that ACK never comes. */
-                nfc_relay_tag_inject_response(m_st.response_buf,
-                                             m_st.response_bits);
-                m_st.response_tx_ticks = now_ticks ? now_ticks : 1;
+                if (!m_st.no_response && m_st.response_bits > 0) {
+                    /* Log tag→reader response in trace */
+                    trace_append(true, m_st.response_buf, m_st.response_bits);
+                    /* Inject response into NFCT for transmission to reader.
+                     * On the WTX path this only buffers the bytes — they go out
+                     * when the reader ACKs. Stamp the time so RS_CARD_READY can
+                     * abandon it if that ACK never comes. */
+                    nfc_relay_tag_inject_response(m_st.response_buf,
+                                                  m_st.response_bits);
+                    m_st.response_tx_ticks = now_ticks ? now_ticks : 1;
+                } else {
+                    nfc_relay_tag_no_response();
+                    NRF_LOG_INFO("relay card: no response from real card");
+                }
             } else {
-                nfc_relay_tag_no_response();
-                NRF_LOG_INFO("relay card: no response from real card");
+                /* Timeout */
+                uint32_t wait = app_timer_cnt_diff_compute(now_ticks,
+                    m_st.frame_sent_ticks);
+                if (wait >= APP_TIMER_TICKS(RELAY_FRAME_TIMEOUT_MS)) {
+                    NRF_LOG_WARNING("relay card: response timeout");
+                    nfc_relay_tag_no_response();
+                    m_st.sub = RS_CARD_READY;
+                }
             }
-        } else {
-            /* Timeout */
-            uint32_t wait = app_timer_cnt_diff_compute(now_ticks,
-                                                        m_st.frame_sent_ticks);
-            if (wait >= APP_TIMER_TICKS(RELAY_FRAME_TIMEOUT_MS)) {
-                NRF_LOG_WARNING("relay card: response timeout");
-                nfc_relay_tag_no_response();
-                m_st.sub = RS_CARD_READY;
-            }
-        }
-        break;
+            break;
 
-    case RS_READER_SCAN: {
-        static uint32_t s_last_card_scan = 0;
-        if (app_timer_cnt_diff_compute(now_ticks, s_last_card_scan)
-                >= APP_TIMER_TICKS(500)) {
-            s_last_card_scan = now_ticks;
-            sleep_timer_stop();
-            reader_setup_card();
-            sleep_timer_stop();
-        }
-        break;
-    }
-
-    case RS_READER_READY: {
-        /* Periodic autosave — guard s_last_autosave_r==0 so it doesn't
-         * fire immediately on first tick (diff from 0 >> 15s at boot). */
-        {
-            static uint32_t s_last_autosave_r = 0;
-            if (s_last_autosave_r == 0) s_last_autosave_r = now_ticks;
-            if (m_st.was_connected &&
-                app_timer_cnt_diff_compute(now_ticks, s_last_autosave_r)
-                    >= APP_TIMER_TICKS(15000)) {
-                s_last_autosave_r = now_ticks;
-                result_commit_live(RELAY_SESSION_OK);  /* non-destructive safety commit */
-            }
-        }
-        /* Re-broadcast identity every 1s */
-        static uint32_t s_last_bcast = 0;
-        if (app_timer_cnt_diff_compute(now_ticks, s_last_bcast)
-                >= APP_TIMER_TICKS(1000)) {
-            s_last_bcast = now_ticks;
-            ble_relay_send_card_identity(&m_st.identity);
-        }
-        /* Card change detection: scan when RESCAN_REQ received OR every 5s
-         * when idle (no relay frames for 3s). Single RESCAN_REQ scan misses
-         * the new card if it isn't in the RC522 field at that exact moment;
-         * the periodic scan catches it on the next 5s window. */
-        {
-            static uint32_t s_last_frame_seen  = 0;
-            static uint32_t s_last_card_check  = 0;
-            if (s_last_card_check == 0) s_last_card_check = now_ticks;
-
-            if (m_st.reader_frame_pending) s_last_frame_seen = now_ticks;
-
-            bool reader_idle = (s_last_frame_seen == 0 ||
-                app_timer_cnt_diff_compute(now_ticks, s_last_frame_seen)
-                    >= APP_TIMER_TICKS(6000));
-
-            bool do_scan = m_st.rescan_pending ||
-                (reader_idle &&
-                 app_timer_cnt_diff_compute(now_ticks, s_last_card_check)
-                     >= APP_TIMER_TICKS(5000));
-
-            if (do_scan) {
-                m_st.rescan_pending = false;
-                s_last_card_check   = now_ticks;
+        case RS_READER_SCAN: {
+            static uint32_t s_last_card_scan = 0;
+            if (app_timer_cnt_diff_compute(now_ticks, s_last_card_scan)
+                    >= APP_TIMER_TICKS(500)) {
+                s_last_card_scan = now_ticks;
                 sleep_timer_stop();
-                /* NOTE: do not call set_scan_tag_timeout() here — it lives in
-                 * the LF reader (lf_reader_main.c), is excluded from the Lite
-                 * build, and only bounds LF read time, not the HF scan below.
-                 * It had no effect on pcd_14a_reader_scan_auto() anyway. */
-                picc_14a_tag_t new_card;
-                memset(&new_card, 0, sizeof(new_card));
-                if (pcd_14a_reader_scan_auto(&new_card) == STATUS_HF_TAG_OK) {
-                    /* scan_auto already does RATS internally for SAK & 0x20 cards
-                     * and stores the result in new_card.ats / new_card.ats_len.
-                     * Do NOT call pcd_14a_reader_ats_request again — card is already
-                     * in T=CL ACTIVE state and a second RATS request will NAK. */
+                reader_setup_card();
+                sleep_timer_stop();
+            }
+            break;
+        }
 
-                    bool changed;
-                    if (new_card.sak & 0x20) {
-                        /* DeSFire/ISO14443-4: compare ATQA+SAK only — UID is random */
-                        changed = (new_card.atqa[0] != m_st.real_card.atqa[0] ||
-                                   new_card.atqa[1] != m_st.real_card.atqa[1] ||
-                                   new_card.sak     != m_st.real_card.sak);
-                    } else {
-                        changed = (memcmp(new_card.uid, m_st.real_card.uid,
-                                          sizeof(new_card.uid)) != 0);
-                    }
+        case RS_READER_READY: {
+            /* Periodic autosave — guard s_last_autosave_r==0 so it doesn't
+             * fire immediately on first tick (diff from 0 >> 15s at boot). */
+            {
+                static uint32_t s_last_autosave_r = 0;
+                if (s_last_autosave_r == 0) s_last_autosave_r = now_ticks;
+                if (m_st.was_connected &&
+                        app_timer_cnt_diff_compute(now_ticks, s_last_autosave_r)
+                        >= APP_TIMER_TICKS(15000)) {
+                    s_last_autosave_r = now_ticks;
+                    result_commit_live(RELAY_SESSION_OK);  /* non-destructive safety commit */
+                }
+            }
+            /* Re-broadcast identity every 1s */
+            static uint32_t s_last_bcast = 0;
+            if (app_timer_cnt_diff_compute(now_ticks, s_last_bcast)
+                    >= APP_TIMER_TICKS(1000)) {
+                s_last_bcast = now_ticks;
+                ble_relay_send_card_identity(&m_st.identity);
+            }
+            /* Card change detection: scan when RESCAN_REQ received OR every 5s
+             * when idle (no relay frames for 3s). Single RESCAN_REQ scan misses
+             * the new card if it isn't in the RC522 field at that exact moment;
+             * the periodic scan catches it on the next 5s window. */
+            {
+                static uint32_t s_last_frame_seen  = 0;
+                static uint32_t s_last_card_check  = 0;
+                if (s_last_card_check == 0) s_last_card_check = now_ticks;
 
-                    if (changed) {
-                        m_st.real_card       = new_card;
-                        m_st.real_card_found = true;
-                        relay_card_identity_t id;
-                        memset(&id, 0, sizeof(id));
-                        id.atqa[0] = new_card.atqa[0];
-                        id.atqa[1] = new_card.atqa[1];
-                        id.sak     = new_card.sak;
-                        /* Derive UID length from the cascade level, NOT from
-                         * new_card.uid_len (which can be the raw anticollision
-                         * byte count of an incomplete cascade). A 7-byte DeSFire
-                         * read as 4 bytes here would make the CARD CU emulate a
-                         * single-cascade tag and the reader's CL2 would fail. */
-                        uint8_t cascade = new_card.cascade ? new_card.cascade : 1;
-                        id.uid_len = (cascade == 1) ? 4 : 7;
-                        if (id.uid_len == 4) {
-#ifndef PROJECT_CHAMELEON_LITE
-                            get_4byte_tag_uid(&new_card, id.uid);
-#else
-                            memcpy(id.uid, new_card.uid, 4);
-#endif
+                if (m_st.reader_frame_pending) s_last_frame_seen = now_ticks;
+
+                bool reader_idle = (s_last_frame_seen == 0 ||
+                                    app_timer_cnt_diff_compute(now_ticks, s_last_frame_seen)
+                                    >= APP_TIMER_TICKS(6000));
+
+                bool do_scan = m_st.rescan_pending ||
+                               (reader_idle &&
+                                app_timer_cnt_diff_compute(now_ticks, s_last_card_check)
+                                >= APP_TIMER_TICKS(5000));
+
+                if (do_scan) {
+                    m_st.rescan_pending = false;
+                    s_last_card_check   = now_ticks;
+                    sleep_timer_stop();
+                    /* NOTE: do not call set_scan_tag_timeout() here — it lives in
+                     * the LF reader (lf_reader_main.c), is excluded from the Lite
+                     * build, and only bounds LF read time, not the HF scan below.
+                     * It had no effect on pcd_14a_reader_scan_auto() anyway. */
+                    picc_14a_tag_t new_card;
+                    memset(&new_card, 0, sizeof(new_card));
+                    if (pcd_14a_reader_scan_auto(&new_card) == STATUS_HF_TAG_OK) {
+                        /* scan_auto already does RATS internally for SAK & 0x20 cards
+                         * and stores the result in new_card.ats / new_card.ats_len.
+                         * Do NOT call pcd_14a_reader_ats_request again — card is already
+                         * in T=CL ACTIVE state and a second RATS request will NAK. */
+
+                        bool changed;
+                        if (new_card.sak & 0x20) {
+                            /* DeSFire/ISO14443-4: compare ATQA+SAK only — UID is random */
+                            changed = (new_card.atqa[0] != m_st.real_card.atqa[0] ||
+                                       new_card.atqa[1] != m_st.real_card.atqa[1] ||
+                                       new_card.sak     != m_st.real_card.sak);
                         } else {
-                            memcpy(id.uid, new_card.uid, 7);
+                            changed = (memcmp(new_card.uid, m_st.real_card.uid,
+                                              sizeof(new_card.uid)) != 0);
                         }
-                        id.ats_len = new_card.ats_len < sizeof(id.ats)
-                                     ? new_card.ats_len : sizeof(id.ats);
-                        memcpy(id.ats, new_card.ats, id.ats_len);
-                        ble_relay_send_card_identity(&id);
-                        memcpy(&m_st.identity, &id, sizeof(id));
-                        m_st.identity_received = true;
-                        m_st.needs_reselect    = false;
-                        NRF_LOG_INFO("relay reader: card changed, len=%u new identity sent",
-                                     id.uid_len);
-                    }
-                    /* Unchanged card: keep m_st.identity as-is — preserves ATS so
-                     * CARD CU continues responding to RATS correctly. */
-                    if (new_card.sak & 0x20) {
-                        m_st.needs_reselect = true; /* scan_auto did RATS; re-select before next relay frame */
+
+                        if (changed) {
+                            m_st.real_card       = new_card;
+                            m_st.real_card_found = true;
+                            relay_card_identity_t id;
+                            memset(&id, 0, sizeof(id));
+                            id.atqa[0] = new_card.atqa[0];
+                            id.atqa[1] = new_card.atqa[1];
+                            id.sak     = new_card.sak;
+                            /* Derive UID length from the cascade level, NOT from
+                             * new_card.uid_len (which can be the raw anticollision
+                             * byte count of an incomplete cascade). A 7-byte DeSFire
+                             * read as 4 bytes here would make the CARD CU emulate a
+                             * single-cascade tag and the reader's CL2 would fail. */
+                            uint8_t cascade = new_card.cascade ? new_card.cascade : 1;
+                            id.uid_len = (cascade == 1) ? 4 : 7;
+                            if (id.uid_len == 4) {
+#ifndef PROJECT_CHAMELEON_LITE
+                                get_4byte_tag_uid(&new_card, id.uid);
+#else
+                                memcpy(id.uid, new_card.uid, 4);
+#endif
+                            } else {
+                                memcpy(id.uid, new_card.uid, 7);
+                            }
+                            id.ats_len = new_card.ats_len < sizeof(id.ats)
+                                         ? new_card.ats_len : sizeof(id.ats);
+                            memcpy(id.ats, new_card.ats, id.ats_len);
+                            ble_relay_send_card_identity(&id);
+                            memcpy(&m_st.identity, &id, sizeof(id));
+                            m_st.identity_received = true;
+                            m_st.needs_reselect    = false;
+                            NRF_LOG_INFO("relay reader: card changed, len=%u new identity sent",
+                                         id.uid_len);
+                        }
+                        /* Unchanged card: keep m_st.identity as-is — preserves ATS so
+                         * CARD CU continues responding to RATS correctly. */
+                        if (new_card.sak & 0x20) {
+                            m_st.needs_reselect = true; /* scan_auto did RATS; re-select before next relay frame */
+                        }
                     }
                 }
             }
+            /* Forward frames from CU1 to real card */
+            if (m_st.reader_frame_pending) {
+                __DMB();  /* reader_frame_buf/bits written in BLE callback — order after flag */
+                m_st.reader_frame_pending = false;
+                m_st.sub = RS_READER_RELAY;
+                reader_relay_frame(m_st.reader_frame_buf, m_st.reader_frame_bits);
+                m_st.sub = RS_READER_READY;
+            }
+            break;
         }
-        /* Forward frames from CU1 to real card */
-        if (m_st.reader_frame_pending) {
-            __DMB();  /* reader_frame_buf/bits written in BLE callback — order after flag */
-            m_st.reader_frame_pending = false;
-            m_st.sub = RS_READER_RELAY;
-            reader_relay_frame(m_st.reader_frame_buf, m_st.reader_frame_bits);
-            m_st.sub = RS_READER_READY;
-        }
-        break;
-    }
 
-    case RS_READER_RELAY:
-        /* handled synchronously in reader_relay_frame */
-        break;
+        case RS_READER_RELAY:
+            /* handled synchronously in reader_relay_frame */
+            break;
 
-    case RS_ERROR:
-        break;
+        case RS_ERROR:
+            break;
 
-    default:
-        break;
+        default:
+            break;
     }
 
     return STANDALONE_RC_OK;
@@ -1167,7 +1168,7 @@ static standalone_rc_t on_button(standalone_button_evt_t evt) {
         app_standalone_save_result_buf(STANDALONE_MODE_RELAY, NULL, 0);
         ble_relay_stop();
         m_st.sub               = RS_LINKING;
-            m_st.identity_received = false;
+        m_st.identity_received = false;
         m_st.link_start_ticks  = app_timer_cnt_get();
         ble_relay_start();
         standalone_feedback(SL_FB_SUCCESS);

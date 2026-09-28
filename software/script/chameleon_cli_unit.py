@@ -17,6 +17,7 @@ import cli_lf      # noqa: F401,E402  (lf ...)
 import cli_hf_mf   # noqa: F401,E402  (hf mf ...)
 import cli_hf_mfu  # noqa: F401,E402  (hf mfu ...)
 
+
 @root.command("clear")
 class RootClear(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -333,6 +334,7 @@ class HWStatus(DeviceRequiredUnit):
         except chameleon_com.CMDInvalidException:
             print("   heap        -> not supported by current firmware")
 
+
 @hf_14a.command("config")
 class HF14AConfig(DeviceRequiredUnit):
     class Config(Enum):
@@ -426,6 +428,7 @@ class HF14AConfig(DeviceRequiredUnit):
         print(self.Cl3.format(config["cl3"]))
         print(self.Rats.format(config["rats"]))
 
+
 @hw.command("blver")
 class HWBootloaderVersion(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -440,6 +443,7 @@ class HWBootloaderVersion(DeviceRequiredUnit):
         except chameleon_com.CMDInvalidException:
             print(" - Bootloader version not supported by current firmware, please update")
 
+
 @hw.command("freemem")
 class HWFreeMemory(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -450,15 +454,16 @@ class HWFreeMemory(DeviceRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         try:
             mem = self.cmd.get_free_memory()
-            free  = mem['free']
+            free = mem['free']
             total = mem['total']
-            used  = total - free
-            pct   = (used / total * 100.0) if total > 0 else 0.0
+            used = total - free
+            pct = (used / total * 100.0) if total > 0 else 0.0
             print(f" - Heap free  : {free:,} bytes")
             print(f" - Heap used  : {used:,} bytes")
             print(f" - Heap total : {total:,} bytes  ({pct:.1f}% used)")
         except chameleon_com.CMDInvalidException:
             print(" - Free memory not supported by current firmware, please update")
+
 
 @hf_14a.command("scan")
 class HF14AScan(ReaderRequiredUnit):
@@ -519,6 +524,7 @@ class HF14AInfo(ReaderRequiredUnit):
         scan = HF14AScan()
         scan.device_com = self.device_com
         scan.scan(deep=True)
+
 
 class CrackEffect:
     """
@@ -669,6 +675,7 @@ class CrackEffect:
         process_thread.join()
         self.stop_event.set()
         scramble_thread.join()
+
 
 @hw_slot.command("list")
 class HWSlotList(DeviceRequiredUnit):
@@ -1053,6 +1060,7 @@ class HWSlotDisable(SlotIndexArgsUnit, SenseTypeArgsUnit):
         self.cmd.set_slot_enable(slot_num, sense_type, False)
         print(f" - Disable slot {slot_num} {sense_type.name} success.")
 
+
 @hw_slot.command("nick")
 class HWSlotNick(SlotIndexArgsUnit, SenseTypeArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1091,6 +1099,7 @@ class HWSlotNick(SlotIndexArgsUnit, SenseTypeArgsUnit):
                 f" - Get tag nick name for slot {slot_num} {sense_type.name}" f": {res}"
             )
 
+
 @hw_slot.command("store")
 class HWSlotUpdate(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1101,6 +1110,7 @@ class HWSlotUpdate(DeviceRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         self.cmd.slot_data_config_save()
         print(" - Store slots config and data from device memory to flash success.")
+
 
 @hw_slot.command("openall")
 class HWSlotOpenAll(DeviceRequiredUnit):
@@ -1132,6 +1142,7 @@ class HWSlotOpenAll(DeviceRequiredUnit):
         self.cmd.slot_data_config_save()
         print(" - Succeeded opening all slots and setting data to default.")
 
+
 @hw.command("dfu")
 class HWDFU(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1150,6 +1161,7 @@ class HWDFU(DeviceRequiredUnit):
         print(" - Enter success @.@~")
         # let time for comm thread to send dfu cmd and close port
         time.sleep(0.1)
+
 
 @hw.command("flash")
 class HWFlash(BaseCLIUnit):
@@ -1255,7 +1267,8 @@ class HWFlash(BaseCLIUnit):
         print()
         print(color_string((CG, " - Firmware flashed. Device will reboot.")))
         time.sleep(0.5)
-        
+
+
 @hw_settings.command("animation")
 class HWSettingsAnimation(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1282,6 +1295,7 @@ class HWSettingsAnimation(DeviceRequiredUnit):
             print(color_string((CY, "Do not forget to store your settings in flash!")))
         else:
             print(AnimationMode(self.cmd.get_animation_mode()))
+
 
 @hw_settings.command("sleeptimeout")
 class HWSettingsSleepTimeout(DeviceRequiredUnit):
@@ -1316,6 +1330,7 @@ class HWSettingsSleepTimeout(DeviceRequiredUnit):
             current = self.cmd.get_sleep_timeout()
             print(f"Current wake timeout: {current} seconds")
 
+
 @hw_settings.command("bleclearbonds")
 class HWSettingsBleClearBonds(DeviceRequiredUnit):
 
@@ -1336,6 +1351,7 @@ class HWSettingsBleClearBonds(DeviceRequiredUnit):
         self.cmd.delete_all_ble_bonds()
         print(" - Successfully clear all bonds")
 
+
 @hw_settings.command("store")
 class HWSettingsStore(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1349,6 +1365,7 @@ class HWSettingsStore(DeviceRequiredUnit):
             print(" - Store success @.@~")
         else:
             print(" - Store failed")
+
 
 @hw_settings.command("reset")
 class HWSettingsReset(DeviceRequiredUnit):
@@ -1372,6 +1389,7 @@ class HWSettingsReset(DeviceRequiredUnit):
         else:
             print(" - Reset failed")
 
+
 @hw.command("reset")
 class HWReset(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1389,6 +1407,7 @@ class HWReset(DeviceRequiredUnit):
             print(" - Reset failed!")
         # let time for comm thread to close port
         time.sleep(0.1)
+
 
 @hw.command("factory_reset")
 class HWFactoryReset(DeviceRequiredUnit):
@@ -1415,6 +1434,7 @@ class HWFactoryReset(DeviceRequiredUnit):
         else:
             print(" - Reset failed!")
 
+
 @hw.command("battery")
 class HWBatteryInfo(DeviceRequiredUnit):
     # How much remaining battery is considered low?
@@ -1432,6 +1452,7 @@ class HWBatteryInfo(DeviceRequiredUnit):
         print(f"   percentage -> {percentage}%")
         if percentage < HWBatteryInfo.BATTERY_LOW_LEVEL:
             print(color_string((CR, "[!] Low battery, please charge.")))
+
 
 @hw_settings.command("btnpress")
 class HWButtonSettingsGet(DeviceRequiredUnit):
@@ -1506,6 +1527,7 @@ class HWButtonSettingsGet(DeviceRequiredUnit):
                     )
                 print("")
 
+
 @hw_settings.command("blekey")
 class HWSettingsBLEKey(DeviceRequiredUnit):
 
@@ -1539,6 +1561,7 @@ class HWSettingsBLEKey(DeviceRequiredUnit):
                 print(
                     f" - {color_string((CR, 'Only 6 ASCII characters from 0 to 9 are supported.'))}"
                 )
+
 
 @hw_settings.command("blepair")
 class HWBlePair(DeviceRequiredUnit):
@@ -1580,6 +1603,7 @@ class HWBlePair(DeviceRequiredUnit):
             print(f" - Successfully change ble pairing to {disabled_str}.")
             print(color_string((CY, "Do not forget to store your settings in flash!")))
 
+
 @hw_settings.command("blename")
 class HWSettingsBLEName(DeviceRequiredUnit):
 
@@ -1613,6 +1637,7 @@ class HWSettingsBLEName(DeviceRequiredUnit):
             print(
                 color_string((CY, "You may need to reconnect/rescan for the new name to show up."))
             )
+
 
 @hw.command("raw")
 class HWRaw(DeviceRequiredUnit):
@@ -1679,6 +1704,7 @@ class HWRaw(DeviceRequiredUnit):
             print(f"   Data (HEX): {response.data.hex()}")
         else:
             print(f"   Data (HEX): (none)")
+
 
 @hf_14a.command("raw")
 class HF14ARaw(ReaderRequiredUnit):
@@ -1805,6 +1831,7 @@ examples/notes:
             )
         else:
             print(f" [*] {color_string((CY, 'No response'))}")
+
 
 @hf_14a.command('sniff')
 class HF14ASniff(BaseCLIUnit):
@@ -1939,7 +1966,8 @@ class HF14ASniff(BaseCLIUnit):
 
         for n, (szBits, data, is_tx, parity_bits) in enumerate(frames):
             if (len(data) == len(parity_bits)):
-                hex_str = ' '.join(f"{b:02x}{'!' if odd_parity_byte(b)!= p else ' '}" for (b,p) in zip(data,parity_bits))
+                hex_str = ' '.join(f"{b:02x}{'!' if odd_parity_byte(b) != p else ' '}" for (b, p)
+                                   in zip(data, parity_bits))
             else:
                 hex_str = ' '.join(f"{b:02x}" for b in data)
 
@@ -2012,7 +2040,9 @@ class HF14ASniff(BaseCLIUnit):
 
         # Summary block (pass only reader→card frames for protocol decode)
         print()
-        _print_14a_sniff_summary([(szBits, data, is_tx) for (szBits, data, is_tx,parity) in frames])  # full frames needed for nonce extraction
+        _print_14a_sniff_summary([(szBits, data, is_tx) for (szBits, data, is_tx, parity)
+                                 in frames])  # full frames needed for nonce extraction
+
 
 @hf_14a.command("auth-trace")
 class HF14AAuthTrace(ReaderRequiredUnit):
@@ -2248,6 +2278,7 @@ examples:
         elif nt_int is not None:
             print(f" {CY}Auth aborted before NR||AR — NT={nt_int:08X}, no further analysis{C0}")
 
+
 def _decode_sw(sw1: int, sw2: int) -> str:
     """Decode an ISO 7816-4 status word pair."""
     exact = {
@@ -2299,7 +2330,9 @@ def _decode_sw(sw1: int, sw2: int) -> str:
         return 'Proprietary OK'
     return ''
 
+
 _CD = "\033[90m"   # dim grey: raw/garbled frames that fail validation
+
 
 def _sak_desc(sak: int):
     try:
@@ -2309,6 +2342,7 @@ def _sak_desc(sak: int):
     if sak_type:
         return f"SAK (Select Acknowledge) = 0x{sak:02X}  [{sak_type}]"
     return f"SAK (Select Acknowledge) = 0x{sak:02X}"
+
 
 def _decode_14a_frame_col(data: bytes, szBits: int, is_tx: bool = False,
                           prev_cmd=None, iso_dep: bool = False):
@@ -2577,6 +2611,7 @@ def _decode_14a_frame_col(data: bytes, szBits: int, is_tx: bool = False,
     # Unknown — show first byte
     return f'unknown (0x{b0:02x})', CC
 
+
 def _known_aid(aid: bytes) -> str:
     table = {
         bytes.fromhex('a0000000031010'): 'Visa Credit/Debit',
@@ -2603,6 +2638,7 @@ def _known_bertag(tag: int) -> str:
         0x9f4e: 'Merchant Name',
     }
     return table.get(tag, '')
+
 
 def _extract_sniff_nonces(frames):
     """
@@ -2686,6 +2722,7 @@ def _extract_sniff_nonces(frames):
             })
 
     return nonces
+
 
 def _print_14a_sniff_summary(frames):
     """Print a decoded summary of the sniff session."""
@@ -2920,6 +2957,7 @@ def _get_capture():
         return None
     return _m._last_capture
 
+
 @data.command('hexsamples')
 class DataHexsamples(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -2959,6 +2997,7 @@ class DataHexsamples(BaseCLIUnit):
         print(f" {row // 16:02d} | {hex_part:<47s} | {bar}")
         print()
         print(" _ gap  . ringing  - low  + mid  o carrier  O high  # clipped")
+
 
 @data.command('plot')
 class DataPlot(BaseCLIUnit):
@@ -3034,6 +3073,7 @@ class DataPlot(BaseCLIUnit):
             print(f" {lbl} |{row}|")
         print(f"        +{'-'*len(buckets)}+")
 
+
 def _plot_matplotlib(xs, ys, mean, threshold, start, end):
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
@@ -3083,6 +3123,7 @@ def _plot_matplotlib(xs, ys, mean, threshold, start, end):
 
     plt.tight_layout()
     plt.show()
+
 
 def _plot_pyqtgraph(xs, ys, mean, threshold, start, end):
     import sys
@@ -3138,6 +3179,7 @@ def _plot_pyqtgraph(xs, ys, mean, threshold, start, end):
 
     win.show()
     app.exec_()
+
 
 @data.command('manrawdecode')
 class DataManrawdecode(BaseCLIUnit):
@@ -3226,6 +3268,7 @@ class DataManrawdecode(BaseCLIUnit):
         if hex_str:
             print()
             print(f" Hex: {CG}{hex_str[:64]}{C0}{'...' if len(hex_str) > 64 else ''}")
+
 
 @data.command('modulation')
 class DataModulation(BaseCLIUnit):
@@ -3364,6 +3407,7 @@ def _emv_decode_apdu(data: bytes) -> str:
     if cla == 0x00 and ins == 0xB2:
         return f'READ RECORD  SFI={(p2 >> 3) & 0x1F}  rec={p1}'
     return f'CLA={cla:02x} INS={ins:02x} P1={p1:02x} P2={p2:02x}'
+
 
 @emv.command('scan')
 class EMVScan(DeviceRequiredUnit):
@@ -3784,6 +3828,7 @@ class EMVScan(DeviceRequiredUnit):
             except Exception as e:
                 print(f' {CR}Slot load failed: {e}{C0}')
 
+
 @emv.command('debug')
 class EMVDebug(DeviceRequiredUnit):
     """Show T=CL emulation debug counters (I-blocks rx/tx, last PCB, last match)."""
@@ -3805,6 +3850,7 @@ class EMVDebug(DeviceRequiredUnit):
         print(
             f'   Last rx PCB       : {d[2]:02x}  (blk_num={(d[2] & 0x01)}, chain={(d[2] >> 5) & 1}, cid={(d[2] >> 4) & 1})')
         print(f'   Last static match : {"yes" if d[3] else "no"}')
+
 
 @emv.command('load')
 class EMVLoad(DeviceRequiredUnit):
@@ -4018,6 +4064,7 @@ class EMVLoad(DeviceRequiredUnit):
         print(f'\n {CG}Done! Slot {target_slot} ready with {len(static_pairs)} response(s).{C0}')
         print(f' {C0}Next: hw slot change -s {target_slot} && hw mode -e{C0}')
 
+
 @emv.command('apdu')
 class EMVApdu(DeviceRequiredUnit):
     """
@@ -4142,9 +4189,9 @@ def parse_authtrace_frames(trace: bytes):
     frames = []
     off = 0
     while off + 2 <= len(trace):
-        hdr      = (trace[off] << 8) | trace[off + 1]
-        is_tx    = bool(hdr & 0x8000)
-        sz_bits  = hdr & 0x7FFF
+        hdr = (trace[off] << 8) | trace[off + 1]
+        is_tx = bool(hdr & 0x8000)
+        sz_bits = hdr & 0x7FFF
         sz_bytes = (sz_bits + 7) // 8
         off += 2
         if off + sz_bytes > len(trace):
@@ -4162,8 +4209,8 @@ def parse_authtrace_buffer(raw: bytes):
     off = 0
     while off + 4 <= len(raw):
         session_num = raw[off]
-        status      = raw[off + 1]
-        trace_len   = raw[off + 2] | (raw[off + 3] << 8)
+        status = raw[off + 1]
+        trace_len = raw[off + 2] | (raw[off + 3] << 8)
         off += 4
         if off + trace_len > len(raw):
             break
@@ -4178,12 +4225,13 @@ def parse_authtrace_buffer(raw: bytes):
         })
     return sessions
 
+
 def authtrace_summarise(sessions):
     out = []
     for s in sessions:
         frames = s["frames"]
-        tx  = sum(1 for _, _, is_tx in frames if is_tx)
-        rx  = len(frames) - tx
+        tx = sum(1 for _, _, is_tx in frames if is_tx)
+        rx = len(frames) - tx
         nonces = _extract_sniff_nonces(frames)
         nonce_info = f"  {CG}{len(nonces)} nonce pair(s){C0}" if nonces else ""
         out.append(
@@ -4192,6 +4240,7 @@ def authtrace_summarise(sessions):
             f"{tx} card\u2192reader){nonce_info}"
         )
     return "\n".join(out)
+
 
 def authtrace_pretty_dump(sessions):
     """Full decoded per-frame dump matching hf 14a sniff/trace output style."""
@@ -4212,40 +4261,40 @@ def authtrace_pretty_dump(sessions):
         out.append(
             f"  {'---':>3}  {'---':<3}  {'----':>4}  {'-'*42}  {'-'*35}"
         )
-        expect_nt     = False
-        expect_nr_ar  = False
-        expect_at     = False
-        last_keytype  = None
-        last_block    = None
+        expect_nt = False
+        expect_nr_ar = False
+        expect_at = False
+        last_keytype = None
+        last_block = None
         for n, (sz_bits, data, is_tx) in enumerate(frames):
             hex_str = ' '.join(f'{b:02x}' for b in data)
             decoded_ctx = None
-            col_ctx     = None
+            col_ctx = None
 
             if not is_tx and sz_bits == 32 and len(data) == 4 and data[0] in (0x60, 0x61):
                 last_keytype = 'A' if data[0] == 0x60 else 'B'
-                last_block   = data[1]
-                expect_nt    = True
+                last_block = data[1]
+                expect_nt = True
                 expect_nr_ar = False
-                decoded_ctx  = f"MIFARE AUTH Key{last_keytype} block=0x{last_block:02X} ({last_block})"
-                col_ctx      = CG
+                decoded_ctx = f"MIFARE AUTH Key{last_keytype} block=0x{last_block:02X} ({last_block})"
+                col_ctx = CG
             elif is_tx and expect_nt and sz_bits == 32 and len(data) == 4:
-                decoded_ctx  = f"NT (card nonce) = {data.hex().upper()}"
-                col_ctx      = CG
-                expect_nt    = False
+                decoded_ctx = f"NT (card nonce) = {data.hex().upper()}"
+                col_ctx = CG
+                expect_nt = False
                 expect_nr_ar = True
             elif not is_tx and expect_nr_ar and sz_bits == 64 and len(data) == 8:
                 nr = data[:4].hex().upper()
                 ar = data[4:].hex().upper()
-                decoded_ctx  = f"NR={nr}  AR={ar}  (mfkey32 input)"
-                col_ctx      = CG
+                decoded_ctx = f"NR={nr}  AR={ar}  (mfkey32 input)"
+                col_ctx = CG
                 expect_nr_ar = False
-                expect_at    = True
+                expect_at = True
 
             elif is_tx and expect_at and sz_bits == 32 and len(data) == 4:
-                decoded_ctx  = f"AT (auth ack, encrypted) = {data.hex().upper()}"
-                col_ctx      = CG
-                expect_at    = False
+                decoded_ctx = f"AT (auth ack, encrypted) = {data.hex().upper()}"
+                col_ctx = CG
+                expect_at = False
 
             if decoded_ctx is None:
                 decoded, col, _ = _decode_14a_frame_col(data, sz_bits)
@@ -4281,6 +4330,7 @@ def authtrace_pretty_dump(sessions):
                     out.append(f"    {CG}mfkey32v2: {cmd}{C0}")
     return "\n".join(out)
 
+
 def parse_relay_result_buffer(raw: bytes) -> list:
     """Parse a relay FDS result buffer into a list of session dicts.
 
@@ -4304,23 +4354,23 @@ def parse_relay_result_buffer(raw: bytes) -> list:
     idx = 0
     while off + HEADER <= len(raw):
         h = raw[off:off + HEADER]
-        role        = h[0]
-        status      = h[1]
-        uid_len     = h[2]
-        uid         = raw[off+3:off+3+min(uid_len,4)].hex().upper() if uid_len else '-'
-        atqa        = raw[off+7:off+9].hex().upper()
-        sak         = f'{h[9]:02X}'
+        role = h[0]
+        status = h[1]
+        uid_len = h[2]
+        uid = raw[off+3:off+3+min(uid_len, 4)].hex().upper() if uid_len else '-'
+        atqa = raw[off+7:off+9].hex().upper()
+        sak = f'{h[9]:02X}'
         frame_count = struct.unpack_from('<H', h, 10)[0]
-        trace_len   = struct.unpack_from('<H', h, 12)[0]
-        protocol    = h[14]  # 0=HF, 1=LF
+        trace_len = struct.unpack_from('<H', h, 12)[0]
+        protocol = h[14]  # 0=HF, 1=LF
 
-        trace_off   = off + HEADER
-        trace_end   = trace_off + trace_len
+        trace_off = off + HEADER
+        trace_end = trace_off + trace_len
         if trace_end > len(raw):
             break  # truncated
 
         trace_bytes = raw[trace_off:trace_end]
-        frames      = parse_relay_frames(trace_bytes)
+        frames = parse_relay_frames(trace_bytes)
 
         sessions.append({
             'session_num':  idx,
@@ -4329,7 +4379,7 @@ def parse_relay_result_buffer(raw: bytes) -> list:
             'uid_len':      uid_len,
             'uid':          uid,
             'atqa':         atqa if protocol == 0 else '-',
-            'sak':          sak  if protocol == 0 else '-',
+            'sak':          sak if protocol == 0 else '-',
             'frame_count':  frame_count,
             'trace_len':    trace_len,
             'status':       status,
@@ -4340,15 +4390,16 @@ def parse_relay_result_buffer(raw: bytes) -> list:
         idx += 1
     return sessions
 
+
 def parse_relay_frames(trace: bytes) -> list:
     """Decode a raw trace buffer into frame dicts (same format as AuthTrace)."""
     frames = []
     off = 0
     while off + 2 <= len(trace):
-        hdr       = (trace[off] << 8) | trace[off + 1]
+        hdr = (trace[off] << 8) | trace[off + 1]
         tag_to_rd = bool(hdr & 0x8000)
-        bits      = hdr & 0x7FFF
-        byte_cnt  = (bits + 7) // 8
+        bits = hdr & 0x7FFF
+        byte_cnt = (bits + 7) // 8
         off += 2
         if off + byte_cnt > len(trace):
             break
@@ -4364,6 +4415,7 @@ def parse_relay_frames(trace: bytes) -> list:
         off += byte_cnt
     return frames
 
+
 def relay_result_summary(sessions) -> str:
     """Human-readable session table for --dump."""
     if not sessions:
@@ -4371,13 +4423,13 @@ def relay_result_summary(sessions) -> str:
     lines = []
     for s in sessions:
         role_col = CG if s['role'] == 'CARD' else CC
-        st_col   = CG if s['status'] == 0 else CY
+        st_col = CG if s['status'] == 0 else CY
         lines.append(
             f"  {CY}#{s['session_num']}{C0}  "
             f"{role_col}{s['role']:<6}{C0}  "
-            f"{CC}{s.get('protocol','HF')}{C0}  "
+            f"{CC}{s.get('protocol', 'HF')}{C0}  "
             f"UID={s['uid']}  "
-            + (f"ATQA={s['atqa']} SAK={s['sak']}  " if s.get('protocol','HF') == 'HF' else "")
+            + (f"ATQA={s['atqa']} SAK={s['sak']}  " if s.get('protocol', 'HF') == 'HF' else "")
             + f"frames={s['frame_count']}  "
             f"{st_col}{s['status_name']}{C0}"
         )
@@ -4395,6 +4447,7 @@ def relay_result_summary(sessions) -> str:
     return '\n'.join(lines)
 
 # --- Commands ----------------------------------------------------------------
+
 
 @standalone.command('status')
 class StandaloneStatus(DeviceRequiredUnit):
@@ -4420,7 +4473,7 @@ class StandaloneStatus(DeviceRequiredUnit):
                    or "(none)"
         print(f" flags: {flag_str}")
         if fds is not None:
-            used  = fds['words_used']
+            used = fds['words_used']
             pages = fds['pages_available']
             dirty = fds['dirty_records']
             valid = fds['valid_records']
@@ -4434,30 +4487,30 @@ class StandaloneStatus(DeviceRequiredUnit):
                     pass
                 else:
                     reports = d['adv_reports']
-                    hits    = d['relay_hits']
-                    state   = d.get('ble_state', 0)
-                    role    = d.get('ble_role', 0)
-                    state_names = {0:'IDLE',1:'STARTING',2:'CONNECTING',
-                                   3:'DISCOVERING',4:'NEGOTIATING',5:'READY',
-                                   6:'ACTIVE',7:'ERROR'}
-                    role_names  = {0:'RELAY_CARD (faces reader)',
-                                   1:'RELAY_READER (faces real card)'}
-                    sub        = d.get('sub_state', 0)
-                    card_found  = d.get('card_found', 0)
+                    hits = d['relay_hits']
+                    state = d.get('ble_state', 0)
+                    role = d.get('ble_role', 0)
+                    state_names = {0: 'IDLE', 1: 'STARTING', 2: 'CONNECTING',
+                                   3: 'DISCOVERING', 4: 'NEGOTIATING', 5: 'READY',
+                                   6: 'ACTIVE', 7: 'ERROR'}
+                    role_names = {0: 'RELAY_CARD (faces reader)',
+                                  1: 'RELAY_READER (faces real card)'}
+                    sub = d.get('sub_state', 0)
+                    card_found = d.get('card_found', 0)
                     identity_rx = d.get('identity_rx', 0)
-                    uid_len     = d.get('uid_len', 0)
-                    uid_bytes   = d.get('uid', [])
+                    uid_len = d.get('uid_len', 0)
+                    uid_bytes = d.get('uid', [])
                     uid_str = ''.join(f'{b:02X}' for b in uid_bytes[:uid_len]) if uid_len else '-'
-                    sub_names = {0:'INIT',1:'LINKING',2:'CARD_AWAIT_IDENTITY',
-                                 3:'CARD_READY',4:'CARD_AWAIT_RESPONSE',5:'READER_SCAN',
-                                 6:'READER_READY',7:'READER_RELAY',8:'ERROR'}
+                    sub_names = {0: 'INIT', 1: 'LINKING', 2: 'CARD_AWAIT_IDENTITY',
+                                 3: 'CARD_READY', 4: 'CARD_AWAIT_RESPONSE', 5: 'READER_SCAN',
+                                 6: 'READER_READY', 7: 'READER_RELAY', 8: 'ERROR'}
                     state_str = state_names.get(state, f'UNKNOWN({state})')
-                    role_str  = role_names.get(role, f'UNKNOWN({role})')
-                    sub_str   = sub_names.get(sub, f'UNKNOWN({sub})')
+                    role_str = role_names.get(role, f'UNKNOWN({role})')
+                    sub_str = sub_names.get(sub, f'UNKNOWN({sub})')
                     print(f"   ble: {reports} scan reports  {hits} relay hits")
-                    print(f"        state={CG if state==5 else CY}{state_str}{C0}  "
+                    print(f"        state={CG if state == 5 else CY}{state_str}{C0}  "
                           f"role={CC}{role_str}{C0}")
-                    print(f"        sub={CG if sub in (3,6) else CY}{sub_str}{C0}")
+                    print(f"        sub={CG if sub in (3, 6) else CY}{sub_str}{C0}")
                     relay_armed = (state != StandaloneState.DISARMED)
                     if relay_armed and reports == 0:
                         print(f"        {CR}WARNING: scanning not working{C0}")
@@ -4478,6 +4531,7 @@ class StandaloneStatus(DeviceRequiredUnit):
                                 print(f"        {CY}scanning for real card — place card near CU{C0}")
             except Exception:
                 pass
+
 
 @standalone.command('set-mode')
 class StandaloneSetMode(DeviceRequiredUnit):
@@ -4512,27 +4566,31 @@ class StandaloneSetMode(DeviceRequiredUnit):
             return
 
         flags = StandaloneFlag.NONE
-        if args.opt_in:        flags |= StandaloneFlag.HOST_OPTED_IN
-        if args.quiet_buzzer:  flags |= StandaloneFlag.BUZZER_QUIET
-        if args.quiet_led:     flags |= StandaloneFlag.LED_QUIET
+        if args.opt_in:
+            flags |= StandaloneFlag.HOST_OPTED_IN
+        if args.quiet_buzzer:
+            flags |= StandaloneFlag.BUZZER_QUIET
+        if args.quiet_led:
+            flags |= StandaloneFlag.LED_QUIET
 
         result = self.cmd.standalone_set_mode(mode, flags)
         if not isinstance(result, tuple):
             if result.status == Status.NOT_IMPLEMENTED:
                 print(color_string((CR,
-                    f"refused: mode '{mode.name}' is not available on this device/firmware build")))
+                                    f"refused: mode '{mode.name}' is not available on this device/firmware build")))
             elif result.status == Status.PAR_ERR:
                 print(color_string((CR,
-                    f"refused: mode '{mode.name}' requires --opt-in")))
+                                    f"refused: mode '{mode.name}' requires --opt-in")))
             else:
                 print(color_string((CR,
-                    f"set-mode failed: status={result.status}")))
+                                    f"set-mode failed: status={result.status}")))
             return
 
         state, mode_now, flags_now = result
         print(color_string((CG,
-            f"ok: state={state.name} mode={mode_now.name} "
-            f"flags={int(flags_now):#04x}")))
+                            f"ok: state={state.name} mode={mode_now.name} "
+                            f"flags={int(flags_now):#04x}")))
+
 
 @standalone.command('trigger')
 class StandaloneTrigger(DeviceRequiredUnit):
@@ -4561,6 +4619,7 @@ class StandaloneTrigger(DeviceRequiredUnit):
             print(color_string((CR, "refused (likely missing opt-in)")))
         else:
             print(color_string((CR, f"trigger failed: status={resp.status}")))
+
 
 @standalone.command('disarm')
 class StandaloneDisarm(DeviceRequiredUnit):
@@ -4596,6 +4655,7 @@ class StandaloneDisarm(DeviceRequiredUnit):
                 pass
             print(color_string((CR, f"disarm failed: {e}")))
             print(color_string((CY, "Use the both-button chord on the device to disarm manually.")))
+
 
 @standalone.command('get-result')
 class StandaloneGetResult(DeviceRequiredUnit):
@@ -4653,15 +4713,15 @@ class StandaloneGetResult(DeviceRequiredUnit):
                 print(color_string((CG, f"{len(raw)} bytes -> {args.file}")))
             else:
                 print(color_string((CY,
-                    f"{len(raw)} raw bytes (use -f to save, or --json/--dump "
-                    f"to format)")))
+                                    f"{len(raw)} raw bytes (use -f to save, or --json/--dump "
+                                    f"to format)")))
             return
 
         if mode not in (StandaloneMode.AUTHTRACE, StandaloneMode.EMUL_TRACE,
                         StandaloneMode.RELAY, StandaloneMode.HF14A_TAP_SNIFF):
             print(color_string((CY,
-                f"got {len(raw)} bytes; mode={mode.name} has no parser. "
-                f"use --raw -f <path> to dump.")))
+                                f"got {len(raw)} bytes; mode={mode.name} has no parser. "
+                                f"use --raw -f <path> to dump.")))
             return
 
         if mode == StandaloneMode.RELAY:
@@ -4670,6 +4730,7 @@ class StandaloneGetResult(DeviceRequiredUnit):
             if args.json:
                 import json as _json
                 # Strip display-only fields (col, decoded) from JSON output
+
                 def _clean(s):
                     c = dict(s)
                     c['frames'] = [
@@ -4724,6 +4785,7 @@ class StandaloneGetResult(DeviceRequiredUnit):
         # default summary
         print(authtrace_summarise(sessions))
 
+
 @standalone.command('ls')
 class StandaloneLs(DeviceRequiredUnit):
     """
@@ -4773,6 +4835,7 @@ class StandaloneLs(DeviceRequiredUnit):
             est = f"~{max(1, sz // 64)}" if sz > 0 else "-"
             print(f"  {CG}{name:<14}{C0}  {sz:>7}B  {est:>14}")
 
+
 @standalone.command('clear-result')
 class StandaloneClearResult(DeviceRequiredUnit):
     """Discard the active mode's result buffer."""
@@ -4788,6 +4851,7 @@ class StandaloneClearResult(DeviceRequiredUnit):
             print(color_string((CG, "cleared")))
         else:
             print(color_string((CR, f"clear failed: status={resp.status}")))
+
 
 @standalone.command('config')
 class StandaloneConfig(DeviceRequiredUnit):
@@ -4847,14 +4911,14 @@ class StandaloneConfig(DeviceRequiredUnit):
         if mode == StandaloneMode.RELAY:
             if any(v is not None for v in (args.block, args.key_type, args.key)):
                 print(color_string((CR,
-                    "relay config does not use --block/--key-type/--key")))
+                                    "relay config does not use --block/--key-type/--key")))
                 return
             if args.timeout is not None:
                 # --timeout reused as WTX ms for relay mode
                 wtx_ms = int(args.timeout)
                 if wtx_ms < 500 or wtx_ms > 10000:
                     print(color_string((CR,
-                        "relay --wtx must be 500-10000 ms")))
+                                        "relay --wtx must be 500-10000 ms")))
                     return
                 cfg_hex = '{:02X}{:02X}{:02X}{:02X}'.format(
                     wtx_ms & 0xFF, (wtx_ms >> 8) & 0xFF,
@@ -4863,7 +4927,7 @@ class StandaloneConfig(DeviceRequiredUnit):
                     StandaloneMode.RELAY.value, cfg_hex)
                 if resp.status == Status.SUCCESS:
                     print(color_string((CG,
-                        f"relay WTX set to {wtx_ms} ms")))
+                                        f"relay WTX set to {wtx_ms} ms")))
                 return
             # No setter args — read and display current config
             raw = self.cmd.standalone_get_config(StandaloneMode.RELAY.value)
@@ -4883,14 +4947,14 @@ class StandaloneConfig(DeviceRequiredUnit):
 
         if mode == StandaloneMode.EMUL_TRACE:
             print(color_string((CY,
-                "emul_trace has no config — it uses the active emulation slot as-is.\n"
-                "Set up your slot normally, then arm the mode.")))
+                                "emul_trace has no config — it uses the active emulation slot as-is.\n"
+                                "Set up your slot normally, then arm the mode.")))
             return
 
         if mode == StandaloneMode.HF14A_TAP_SNIFF:
             if any(v is not None for v in (args.block, args.key_type, args.key)):
                 print(color_string((CR,
-                    "hf14a-tap-sniff config does not use --block/--key-type/--key")))
+                                    "hf14a-tap-sniff config does not use --block/--key-type/--key")))
                 return
             if args.timeout is not None:
                 timeout_ms = int(args.timeout)
@@ -4901,10 +4965,10 @@ class StandaloneConfig(DeviceRequiredUnit):
                 resp = self.cmd.standalone_set_config(mode, cfg)
                 if resp.status == Status.SUCCESS:
                     print(color_string((CG,
-                        f"hf14a-tap-sniff timeout set to {timeout_ms} ms")))
+                                        f"hf14a-tap-sniff timeout set to {timeout_ms} ms")))
                 else:
                     print(color_string((CR,
-                        f"set-config failed: status={resp.status}")))
+                                        f"set-config failed: status={resp.status}")))
                 return
             # No setter args — read and display current config
             blob = self.cmd.standalone_get_config(mode)
@@ -4915,7 +4979,7 @@ class StandaloneConfig(DeviceRequiredUnit):
                 print(f"  timeout:  {timeout_ms} ms")
             else:
                 print(color_string((CY,
-                    "no persisted config — default timeout 5000 ms")))
+                                    "no persisted config — default timeout 5000 ms")))
             return
 
         if not any_setter:
@@ -4939,23 +5003,25 @@ class StandaloneConfig(DeviceRequiredUnit):
 
         if mode != StandaloneMode.AUTHTRACE:
             print(color_string((CR,
-                f"config writes only implemented for authtrace; "
-                f"raw set-config required for {mode.name}")))
+                                f"config writes only implemented for authtrace; "
+                                f"raw set-config required for {mode.name}")))
             return
 
         existing = self.cmd.standalone_get_config(mode)
         if len(existing) >= 16:
-            ver     = existing[0]
-            typ     = existing[1]
-            block   = existing[2]
+            ver = existing[0]
+            typ = existing[1]
+            block = existing[2]
             timeout = existing[4] | (existing[5] << 8)
-            key     = bytes(existing[6:12])
+            key = bytes(existing[6:12])
         else:
             ver, typ, block, timeout = 1, 0x60, 4, 3000
             key = b'\xff' * 6
 
-        if args.block    is not None: block   = args.block
-        if args.timeout  is not None: timeout = args.timeout
+        if args.block is not None:
+            block = args.block
+        if args.timeout is not None:
+            timeout = args.timeout
         if args.key_type is not None:
             typ = 0x60 if args.key_type == 'A' else 0x61
         if args.key is not None:
@@ -4966,7 +5032,7 @@ class StandaloneConfig(DeviceRequiredUnit):
                 return
             if len(key) != 6:
                 print(color_string((CR,
-                    f"key must be 6 bytes; got {len(key)}")))
+                                    f"key must be 6 bytes; got {len(key)}")))
                 return
 
         if not (100 <= timeout <= 30000):
@@ -4977,18 +5043,19 @@ class StandaloneConfig(DeviceRequiredUnit):
             return
 
         cfg = struct.pack('<BBBBH', ver, typ, block, 0, timeout) \
-              + key + b'\x00' * 4
+            + key + b'\x00' * 4
         assert len(cfg) == 16
 
         resp = self.cmd.standalone_set_config(mode, cfg)
         if resp.status == Status.SUCCESS:
             kname = {0x60: 'A', 0x61: 'B'}[typ]
             print(color_string((CG,
-                f"ok: type={kname} block={block} timeout={timeout}ms "
-                f"key={key.hex()}")))
+                                f"ok: type={kname} block={block} timeout={timeout}ms "
+                                f"key={key.hex()}")))
         else:
             print(color_string((CR,
-                f"set-config failed: status={resp.status}")))
+                                f"set-config failed: status={resp.status}")))
+
 
 @hf_seos.command("eview")
 class HFSeosEView(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
@@ -5013,6 +5080,7 @@ class HFSeosEView(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
         print("[=]         OID:", data["oid"].hex().upper())
         print("[=]         Tag:", data["tag"].hex().upper())
         print("[=] Diversifier:", data["diversifier"].hex().upper())
+
 
 @hf_seos.command("eload")
 class HFSeosELoad(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredUnit):
@@ -5052,7 +5120,7 @@ class HFSeosELoad(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
         atqa = anti_coll_data["atqa"]
         sak = anti_coll_data["sak"]
         ats = anti_coll_data["ats"]
-        
+
         change_requested, change_done, uid, atqa, sak, ats = self.update_hf14a_anticoll(
             args, uid, atqa, sak, ats
         )
@@ -5099,6 +5167,7 @@ class HFSeosELoad(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
             hash_alg=hash_alg,
             encr_alg=encr_alg
         )
+
 
 @hf_seos.command("keys")
 class HFSeosKeys(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
@@ -5147,6 +5216,8 @@ class HFSeosKeys(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
         print(f"\n {CR}No keys found{C0}")
 
 # ---- Indala LF (read + T55xx clone) : ported from RRG #402 (kevihiiin); emulation (econfig) omitted ----
+
+
 def indala_decode_raw(raw: bytes):
     """Decode Indala 26-bit FC/CN from 8-byte raw frame (PM3-compatible bit mapping)."""
     bits = []
@@ -5183,6 +5254,7 @@ def indala_decode_raw(raw: bytes):
     cn |= bits[41] << 0
 
     return fc, cn
+
 
 def indala_encode_raw(fc: int, cn: int) -> bytes:
     """Encode FC/CN into 8-byte Indala 26-bit raw frame (PM3-compatible bit mapping)."""
@@ -5246,6 +5318,7 @@ def indala_encode_raw(fc: int, cn: int) -> bytes:
         if bits[i]:
             raw[i // 8] |= 1 << (7 - (i % 8))
     return bytes(raw)
+
 
 def indala_format_output(raw: bytes) -> str:
     """Format Indala raw bytes as PM3-style output string."""

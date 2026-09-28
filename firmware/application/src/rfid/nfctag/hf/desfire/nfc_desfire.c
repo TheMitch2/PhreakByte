@@ -266,8 +266,8 @@ static void nfc_tag_desfire_state_handler(uint8_t *p_data, uint16_t szDataBits) 
 
     size_t resp_len = 0;
     DfcVirtualPiccStatus st = dfc_virtual_picc_iso_dep_exchange(
-                                 m_session, m_rx_buf, m_rx_len,
-                                 m_resp_buf, sizeof(m_resp_buf), &resp_len);
+                                  m_session, m_rx_buf, m_rx_len,
+                                  m_resp_buf, sizeof(m_resp_buf), &resp_len);
     m_rx_len = 0;
 
     /* 64 MHz core, so cycles / 64 is microseconds. This is the number that
@@ -491,9 +491,9 @@ int nfc_tag_desfire_data_savecb(tag_specific_type_t type, tag_data_buffer_t *buf
 
 bool nfc_tag_desfire_data_factory(uint8_t slot, tag_specific_type_t tag_type) {
     if (tag_type != TAG_TYPE_DESFIRE_EV1_2K && tag_type != TAG_TYPE_DESFIRE_EV1_4K &&
-        tag_type != TAG_TYPE_DESFIRE_EV1_8K &&
-        tag_type != TAG_TYPE_DESFIRE_EV2_2K && tag_type != TAG_TYPE_DESFIRE_EV2_4K &&
-        tag_type != TAG_TYPE_DESFIRE_EV2_8K) {
+            tag_type != TAG_TYPE_DESFIRE_EV1_8K &&
+            tag_type != TAG_TYPE_DESFIRE_EV2_2K && tag_type != TAG_TYPE_DESFIRE_EV2_4K &&
+            tag_type != TAG_TYPE_DESFIRE_EV2_8K) {
         return false;
     }
 

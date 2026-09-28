@@ -27,8 +27,8 @@ extern "C" {
  *  Safe to call at any time; replaces whatever handler is currently active.
  *  Saves the previous handler so it can be restored by nfc_relay_tag_clear(). */
 void nfc_relay_tag_install(const uint8_t *uid, uint8_t uid_len,
-                           const uint8_t atqa[2], uint8_t sak,
-                           const uint8_t *ats, uint8_t ats_len);
+const uint8_t atqa[2], uint8_t sak,
+const uint8_t *ats, uint8_t ats_len);
 
 /** Register the frame callback (ISR-safe: copy + flag only).
  *  Called once per frame received from the reader after SELECT. */

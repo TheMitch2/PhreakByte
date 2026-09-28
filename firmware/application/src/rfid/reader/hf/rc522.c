@@ -1345,8 +1345,8 @@ void pcd_14a_reader_passive_rx_arm(void) {
 * @retval STATUS_HF_ERR_STAT frame longer than pOut capacity
 */
 uint8_t pcd_14a_reader_passive_rx_collect(uint8_t *pOut, uint16_t maxOutLenBit,
-                                          uint16_t *pOutLenBit, uint8_t *pErr,
-                                          uint16_t timeout_ms) {
+        uint16_t *pOutLenBit, uint8_t *pErr,
+        uint16_t timeout_ms) {
     uint8_t status = STATUS_HF_TAG_NO;
     uint8_t n, lastBits, err = 0, not_timeout;
     uint16_t bitlen;

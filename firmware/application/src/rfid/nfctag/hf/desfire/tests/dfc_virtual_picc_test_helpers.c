@@ -8,7 +8,7 @@ void load_standard_credential(DfcCredential* credential) {
 
     const uint8_t aid_desfire_order[] = {0x4F, 0x49, 0xD3};
     DfcApplication* app = dfc_credential_create_application_desfire_order(
-        credential, aid_desfire_order, 0x0F, DFC_KEY_TYPE_DES_2K3DES | 2);
+                              credential, aid_desfire_order, 0x0F, DFC_KEY_TYPE_DES_2K3DES | 2);
     munit_assert_not_null(app);
     uint8_t iso_aid[] = {0xD2, 0x76, 0x00, 0x00, 0x85, 0x01, 0x00};
     memcpy(app->iso_aid, iso_aid, sizeof(iso_aid));
@@ -31,7 +31,8 @@ void load_standard_credential(DfcCredential* credential) {
         0xC4,
         0xE8,
         0xD9,
-        0xFB};
+        0xFB
+    };
     memcpy(dfc_credential_key(credential, app, 1), key1, sizeof(key1));
 
     DfcFile* file = dfc_credential_create_file(credential, 0, 0x0F);
@@ -40,7 +41,7 @@ void load_standard_credential(DfcCredential* credential) {
     file->comm_settings = DFC_COMM_MAC;
     file->access_rights = 0x1230;
     munit_assert_true(dfc_file_resize(credential, file, 3));
-    uint8_t* bytes = dfc_file_data(credential, file);
+    uint8_t *bytes = dfc_file_data(credential, file);
     munit_assert_not_null(bytes);
     bytes[0] = 0x30;
     bytes[1] = 0x01;
@@ -49,7 +50,7 @@ void load_standard_credential(DfcCredential* credential) {
 
 static void test_des_ecb_crypt(
     bool encrypt,
-    const uint8_t* key,
+    const uint8_t *key,
     size_t key_len,
     const uint8_t input[8],
     uint8_t output[8]) {
@@ -57,15 +58,15 @@ static void test_des_ecb_crypt(
 }
 
 static void test_d40_send_crypt(
-    const uint8_t* key,
+    const uint8_t *key,
     size_t key_len,
-    const uint8_t* plain,
+    const uint8_t *plain,
     size_t plain_len,
-    uint8_t* encrypted) {
+    uint8_t *encrypted) {
     uint8_t previous[8] = {0};
-    for(size_t offset = 0; offset < plain_len; offset += 8) {
+    for (size_t offset = 0; offset < plain_len; offset += 8) {
         uint8_t block[8];
-        for(size_t i = 0; i < 8; i++) {
+        for (size_t i = 0; i < 8; i++) {
             block[i] = plain[offset + i] ^ previous[i];
         }
         test_des_ecb_crypt(false, key, key_len, block, encrypted + offset);
@@ -73,9 +74,9 @@ static void test_d40_send_crypt(
     }
 }
 
-static uint16_t test_crc16_iso14443(const uint8_t* data, size_t len) {
+static uint16_t test_crc16_iso14443(const uint8_t *data, size_t len) {
     uint16_t crc = 0x6363;
-    for(size_t i = 0; i < len; i++) {
+    for (size_t i = 0; i < len; i++) {
         uint8_t byte = data[i] ^ (crc & 0xFF);
         byte ^= byte << 4;
         crc = (crc >> 8) ^ ((uint16_t)byte << 8) ^ ((uint16_t)byte << 3) ^ ((uint16_t)byte >> 4);
@@ -83,14 +84,14 @@ static uint16_t test_crc16_iso14443(const uint8_t* data, size_t len) {
     return crc;
 }
 
-static void test_set_des_key_version(uint8_t* key, size_t key_len, uint8_t version) {
-    for(size_t i = 0; i < key_len; i++) {
+static void test_set_des_key_version(uint8_t *key, size_t key_len, uint8_t version) {
+    for (size_t i = 0; i < key_len; i++) {
         key[i] &= 0xFE;
     }
-    for(size_t i = 0; i < 8; i++) {
+    for (size_t i = 0; i < 8; i++) {
         uint8_t bit = (version >> (7 - i)) & 0x01;
         key[i] = (key[i] & 0xFE) | bit;
-        if(key_len == 16) {
+        if (key_len == 16) {
             key[i + 8] = (key[i + 8] & 0xFE) | ((~bit) & 0x01);
         }
     }
@@ -98,13 +99,13 @@ static void test_set_des_key_version(uint8_t* key, size_t key_len, uint8_t versi
 
 void authenticate_legacy_key0(
     DfcVirtualPiccSession* session,
-    const uint8_t* key,
+    const uint8_t *key,
     size_t key_len,
-    uint8_t* response,
+    uint8_t *response,
     size_t response_capacity,
-    size_t* response_len,
-    uint8_t* session_key,
-    size_t* session_key_len,
+    size_t *response_len,
+    uint8_t *session_key,
+    size_t *session_key_len,
     uint8_t expected_status) {
     authenticate_legacy_key(
         session,
@@ -122,13 +123,13 @@ void authenticate_legacy_key0(
 void authenticate_legacy_key(
     DfcVirtualPiccSession* session,
     uint8_t key_no,
-    const uint8_t* key,
+    const uint8_t *key,
     size_t key_len,
-    uint8_t* response,
+    uint8_t *response,
     size_t response_capacity,
-    size_t* response_len,
-    uint8_t* session_key,
-    size_t* session_key_len,
+    size_t *response_len,
+    uint8_t *session_key,
+    size_t *session_key_len,
     uint8_t expected_status) {
     const uint8_t authenticate[] = {0x90, 0x0A, 0x00, 0x00, 0x01, key_no, 0x00};
     munit_assert_int(
@@ -169,11 +170,11 @@ void authenticate_legacy_key(
             response_len),
         ==,
         DfcVirtualPiccStatusOk);
-    if(expected_status == DFC_STATUS_OK) {
+    if (expected_status == DFC_STATUS_OK) {
         munit_assert_size(*response_len, ==, 10);
         munit_assert_uint8(response[8], ==, 0x91);
         munit_assert_uint8(response[9], ==, DFC_STATUS_OK);
-        if(!session_key || !session_key_len) return;
+        if (!session_key || !session_key_len) return;
         dfc_derive_session_key(
             DFC_CMD_AUTHENTICATE_LEGACY, key, key_len, rnd_a, rnd_b, session_key, session_key_len);
     } else {
@@ -184,12 +185,12 @@ void authenticate_legacy_key(
 }
 
 size_t build_legacy_change_key_payload(
-    const uint8_t* session_key,
+    const uint8_t *session_key,
     size_t session_key_len,
-    const uint8_t* new_key,
+    const uint8_t *new_key,
     size_t new_key_len,
     uint8_t version,
-    uint8_t* out) {
+    uint8_t *out) {
     uint8_t clear[DFC_MAX_KEY_LEN + 8];
     memset(clear, 0, sizeof(clear));
     memcpy(clear, new_key, new_key_len);
@@ -206,11 +207,11 @@ size_t build_legacy_change_key_payload(
 }
 
 size_t build_legacy_encrypted_payload(
-    const uint8_t* session_key,
+    const uint8_t *session_key,
     size_t session_key_len,
-    const uint8_t* clear,
+    const uint8_t *clear,
     size_t clear_len,
-    uint8_t* out) {
+    uint8_t *out) {
     uint8_t padded[32];
     memset(padded, 0, sizeof(padded));
     memcpy(padded, clear, clear_len);
@@ -224,21 +225,21 @@ size_t build_legacy_encrypted_payload(
 }
 
 size_t build_legacy_change_other_key_payload(
-    const uint8_t* session_key,
+    const uint8_t *session_key,
     size_t session_key_len,
     uint8_t key_no,
-    const uint8_t* old_key,
-    const uint8_t* new_key,
+    const uint8_t *old_key,
+    const uint8_t *new_key,
     size_t key_len,
     uint8_t version,
-    uint8_t* out) {
+    uint8_t *out) {
     uint8_t new_stored[DFC_MAX_KEY_LEN];
     memcpy(new_stored, new_key, key_len);
     test_set_des_key_version(new_stored, key_len, version);
 
     uint8_t clear[DFC_MAX_KEY_LEN + 8];
     memset(clear, 0, sizeof(clear));
-    for(size_t i = 0; i < key_len; i++) {
+    for (size_t i = 0; i < key_len; i++) {
         clear[i] = new_stored[i] ^ old_key[i];
     }
 
@@ -256,11 +257,11 @@ size_t build_legacy_change_other_key_payload(
     return clear_len + 1;
 }
 
-static uint32_t test_crc32_dfc(const uint8_t* data, size_t len) {
+static uint32_t test_crc32_dfc(const uint8_t *data, size_t len) {
     uint32_t crc = 0xFFFFFFFFu;
-    for(size_t i = 0; i < len; i++) {
+    for (size_t i = 0; i < len; i++) {
         crc ^= data[i];
-        for(size_t bit = 0; bit < 8; bit++) {
+        for (size_t bit = 0; bit < 8; bit++) {
             uint32_t mask = 0u - (crc & 1u);
             crc = (crc >> 1) ^ (0xEDB88320u & mask);
         }
@@ -268,7 +269,7 @@ static uint32_t test_crc32_dfc(const uint8_t* data, size_t len) {
     return crc;
 }
 
-static void test_write_crc32_le(uint8_t* dest, uint32_t crc) {
+static void test_write_crc32_le(uint8_t *dest, uint32_t crc) {
     dest[0] = (uint8_t)(crc & 0xFF);
     dest[1] = (uint8_t)((crc >> 8) & 0xFF);
     dest[2] = (uint8_t)((crc >> 16) & 0xFF);
@@ -277,17 +278,17 @@ static void test_write_crc32_le(uint8_t* dest, uint32_t crc) {
 
 size_t build_ev1_change_key_payload(
     uint8_t cipher,
-    const uint8_t* session_key,
+    const uint8_t *session_key,
     size_t session_key_len,
-    uint8_t* iv,
+    uint8_t *iv,
     uint8_t auth_key_no,
     uint8_t target_key_no,
-    const uint8_t* current_key,
-    const uint8_t* new_key,
+    const uint8_t *current_key,
+    const uint8_t *new_key,
     size_t key_len,
     bool aes_key,
     uint8_t new_version,
-    uint8_t* out) {
+    uint8_t *out) {
     bool different = auth_key_no != target_key_no;
     size_t block = cipher == DFC_CMD_AUTHENTICATE_AES ? 16 : 8;
     size_t version_len = aes_key ? 1 : 0;
@@ -296,15 +297,15 @@ size_t build_ev1_change_key_payload(
 
     uint8_t clear[48];
     memset(clear, 0, sizeof(clear));
-    if(different) {
-        for(size_t i = 0; i < key_len; i++) {
+    if (different) {
+        for (size_t i = 0; i < key_len; i++) {
             clear[i] = (uint8_t)(new_key[i] ^ current_key[i]);
         }
     } else {
         memcpy(clear, new_key, key_len);
     }
     size_t cursor = key_len;
-    if(aes_key) {
+    if (aes_key) {
         clear[cursor++] = new_version;
     }
 
@@ -314,14 +315,14 @@ size_t build_ev1_change_key_payload(
     memcpy(crc_input + 2, clear, cursor);
     test_write_crc32_le(clear + cursor, test_crc32_dfc(crc_input, 2 + cursor));
     cursor += 4;
-    if(different) {
+    if (different) {
         test_write_crc32_le(clear + cursor, test_crc32_dfc(new_key, key_len));
         cursor += 4;
     }
     (void)cursor;
 
     out[0] = target_key_no;
-    if(cipher == DFC_CMD_AUTHENTICATE_AES) {
+    if (cipher == DFC_CMD_AUTHENTICATE_AES) {
         dfc_worker_aes_cbc_encrypt(session_key, session_key_len, iv, clear_len, clear, out + 1);
     } else {
         dfc_worker_des_cbc_encrypt(session_key, session_key_len, iv, clear_len, clear, out + 1);
@@ -333,14 +334,14 @@ static void authenticate_ev1_key(
     DfcVirtualPiccSession* session,
     uint8_t auth_cmd,
     uint8_t key_no,
-    const uint8_t* key,
+    const uint8_t *key,
     size_t key_len,
-    uint8_t* response,
+    uint8_t *response,
     size_t response_capacity,
-    size_t* response_len,
-    uint8_t* session_key,
-    size_t* session_key_len,
-    uint8_t* session_iv,
+    size_t *response_len,
+    uint8_t *session_key,
+    size_t *session_key_len,
+    uint8_t *session_iv,
     uint8_t expected_status) {
     size_t block = auth_cmd == DFC_CMD_AUTHENTICATE_AES ? 16 : 8;
     uint8_t authenticate[7] = {0x90, auth_cmd, 0x00, 0x00, 0x01, key_no, 0x00};
@@ -355,7 +356,7 @@ static void authenticate_ev1_key(
 
     uint8_t iv[16] = {0};
     uint8_t rnd_b[16];
-    if(auth_cmd == DFC_CMD_AUTHENTICATE_AES) {
+    if (auth_cmd == DFC_CMD_AUTHENTICATE_AES) {
         dfc_worker_aes_cbc_decrypt(key, key_len, iv, block, response, rnd_b);
     } else {
         dfc_worker_des_cbc_decrypt(key, key_len, iv, block, response, rnd_b);
@@ -366,7 +367,7 @@ static void authenticate_ev1_key(
     dfc_rotate_left(rnd_b_rot, block);
 
     uint8_t rnd_a[16];
-    for(size_t i = 0; i < block; i++) {
+    for (size_t i = 0; i < block; i++) {
         rnd_a[i] = (uint8_t)(0x10 + i);
     }
     uint8_t challenge[32];
@@ -375,7 +376,7 @@ static void authenticate_ev1_key(
 
     memcpy(iv, response, block);
     uint8_t encrypted_challenge[32];
-    if(auth_cmd == DFC_CMD_AUTHENTICATE_AES) {
+    if (auth_cmd == DFC_CMD_AUTHENTICATE_AES) {
         dfc_worker_aes_cbc_encrypt(
             key, key_len, iv, block * 2, challenge, encrypted_challenge);
     } else {
@@ -402,15 +403,15 @@ static void authenticate_ev1_key(
         ==,
         DfcVirtualPiccStatusOk);
 
-    if(expected_status == DFC_STATUS_OK) {
+    if (expected_status == DFC_STATUS_OK) {
         munit_assert_size(*response_len, ==, block + 2);
         munit_assert_uint8(response[block], ==, 0x91);
         munit_assert_uint8(response[block + 1], ==, DFC_STATUS_OK);
-        if(session_key && session_key_len) {
+        if (session_key && session_key_len) {
             dfc_derive_session_key(
                 auth_cmd, key, key_len, rnd_a, rnd_b, session_key, session_key_len);
         }
-        if(session_iv) {
+        if (session_iv) {
             // Post-auth EV1 IV is zero until the first command CMAC / encrypted block.
             memset(session_iv, 0, 16);
         }
@@ -424,14 +425,14 @@ static void authenticate_ev1_key(
 void authenticate_aes_key(
     DfcVirtualPiccSession* session,
     uint8_t key_no,
-    const uint8_t* key,
+    const uint8_t *key,
     size_t key_len,
-    uint8_t* response,
+    uint8_t *response,
     size_t response_capacity,
-    size_t* response_len,
-    uint8_t* session_key,
-    size_t* session_key_len,
-    uint8_t* session_iv,
+    size_t *response_len,
+    uint8_t *session_key,
+    size_t *session_key_len,
+    uint8_t *session_iv,
     uint8_t expected_status) {
     authenticate_ev1_key(
         session,
@@ -451,14 +452,14 @@ void authenticate_aes_key(
 void authenticate_iso_key(
     DfcVirtualPiccSession* session,
     uint8_t key_no,
-    const uint8_t* key,
+    const uint8_t *key,
     size_t key_len,
-    uint8_t* response,
+    uint8_t *response,
     size_t response_capacity,
-    size_t* response_len,
-    uint8_t* session_key,
-    size_t* session_key_len,
-    uint8_t* session_iv,
+    size_t *response_len,
+    uint8_t *session_key,
+    size_t *session_key_len,
+    uint8_t *session_iv,
     uint8_t expected_status) {
     authenticate_ev1_key(
         session,

@@ -37,12 +37,12 @@ typedef struct __attribute__((packed)) {
     uint8_t  data[476];
     /* trailing magic */
     uint32_t magic_end;
-} uf2_block_t;
+}
+uf2_block_t;
 
 _Static_assert(sizeof(uf2_block_t) == 512, "uf2_block_t must be 512 bytes");
 
-static inline bool uf2_is_block(const void *p)
-{
+static inline bool uf2_is_block(const void *p) {
     const uf2_block_t *b = (const uf2_block_t *)p;
     return b->magic_start0 == UF2_MAGIC_START0 &&
            b->magic_start1 == UF2_MAGIC_START1 &&

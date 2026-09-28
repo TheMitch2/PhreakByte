@@ -129,7 +129,7 @@ static bool commit_session(uint8_t status) {
     uint8_t *p = &m_result_buf[m_st.write_cursor];
     p[0] = m_st.session_count;
     p[1] = status;
-    p[2] = (uint8_t)(trace_len      );
+    p[2] = (uint8_t)(trace_len);
     p[3] = (uint8_t)(trace_len >>  8);
     memcpy(p + 4, m_accum, trace_len);
     m_st.write_cursor += need;
@@ -159,10 +159,11 @@ static void ensure_result_loaded(void) {
                                        &loaded) == STANDALONE_RC_OK
             && loaded > 0) {
         m_st.write_cursor = loaded;
-        size_t off = 0; m_st.session_count = 0;
+        size_t off = 0;
+        m_st.session_count = 0;
         while (off + 4 <= m_st.write_cursor) {
             uint16_t tlen = (uint16_t)m_result_buf[off + 2]
-                          | ((uint16_t)m_result_buf[off + 3] << 8);
+                            | ((uint16_t)m_result_buf[off + 3] << 8);
             off += 4 + tlen;
             m_st.session_count++;
         }
@@ -211,7 +212,8 @@ static void emultrace_tx_cb(const uint8_t *data, uint16_t szBits) {
  * ------------------------------------------------------------------------- */
 
 static standalone_rc_t on_enter(const uint8_t *cfg, size_t cfg_len) {
-    (void)cfg; (void)cfg_len;
+    (void)cfg;
+    (void)cfg_len;
     accum_reset();
     m_session_cut  = 0;
     m_st.active    = true;

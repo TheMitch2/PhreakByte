@@ -2318,7 +2318,7 @@ class ChameleonCMD:
         if len(resp.data) < 4:
             return (0, b'')
         total_size = struct.unpack('<I', resp.data[:4])[0]
-        chunk      = bytes(resp.data[4:])
+        chunk = bytes(resp.data[4:])
         return (total_size, chunk)
 
     def standalone_drain_result(self) -> bytes:
@@ -2367,8 +2367,8 @@ class ChameleonCMD:
         result = {
             'adv_reports':  struct.unpack_from('<I', d, 0)[0],
             'relay_hits':   struct.unpack_from('<I', d, 4)[0],
-            'ble_state':    d[8]  if len(d) > 8  else 0,
-            'ble_role':     d[9]  if len(d) > 9  else 0,
+            'ble_state':    d[8] if len(d) > 8 else 0,
+            'ble_role':     d[9] if len(d) > 9 else 0,
             'sub_state':    d[10] if len(d) > 10 else 0,
             'card_found':   d[11] if len(d) > 11 else 0,
             'identity_rx':  d[12] if len(d) > 12 else 0,
@@ -2423,21 +2423,22 @@ class ChameleonCMD:
         oid = bytes([len(oid)]) + oid
         tag = bytes([len(tag)]) + tag
         diversifier = bytes([len(diversifier)]) + diversifier
-        
+
         payload = (
             data + oid + tag + diversifier +
             struct.pack('!BB', hash_alg, encr_alg)
         )
-        
+
         if len(payload) > 4096:
             raise ValueError("Too much provided data")
 
         return self.device.send_cmd_sync(Command.SEOS_WRITE_EMU_DATA, payload)
-    
+
     @expect_response(Status.SUCCESS)
     def seos_write_emu_keys(self, auth: bytes, privenc: bytes, privmac: bytes):
         payload = auth + privenc + privmac
         return self.device.send_cmd_sync(Command.SEOS_WRITE_EMU_KEYS, payload)
+
 
 def test_fn():
     # connect to chameleon

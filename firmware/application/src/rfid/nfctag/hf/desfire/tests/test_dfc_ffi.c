@@ -59,25 +59,26 @@ static const char CREDENTIAL[] =
     "Application 00 File 01 Limited Credit: 00\n";
 
 static const uint8_t APP_KEY[16] = {
-    0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
+    0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
+};
 
 static size_t random_calls;
 
-static void counting_random(void* context, uint8_t* buffer, size_t len) {
-    size_t* calls = context;
+static void counting_random(void *context, uint8_t *buffer, size_t len) {
+    size_t *calls = context;
     (*calls)++;
-    for(size_t i = 0; i < len; i++) buffer[i] = (uint8_t)(0x40 + i);
+    for (size_t i = 0; i < len; i++) buffer[i] = (uint8_t)(0x40 + i);
 }
 
-static uint8_t* encode(const DfcFfiCredential* credential, size_t* len) {
+static uint8_t *encode(const DfcFfiCredential* credential, size_t *len) {
     CHECK(dfc_ffi_credential_encode(credential, NULL, 0, len) == 0);
-    uint8_t* out = malloc(*len);
+    uint8_t *out = malloc(*len);
     CHECK(dfc_ffi_credential_encode(credential, out, *len, len) == 0);
     return out;
 }
 
 // Rebuild a credential from nothing but what the walk returns.
-static DfcFfiCredential* rebuild(const DfcFfiCredential* source) {
+static DfcFfiCredential *rebuild(const DfcFfiCredential* source) {
     DfcFfiCredential* built = NULL;
     CHECK(dfc_ffi_credential_new(&built) == 0);
     DfcFfiCard card;
@@ -86,34 +87,34 @@ static DfcFfiCredential* rebuild(const DfcFfiCredential* source) {
     CHECK(dfc_ffi_credential_get_picc(source, &picc) == 0);
     CHECK(dfc_ffi_credential_set_card(built, &card) == 0);
     CHECK(dfc_ffi_credential_set_picc(built, &picc) == 0);
-    for(uint32_t slot = 0; slot < picc.num_keys; slot++) {
+    for (uint32_t slot = 0; slot < picc.num_keys; slot++) {
         DfcFfiKey key;
         CHECK(dfc_ffi_credential_get_key(source, DFC_FFI_OWNER_PICC, 0, slot, &key) == 0);
         CHECK(dfc_ffi_credential_set_key(built, DFC_FFI_OWNER_PICC, 0, slot, &key) == 0);
     }
     uint32_t apps = dfc_ffi_credential_application_count(source);
-    for(uint32_t i = 0; i < apps; i++) {
+    for (uint32_t i = 0; i < apps; i++) {
         DfcFfiApplication app;
         uint32_t index = 0;
         CHECK(dfc_ffi_credential_get_application(source, i, &app) == 0);
         CHECK(dfc_ffi_credential_add_application(built, &app, &index) == 0);
         CHECK(index == i);
-        for(uint32_t slot = 0; slot < app.num_keys; slot++) {
+        for (uint32_t slot = 0; slot < app.num_keys; slot++) {
             DfcFfiKey key;
             CHECK(dfc_ffi_credential_get_key(source, (int32_t)i, 0, slot, &key) == 0);
             CHECK(dfc_ffi_credential_set_key(built, (int32_t)i, 0, slot, &key) == 0);
         }
     }
     uint32_t files = dfc_ffi_credential_file_count(source);
-    for(uint32_t i = 0; i < files; i++) {
+    for (uint32_t i = 0; i < files; i++) {
         DfcFfiFile file;
         uint32_t index = 0;
         CHECK(dfc_ffi_credential_get_file(source, i, &file) == 0);
         CHECK(dfc_ffi_credential_add_file(built, &file, &index) == 0);
         size_t len = 0;
         CHECK(dfc_ffi_credential_get_file_data(source, i, NULL, 0, &len) == 0);
-        if(len) {
-            uint8_t* data = malloc(len);
+        if (len) {
+            uint8_t *data = malloc(len);
             CHECK(dfc_ffi_credential_get_file_data(source, i, data, len, &len) == 0);
             CHECK(dfc_ffi_credential_set_file_data(built, index, data, len) == 0);
             free(data);
@@ -130,9 +131,9 @@ static int32_t run(DfcFfiPicc* picc, DfcFfiReaderExchange* exchange) {
     uint8_t rx[600];
     size_t tx_len = 0;
     size_t rx_len = 0;
-    const uint8_t* answer = NULL;
+    const uint8_t *answer = NULL;
     int32_t st;
-    while((st = dfc_ffi_reader_step(exchange, answer, rx_len, tx, sizeof(tx), &tx_len)) == 1) {
+    while ((st = dfc_ffi_reader_step(exchange, answer, rx_len, tx, sizeof(tx), &tx_len)) == 1) {
         CHECK(dfc_ffi_picc_exchange(picc, tx, tx_len, rx, sizeof(rx), &rx_len) == 0);
         answer = rx;
     }
@@ -151,7 +152,7 @@ int main(void) {
     same_bytes[0] ^= 1;
     CHECK(!dfc_ffi_fixed_time_equal(random_bytes, same_bytes, sizeof(same_bytes)));
     dfc_ffi_secure_zero(random_bytes, sizeof(random_bytes));
-    for(size_t index = 0; index < sizeof(random_bytes); index++) CHECK(random_bytes[index] == 0);
+    for (size_t index = 0; index < sizeof(random_bytes); index++) CHECK(random_bytes[index] == 0);
     DfcFfiCapabilities caps;
     dfc_ffi_capabilities(&caps);
     CHECK(caps.emulator && caps.reader && caps.text_codec);
@@ -165,10 +166,10 @@ int main(void) {
     DfcFfiCredential* credential = NULL;
     DfcFfiError error;
     int32_t st = dfc_ffi_credential_parse_text(CREDENTIAL, sizeof(CREDENTIAL) - 1, &credential, &error);
-    if(st != 0) fprintf(stderr, "parse: %d line %u %s\n", st, error.line, error.message);
+    if (st != 0) fprintf(stderr, "parse: %d line %u %s\n", st, error.line, error.message);
     CHECK(st == 0);
     size_t dfcb_len = 0;
-    uint8_t* dfcb = encode(credential, &dfcb_len);
+    uint8_t *dfcb = encode(credential, &dfcb_len);
     DfcFfiCredential* decoded = NULL;
     CHECK(dfc_ffi_credential_load(dfcb, dfcb_len, &decoded, &error) == 0);
     size_t text_len = 0;
@@ -185,7 +186,7 @@ int main(void) {
     // The walk and the builder agree with the codec.
     DfcFfiCredential* built = rebuild(decoded);
     size_t rebuilt_len = 0;
-    uint8_t* rebuilt = encode(built, &rebuilt_len);
+    uint8_t *rebuilt = encode(built, &rebuilt_len);
     CHECK(rebuilt_len == dfcb_len && memcmp(rebuilt, dfcb, dfcb_len) == 0);
 
     // A virtual PICC answering a reader, both through the interface.
@@ -205,11 +206,11 @@ int main(void) {
     const uint8_t aid[3] = {0x00, 0x00, 0x01};
     CHECK(dfc_ffi_reader_exchange_begin(exchange, session, 0, 0x5A, wire_aid, 3, 0, -1) == 0);
     st = run(picc, exchange);
-    if(st != 0) fprintf(stderr, "select: %d status %02X\n", st, dfc_ffi_reader_result_status(exchange));
+    if (st != 0) fprintf(stderr, "select: %d status %02X\n", st, dfc_ffi_reader_result_status(exchange));
     CHECK(st == 0);
 
     uint8_t random_a[16];
-    for(size_t i = 0; i < sizeof(random_a); i++) random_a[i] = (uint8_t)i;
+    for (size_t i = 0; i < sizeof(random_a); i++) random_a[i] = (uint8_t)i;
     CHECK(dfc_ffi_reader_authenticate_begin(exchange, session, 0, 0xAA, 0, APP_KEY, 16, random_a, 16) == 0);
     CHECK(run(picc, exchange) == 0);
     CHECK(random_calls > 0);
@@ -224,7 +225,7 @@ int main(void) {
     size_t data_len = 0;
     CHECK(dfc_ffi_reader_result_data(exchange, data, sizeof(data), &data_len) == 0);
     CHECK(data_len == 16);
-    for(size_t i = 0; i < data_len; i++) CHECK(data[i] == i);
+    for (size_t i = 0; i < data_len; i++) CHECK(data[i] == i);
 
     DfcFfiSnapshot snapshot;
     CHECK(dfc_ffi_picc_snapshot(picc, &snapshot) == 0);
@@ -246,7 +247,7 @@ int main(void) {
     dfc_ffi_credential_free(decoded);
     dfc_ffi_credential_free(credential);
 
-    if(failures) {
+    if (failures) {
         fprintf(stderr, "%d check(s) failed\n", failures);
         return 1;
     }

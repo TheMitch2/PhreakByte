@@ -176,49 +176,57 @@ static const uint8_t abTrailerAccessConditions[8][2] = {
 };
 
 static const uint8_t abDataAccessConditions[8][2] = {
-    { // 0 0 0    key A|B key A|B key A|B key A|B 
+    {
+        // 0 0 0    key A|B key A|B key A|B key A|B
         /* Access with Key A */
         ACC_BLOCK_READ | ACC_BLOCK_WRITE | ACC_BLOCK_INCREMENT | ACC_BLOCK_DECREMENT,
         /* Access with Key B */
         ACC_BLOCK_READ | ACC_BLOCK_WRITE | ACC_BLOCK_INCREMENT | ACC_BLOCK_DECREMENT
     },
-    { // 1 0 0    key A|B key B never never
+    {
+        // 1 0 0    key A|B key B never never
         /* Access with Key A */
         ACC_BLOCK_READ,
         /* Access with Key B */
         ACC_BLOCK_READ | ACC_BLOCK_WRITE,
     },
-    { // 0 1 0    key A|B never never never
+    {
+        // 0 1 0    key A|B never never never
         /* Access with Key A */
         ACC_BLOCK_READ,
         /* Access with Key B */
         ACC_BLOCK_READ
     },
-    { // 1 1 0    key A|B key B key B key A|B
+    {
+        // 1 1 0    key A|B key B key B key A|B
         /* Access with Key A */
         ACC_BLOCK_READ | ACC_BLOCK_DECREMENT,
         /* Access with Key B */
         ACC_BLOCK_READ | ACC_BLOCK_WRITE | ACC_BLOCK_INCREMENT | ACC_BLOCK_DECREMENT
     },
-    { // 0 0 1    key A|B never never key A|B
+    {
+        // 0 0 1    key A|B never never key A|B
         /* Access with Key A */
         ACC_BLOCK_READ | ACC_BLOCK_DECREMENT,
         /* Access with Key B */
         ACC_BLOCK_READ | ACC_BLOCK_DECREMENT
     },
-    { // 1 0 1    key B never never never
+    {
+        // 1 0 1    key B never never never
         /* Access with Key A */
         0,
         /* Access with Key B */
         ACC_BLOCK_READ
     },
-    { // 0 1 1    key B key B never never
+    {
+        // 0 1 1    key B key B never never
         /* Access with Key A */
         0,
         /* Access with Key B */
         ACC_BLOCK_READ | ACC_BLOCK_WRITE
     },
-    { // 1 1 1    never never never never
+    {
+        // 1 1 1    never never never never
         /* Access with Key A */
         0,
         /* Access with Key B */
@@ -739,7 +747,8 @@ void nfc_tag_mf1_state_handler(uint8_t *p_data, uint16_t szDataBits) {
                 append_mf1_auth_log_step2(p_data, &p_data[4]);
 
                 //NR + AR — relay now handled by nfc_relay_tag.c (slot-independent)
-                if (false) { break; /* placeholder */
+                if (false) {
+                    break; /* placeholder */
                 }
 #ifdef NFC_MF1_FAST_SIM
                 // Reader delivers an encrypted nonce. We use it to setup the crypto1 LFSR in nonlinear feedback mode. Furthermore it delivers an encrypted answer. Decrypt and check it
@@ -758,8 +767,8 @@ void nfc_tag_mf1_state_handler(uint8_t *p_data, uint16_t szDataBits) {
                 // Was the random number of the return of the card reader was sent by us
                 // Also prevent authentication with Key B if it is readable using Key A
                 if ((p_data[4] == ReaderResponse[0]) && (p_data[5] == ReaderResponse[1]) && (p_data[6] == ReaderResponse[2]) && (p_data[7] == ReaderResponse[3])
-                    && (KeyInUse != KEY_B || (Acc & ACC_TRAILER_READ_KEYB) == 0)
-                ) {
+                        && (KeyInUse != KEY_B || (Acc & ACC_TRAILER_READ_KEYB) == 0)
+                   ) {
                     // The reader has passed the authentication.The estimated calculation card response data and generating the puppet test position.
                     m_tag_tx_buffer.tx_raw_buffer[0] = CardResponse[0];
                     m_tag_tx_buffer.tx_raw_buffer[1] = CardResponse[1];
@@ -1454,7 +1463,7 @@ static nfc_tag_14a_uid_size    s_relay_uid_size = NFC_TAG_14A_UID_SINGLE_SIZE;
 static nfc_14a_ats_t            s_relay_ats     = {0};
 
 void nfc_mf1_relay_set_coll_res(const uint8_t *uid, uint8_t uid_len,
-                                 const uint8_t atqa[2], uint8_t sak) {
+                                const uint8_t atqa[2], uint8_t sak) {
     uint8_t ulen = (uid_len > 7) ? 7 : uid_len;
 
     /* Populate relay-owned buffers */
@@ -1462,7 +1471,7 @@ void nfc_mf1_relay_set_coll_res(const uint8_t *uid, uint8_t uid_len,
     memcpy(s_relay_atqa, atqa, 2);
     s_relay_sak[0]  = sak;
     s_relay_uid_size = (uid_len <= 4)
-        ? NFC_TAG_14A_UID_SINGLE_SIZE : NFC_TAG_14A_UID_DOUBLE_SIZE;
+                       ? NFC_TAG_14A_UID_SINGLE_SIZE : NFC_TAG_14A_UID_DOUBLE_SIZE;
     memset(&s_relay_ats, 0, sizeof(s_relay_ats));
 
     /* Point shadow pointers directly at our buffers — bypasses both the

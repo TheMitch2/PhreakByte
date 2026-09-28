@@ -54,10 +54,10 @@ static int aes_cbc(struct AES_ctx *ctx, uint8_t *buf, size_t length, nrf_crypto_
 
     size_t out_len = length;
     ret_code_t rc = nrf_crypto_aes_crypt(
-        &s_aes_ctx, &g_nrf_crypto_aes_cbc_128_info, op,
-        ctx->key, iv_local,
-        buf, length,
-        buf, &out_len);
+                        &s_aes_ctx, &g_nrf_crypto_aes_cbc_128_info, op,
+                        ctx->key, iv_local,
+                        buf, length,
+                        buf, &out_len);
     if (rc != NRF_SUCCESS) return -1;
 
     if (op == NRF_CRYPTO_ENCRYPT) {

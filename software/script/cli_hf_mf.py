@@ -213,6 +213,7 @@ class HFMFNested(ReaderRequiredUnit):
             )
         return
 
+
 @hf_mf.command("darkside")
 class HFMFDarkside(ReaderRequiredUnit):
     def __init__(self):
@@ -292,6 +293,7 @@ class HFMFDarkside(ReaderRequiredUnit):
         else:
             print(" - Key recover fail.")
         return
+
 
 @hf_mf.command("hardnested")
 class HFMFHardNested(ReaderRequiredUnit):
@@ -953,6 +955,7 @@ class HFMFHardNested(ReaderRequiredUnit):
         else:
             print(color_string((CR, " - HardNested attack failed to recover the key.")))
 
+
 @hf_mf.command("senested")
 class HFMFStaticEncryptedNested(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1111,6 +1114,7 @@ class HFMFStaticEncryptedNested(ReaderRequiredUnit):
             os.remove(file)
 
         return key_map
+
 
 @hf_mf.command("autopwn")
 class HFMFAutopwn(ReaderRequiredUnit):
@@ -1719,6 +1723,7 @@ class HFMFAutopwn(ReaderRequiredUnit):
             if not args.no_dump:
                 self.dump_card_to_file(extracted_keys, max_sectors_num)
 
+
 @hf_mf.command("sim")
 class HFMFSim(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1776,6 +1781,7 @@ class HFMFSim(DeviceRequiredUnit):
         self.cmd.slot_data_config_save()
         print(f" {CG}[+]{C0}  Emulating {block_count}-block MIFARE Classic in slot "
               f"{int(slot)} — leave CU on the reader")
+
 
 @hf_mf.command("fchk")
 class HFMFFCHK(ReaderRequiredUnit):
@@ -1979,6 +1985,7 @@ class HFMFFCHK(ReaderRequiredUnit):
             f"( {color_string((CR, '0'))}: Failed, {color_string((CG, '1'))}: Success )\n\n"
         )
 
+
 @hf_mf.command("rdbl")
 class HFMFRDBL(MF1AuthArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1990,6 +1997,7 @@ class HFMFRDBL(MF1AuthArgsUnit):
         param = self.get_param(args)
         resp = self.cmd.mf1_read_one_block(param.block, param.type, param.key)
         print(f" - Data: {resp.hex()}")
+
 
 @hf_mf.command("wrbl")
 class HFMFWRBL(MF1AuthArgsUnit):
@@ -2016,6 +2024,7 @@ class HFMFWRBL(MF1AuthArgsUnit):
             print(f" - {color_string((CG, 'Write done.'))}")
         else:
             print(f" - {color_string((CR, 'Write fail.'))}")
+
 
 @hf_mf.command("view")
 class HFMFView(MF1AuthArgsUnit):
@@ -2107,6 +2116,7 @@ class HFMFView(MF1AuthArgsUnit):
                 "Missing args. Specify --dump-file (-d) or --key-file (-k)"
             )
         print_mem_dump(data, 16)
+
 
 @hf_mf.command("dump")
 class HFMFDump(MF1AuthArgsUnit):
@@ -2205,6 +2215,7 @@ class HFMFDump(MF1AuthArgsUnit):
                 buffer.extend(trailer.hex().encode("utf-8"))
         # write buffer to file
         args.dump_file.write(buffer)
+
 
 @hf_mf.command("clone")
 class HFMFClone(MF1AuthArgsUnit):
@@ -2313,6 +2324,7 @@ class HFMFClone(MF1AuthArgsUnit):
                 except UnexpectedResponseError:
                     pass
                 self.cmd.mf1_write_one_block(4 * s + b, MfcKeyType.A, keyA, block_data)
+
 
 @hf_mf.command("value")
 class HFMFVALUE(ReaderRequiredUnit):
@@ -2555,6 +2567,7 @@ class HFMFVALUE(ReaderRequiredUnit):
         else:
             print(f" - {color_string((CR, 'Restore fail.'))}")
 
+
 _KEY = re.compile("[a-fA-F0-9]{12}", flags=re.MULTILINE)
 
 _TOOL_MISSING = "MISSING"    # binary not found on disk
@@ -2563,11 +2576,13 @@ _TOOL_BLOCKED = "BLOCKED"    # binary exists but OS/AV prevented execution
 
 _TOOL_NO_KEY = "NO_KEY"     # binary ran cleanly, no key found for these nonces
 
+
 def _sniff_tool_path(name):
     """Return the Path to a cracking binary, or None if not present."""
     suffix = ".exe" if sys.platform == "win32" else ""
     p = default_cwd / (name + suffix)
     return p if p.exists() else None
+
 
 def _run_mfkey64(uid, nt, nr, ar, at):
     """
@@ -2606,6 +2621,7 @@ def _run_mfkey64(uid, nt, nr, ar, at):
     sea_obj = _KEY.search(result.stdout)
     return sea_obj[0] if sea_obj is not None else _TOOL_NO_KEY
 
+
 def _run_mfkey32v2(items):
     """
     Used by HFMFELog (detection-log path) via multiprocessing Pool.
@@ -2631,6 +2647,7 @@ def _run_mfkey32v2(items):
     if sea_obj is not None:
         return sea_obj[0], items
     return None
+
 
 def _run_mfkey32v2_sniff(n0, n1):
     """
@@ -2663,6 +2680,7 @@ def _run_mfkey32v2_sniff(n0, n1):
         return _TOOL_BLOCKED
     sea_obj = _KEY.search(result.stdout)
     return sea_obj[0] if sea_obj is not None else _TOOL_NO_KEY
+
 
 class ItemGenerator:
     def __init__(self, rs, uid_found_keys=set()):
@@ -2717,6 +2735,7 @@ class ItemGenerator:
             ):
                 self.keys.add(key)
                 self.found.add(item_key)
+
 
 @hf_mf.command("elog")
 class HFMFELog(DeviceRequiredUnit):
@@ -2816,6 +2835,7 @@ class HFMFELog(DeviceRequiredUnit):
                     )
         return
 
+
 @hf_mf.command("eload")
 class HFMFELoad(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -2888,6 +2908,7 @@ class HFMFELoad(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
             print("." * n_blocks, end="")
             block += n_blocks
         print("\n - Load success")
+
 
 @hf_mf.command("esave")
 class HFMFESave(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
@@ -2967,6 +2988,7 @@ class HFMFESave(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
                     fd.write(data)
             print("\n - Read success")
 
+
 @hf_mf.command("eview")
 class HFMFEView(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -3002,6 +3024,7 @@ class HFMFEView(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
             index += chunk_count
             block_count -= chunk_count
         print_mem_dump(data, 16)
+
 
 @hf_mf.command("econfig")
 class HFMFEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredUnit):

@@ -445,22 +445,6 @@ class HF14AAntiCollArgsUnit(DeviceRequiredUnit):
         return change_requested, anti_coll_data_changed, uid, atqa, sak, ats
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 IDTECK_PREAMBLE_HEX = "4944544B"
 IDTECK_PREAMBLE_INT = 0x4944544B
 
@@ -515,8 +499,6 @@ def _idteck_frame_info(frame: bytes) -> dict:
         "checksum_valid": chksum == expected,
         "card_id": card_id,
     }
-
-
 
 
 def _fdxb_crc16(data: bytes) -> int:
@@ -608,8 +590,6 @@ def _fdxb_build_frame(country: int, national: int, animal: int = 1,
     return head + crc + ext
 
 
-
-
 class TagTypeArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_type_args(parser: ArgumentParserNoExit):
@@ -665,5 +645,3 @@ lf_fdxb = lf.subgroup("fdxb", "FDX-B animal tag commands (134.2 kHz)")
 lf_generic = lf.subgroup("generic", "Generic commands")
 lf_idteck = lf.subgroup("idteck", "IDTECK commands")
 lf_t55xx = lf.subgroup("t55xx", "T55xx/T5577 raw block commands")
-
-

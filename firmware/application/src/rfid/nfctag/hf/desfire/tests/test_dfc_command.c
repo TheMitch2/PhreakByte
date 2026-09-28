@@ -6,23 +6,23 @@
 
 #include <string.h>
 
-static size_t hex(const char* text, uint8_t* out) {
+static size_t hex(const char *text, uint8_t *out) {
     size_t n = 0;
-    for(size_t i = 0; text[i] && text[i + 1]; i += 2) {
+    for (size_t i = 0; text[i] && text[i + 1]; i += 2) {
         unsigned value = 0;
-        for(size_t j = 0; j < 2; j++) {
+        for (size_t j = 0; j < 2; j++) {
             char c = text[i + j];
             value <<= 4;
-            if(c >= '0' && c <= '9') value |= (unsigned)(c - '0');
-            else if(c >= 'A' && c <= 'F') value |= (unsigned)(c - 'A' + 10);
-            else if(c >= 'a' && c <= 'f') value |= (unsigned)(c - 'a' + 10);
+            if (c >= '0' && c <= '9') value |= (unsigned)(c - '0');
+            else if (c >= 'A' && c <= 'F') value |= (unsigned)(c - 'A' + 10);
+            else if (c >= 'a' && c <= 'f') value |= (unsigned)(c - 'a' + 10);
         }
         out[n++] = (uint8_t)value;
     }
     return n;
 }
 
-static void assert_apdu(const DfcCommand* command, const char* expected_hex) {
+static void assert_apdu(const DfcCommand* command, const char *expected_hex) {
     uint8_t expected[DFC_COMMAND_MAX_APDU];
     size_t expected_len = hex(expected_hex, expected);
     uint8_t apdu[DFC_COMMAND_MAX_APDU];
@@ -32,7 +32,7 @@ static void assert_apdu(const DfcCommand* command, const char* expected_hex) {
     munit_assert_memory_equal(apdu_len, apdu, expected);
 }
 
-static MunitResult test_simple_commands(const MunitParameter params[], void* data) {
+static MunitResult test_simple_commands(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     DfcCommand c;
@@ -61,7 +61,7 @@ static MunitResult test_simple_commands(const MunitParameter params[], void* dat
     return MUNIT_OK;
 }
 
-static MunitResult test_application_commands(const MunitParameter params[], void* data) {
+static MunitResult test_application_commands(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     DfcCommand c;
@@ -117,7 +117,7 @@ static MunitResult test_application_commands(const MunitParameter params[], void
     return MUNIT_OK;
 }
 
-static MunitResult test_file_commands(const MunitParameter params[], void* data) {
+static MunitResult test_file_commands(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     DfcCommand c;
@@ -165,7 +165,7 @@ static MunitResult test_file_commands(const MunitParameter params[], void* data)
     return MUNIT_OK;
 }
 
-static MunitResult test_value_and_key_commands(const MunitParameter params[], void* data) {
+static MunitResult test_value_and_key_commands(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     DfcCommand c;
@@ -195,7 +195,7 @@ static MunitResult test_value_and_key_commands(const MunitParameter params[], vo
     return MUNIT_OK;
 }
 
-static MunitResult test_authentication_commands(const MunitParameter params[], void* data) {
+static MunitResult test_authentication_commands(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     DfcCommand c;
@@ -213,7 +213,7 @@ static MunitResult test_authentication_commands(const MunitParameter params[], v
     return MUNIT_OK;
 }
 
-static MunitResult test_framing_and_bounds(const MunitParameter params[], void* data) {
+static MunitResult test_framing_and_bounds(const MunitParameter params[], void *data) {
     (void)params;
     (void)data;
     DfcCommand c;
@@ -248,6 +248,6 @@ static MunitTest tests[] = {
 
 static const MunitSuite suite = {"/dfc_command", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE};
 
-int main(int argc, char* argv[MUNIT_ARRAY_PARAM(argc + 1)]) {
+int main(int argc, char *argv[MUNIT_ARRAY_PARAM(argc + 1)]) {
     return munit_suite_main(&suite, NULL, argc, argv);
 }

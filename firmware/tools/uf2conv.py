@@ -18,10 +18,10 @@ from pathlib import Path
 
 UF2_MAGIC_START0 = 0x0A324655
 UF2_MAGIC_START1 = 0x9E5D5157
-UF2_MAGIC_END    = 0x0AB16F30
+UF2_MAGIC_END = 0x0AB16F30
 UF2_FLAG_FAMILYID = 0x00002000
-FAMILY_NRF52840  = 0x1B57745F
-PAYLOAD_SIZE     = 256
+FAMILY_NRF52840 = 0x1B57745F
+PAYLOAD_SIZE = 256
 
 
 def parse_hex(text):
@@ -34,9 +34,9 @@ def parse_hex(text):
             continue
         raw = bytes.fromhex(ln[1:])
         count = raw[0]
-        addr  = (raw[1] << 8) | raw[2]
+        addr = (raw[1] << 8) | raw[2]
         rtype = raw[3]
-        data  = raw[4:4 + count]
+        data = raw[4:4 + count]
 
         if rtype == 0x00:
             for i, b in enumerate(data):

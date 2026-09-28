@@ -1172,7 +1172,7 @@
 #ifndef NRF_DFU_TRANSPORT_USB
 #define NRF_DFU_TRANSPORT_USB 1
 #endif
-    
+
 // <q> NRF_DFU_BLE_SKIP_SD_INIT  - Skip the SoftDevice and interrupt vector table initialization.
 
 

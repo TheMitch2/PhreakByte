@@ -261,7 +261,7 @@ static void init_bitflip_bitarrays(void) {
             if (p.input_buffer != NULL) {
                 uint32_t count = 0;
 
-                lzma_init_inflate(&strm, p.input_buffer, p.len, (uint8_t*)&count, sizeof(count));
+                lzma_init_inflate(&strm, p.input_buffer, p.len, (uint8_t *)&count, sizeof(count));
                 if ((float)count / (1 << 24) < IGNORE_BITFLIP_THRESHOLD) {
                     uint32_t *bitset = (uint32_t *)malloc_bitarray(sizeof(uint32_t) * (1 << 19));
                     if (bitset == NULL) {
@@ -643,7 +643,7 @@ static void update_allbitflips_array(void) {
                 if (nonces[i].all_bitflips_dirty[odd_even]) {
                     uint32_t old_count = num_all_bitflips_bitarray[odd_even];
                     num_all_bitflips_bitarray[odd_even] = count_bitarray_low20_AND(all_bitflips_bitarray[odd_even],
-                                                          nonces[i].states_bitarray[odd_even]);
+                        nonces[i].states_bitarray[odd_even]);
                     nonces[i].all_bitflips_dirty[odd_even] = false;
                     if (num_all_bitflips_bitarray[odd_even] != old_count) {
                         all_bitflips_bitarray_dirty[odd_even] = true;
@@ -827,7 +827,7 @@ static float sort_best_first_bytes(void) {
         nonces[i].expected_num_brute_force = 0.0;
         for (uint8_t j = 0; j < NUM_SUMS; j++) {
             nonces[i].sum_a8_guess[j].num_states = estimated_num_states_coarse(sums[first_byte_Sum],
-                                                   sums[nonces[i].sum_a8_guess[j].sum_a8_idx]);
+                sums[nonces[i].sum_a8_guess[j].sum_a8_idx]);
             nonces[i].expected_num_brute_force +=
                 nonces[i].sum_a8_guess[j].prob * (float) nonces[i].sum_a8_guess[j].num_states / 2.0;
             prob_all_failed -= nonces[i].sum_a8_guess[j].prob;
@@ -1156,19 +1156,19 @@ static void update_nonce_data(bool time_budget) {
 static void apply_sum_a0(void) {
     uint32_t old_count = num_all_bitflips_bitarray[EVEN_STATE];
     num_all_bitflips_bitarray[EVEN_STATE] = count_bitarray_AND(all_bitflips_bitarray[EVEN_STATE],
-                                            sum_a0_bitarrays[EVEN_STATE][first_byte_Sum]);
+        sum_a0_bitarrays[EVEN_STATE][first_byte_Sum]);
     if (num_all_bitflips_bitarray[EVEN_STATE] != old_count) {
         all_bitflips_bitarray_dirty[EVEN_STATE] = true;
     }
     old_count = num_all_bitflips_bitarray[ODD_STATE];
     num_all_bitflips_bitarray[ODD_STATE] = count_bitarray_AND(all_bitflips_bitarray[ODD_STATE],
-                                           sum_a0_bitarrays[ODD_STATE][first_byte_Sum]);
+        sum_a0_bitarrays[ODD_STATE][first_byte_Sum]);
     if (num_all_bitflips_bitarray[ODD_STATE] != old_count) {
         all_bitflips_bitarray_dirty[ODD_STATE] = true;
     }
 }
 
-static int simulate_acquire_nonces(uint32_t uid, char* path) {
+static int simulate_acquire_nonces(uint32_t uid, char *path) {
     time_t time1 = time(NULL);
     last_sample_clock = 0;
     sample_period = 1000; // for emulation
@@ -1971,7 +1971,7 @@ mfnestedhard(uint8_t blockNo, uint8_t keyType, uint8_t *key, uint8_t trgBlockNo,
     return key_found;
 }
 
-char *run_hardnested(uint32_t uid, char* path) {
+char *run_hardnested(uint32_t uid, char *path) {
     uint64_t foundkey = 0;
     if (mfnestedhard(0, 0, NULL, 0, 0, NULL, false, false, false, &foundkey, NULL, uid, path) == 1) {
         char *keystr = malloc(14);

@@ -38,7 +38,7 @@ static const DfcRoleEntry entries[] = {
 
 int main(void) {
     int present = 0;
-    for(size_t i = 0; i < sizeof(entries) / sizeof(entries[0]); i++) {
+    for (size_t i = 0; i < sizeof(entries) / sizeof(entries[0]); i++) {
         present += entries[i] != 0;
     }
     return present == (int)(sizeof(entries) / sizeof(entries[0])) ? 0 : 1;

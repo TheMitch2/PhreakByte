@@ -42,8 +42,8 @@ int mbedtls_des_setkey_dec(mbedtls_des_context* ctx, const uint8_t key[8]) {
 }
 
 int mbedtls_des_crypt_ecb(mbedtls_des_context* ctx, const uint8_t input[8], uint8_t output[8]) {
-    if(output != input) memcpy(output, input, DES_BLOCKLEN);
-    if(ctx->dir == MBEDTLS_DES_ENCRYPT) {
+    if (output != input) memcpy(output, input, DES_BLOCKLEN);
+    if (ctx->dir == MBEDTLS_DES_ENCRYPT) {
         DES_ECB_encrypt(&ctx->k, output);
     } else {
         DES_ECB_decrypt(&ctx->k, output);
@@ -56,14 +56,14 @@ int mbedtls_des_crypt_cbc(
     int mode,
     size_t length,
     uint8_t iv[8],
-    const uint8_t* input,
-    uint8_t* output) {
-    if(length % DES_BLOCKLEN != 0) return MBEDTLS_ERR_DES_INVALID_INPUT_LENGTH;
+    const uint8_t *input,
+    uint8_t *output) {
+    if (length % DES_BLOCKLEN != 0) return MBEDTLS_ERR_DES_INVALID_INPUT_LENGTH;
 
     DES_ctx_set_iv(&ctx->k, iv);
-    if(output != input) memcpy(output, input, length);
+    if (output != input) memcpy(output, input, length);
 
-    if(mode == MBEDTLS_DES_ENCRYPT) {
+    if (mode == MBEDTLS_DES_ENCRYPT) {
         DES_CBC_encrypt(&ctx->k, output, length);
     } else {
         DES_CBC_decrypt(&ctx->k, output, length);
@@ -110,8 +110,8 @@ int mbedtls_des3_set3key_dec(mbedtls_des3_context* ctx, const uint8_t key[24]) {
 }
 
 int mbedtls_des3_crypt_ecb(mbedtls_des3_context* ctx, const uint8_t input[8], uint8_t output[8]) {
-    if(output != input) memcpy(output, input, DES_BLOCKLEN);
-    if(ctx->dir == MBEDTLS_DES_ENCRYPT) {
+    if (output != input) memcpy(output, input, DES_BLOCKLEN);
+    if (ctx->dir == MBEDTLS_DES_ENCRYPT) {
         DES3_ECB_encrypt(&ctx->k, output);
     } else {
         DES3_ECB_decrypt(&ctx->k, output);
@@ -124,14 +124,14 @@ int mbedtls_des3_crypt_cbc(
     int mode,
     size_t length,
     uint8_t iv[8],
-    const uint8_t* input,
-    uint8_t* output) {
-    if(length % DES_BLOCKLEN != 0) return MBEDTLS_ERR_DES_INVALID_INPUT_LENGTH;
+    const uint8_t *input,
+    uint8_t *output) {
+    if (length % DES_BLOCKLEN != 0) return MBEDTLS_ERR_DES_INVALID_INPUT_LENGTH;
 
     DES3_ctx_set_iv(&ctx->k, iv);
-    if(output != input) memcpy(output, input, length);
+    if (output != input) memcpy(output, input, length);
 
-    if(mode == MBEDTLS_DES_ENCRYPT) {
+    if (mode == MBEDTLS_DES_ENCRYPT) {
         DES3_CBC_encrypt(&ctx->k, output, length);
     } else {
         DES3_CBC_decrypt(&ctx->k, output, length);
@@ -170,7 +170,7 @@ void mbedtls_aes_free(mbedtls_aes_context* ctx) {
     memset(ctx, 0, sizeof(*ctx));
 }
 
-static int aes_setkey(mbedtls_aes_context* ctx, const uint8_t* key, unsigned int keybits) {
+static int aes_setkey(mbedtls_aes_context* ctx, const uint8_t *key, unsigned int keybits) {
     if (keybits != 128) return MBEDTLS_ERR_AES_INVALID_KEY_LENGTH;
     aes_shim_ensure_init();
     memcpy(ctx->key, key, 16);
@@ -178,11 +178,11 @@ static int aes_setkey(mbedtls_aes_context* ctx, const uint8_t* key, unsigned int
     return 0;
 }
 
-int mbedtls_aes_setkey_enc(mbedtls_aes_context* ctx, const uint8_t* key, unsigned int keybits) {
+int mbedtls_aes_setkey_enc(mbedtls_aes_context* ctx, const uint8_t *key, unsigned int keybits) {
     return aes_setkey(ctx, key, keybits);
 }
 
-int mbedtls_aes_setkey_dec(mbedtls_aes_context* ctx, const uint8_t* key, unsigned int keybits) {
+int mbedtls_aes_setkey_dec(mbedtls_aes_context* ctx, const uint8_t *key, unsigned int keybits) {
     /* Direction is chosen per call in crypt_cbc, so decrypt setup is identical
        to encrypt setup: the key is only stored here. */
     return aes_setkey(ctx, key, keybits);
@@ -193,8 +193,8 @@ int mbedtls_aes_crypt_cbc(
     int mode,
     size_t length,
     uint8_t iv[16],
-    const uint8_t* input,
-    uint8_t* output) {
+    const uint8_t *input,
+    uint8_t *output) {
     if (length % AES_SHIM_BLOCK != 0) return MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH;
     if (!ctx->has_key) return MBEDTLS_ERR_AES_INVALID_KEY_LENGTH;
     if (length == 0) return 0;
@@ -221,11 +221,11 @@ int mbedtls_aes_crypt_cbc(
 
         size_t out_len = chunk;
         ret_code_t rc = nrf_crypto_aes_crypt(
-            &s_aes_ctx, &g_nrf_crypto_aes_cbc_128_info,
-            (mode == MBEDTLS_AES_ENCRYPT) ? NRF_CRYPTO_ENCRYPT : NRF_CRYPTO_DECRYPT,
-            ctx->key, iv_run,
-            inbuf, chunk,
-            outbuf, &out_len);
+                            &s_aes_ctx, &g_nrf_crypto_aes_cbc_128_info,
+                            (mode == MBEDTLS_AES_ENCRYPT) ? NRF_CRYPTO_ENCRYPT : NRF_CRYPTO_DECRYPT,
+                            ctx->key, iv_run,
+                            inbuf, chunk,
+                            outbuf, &out_len);
         if (rc != NRF_SUCCESS) return MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH;
 
         memcpy(output + off, outbuf, chunk);

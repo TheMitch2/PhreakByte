@@ -66,15 +66,15 @@ const uint8_t *hf14a_sniff_get_buf(uint16_t *out_len);
  * Standalone subsystem command handlers (see app_cmd_standalone.c).
  * Bound to DATA_CMD_STANDALONE_* (7000-7006) in the m_data_cmd_map[] table.
  */
-data_frame_tx_t *cmd_handler_standalone_get_mode    (uint16_t, uint16_t, uint16_t, uint8_t *);
-data_frame_tx_t *cmd_handler_standalone_set_mode    (uint16_t, uint16_t, uint16_t, uint8_t *);
-data_frame_tx_t *cmd_handler_standalone_get_config  (uint16_t, uint16_t, uint16_t, uint8_t *);
-data_frame_tx_t *cmd_handler_standalone_set_config  (uint16_t, uint16_t, uint16_t, uint8_t *);
-data_frame_tx_t *cmd_handler_standalone_get_result  (uint16_t, uint16_t, uint16_t, uint8_t *);
+data_frame_tx_t *cmd_handler_standalone_get_mode(uint16_t, uint16_t, uint16_t, uint8_t *);
+data_frame_tx_t *cmd_handler_standalone_set_mode(uint16_t, uint16_t, uint16_t, uint8_t *);
+data_frame_tx_t *cmd_handler_standalone_get_config(uint16_t, uint16_t, uint16_t, uint8_t *);
+data_frame_tx_t *cmd_handler_standalone_set_config(uint16_t, uint16_t, uint16_t, uint8_t *);
+data_frame_tx_t *cmd_handler_standalone_get_result(uint16_t, uint16_t, uint16_t, uint8_t *);
 data_frame_tx_t *cmd_handler_standalone_clear_result(uint16_t, uint16_t, uint16_t, uint8_t *);
-data_frame_tx_t *cmd_handler_standalone_trigger     (uint16_t, uint16_t, uint16_t, uint8_t *);
-data_frame_tx_t *cmd_handler_standalone_disarm      (uint16_t, uint16_t, uint16_t, uint8_t *);
-data_frame_tx_t *cmd_handler_standalone_get_sizes   (uint16_t, uint16_t, uint16_t, uint8_t *);
-data_frame_tx_t *cmd_handler_standalone_relay_diag   (uint16_t, uint16_t, uint16_t, uint8_t *);
+data_frame_tx_t *cmd_handler_standalone_trigger(uint16_t, uint16_t, uint16_t, uint8_t *);
+data_frame_tx_t *cmd_handler_standalone_disarm(uint16_t, uint16_t, uint16_t, uint8_t *);
+data_frame_tx_t *cmd_handler_standalone_get_sizes(uint16_t, uint16_t, uint16_t, uint8_t *);
+data_frame_tx_t *cmd_handler_standalone_relay_diag(uint16_t, uint16_t, uint16_t, uint8_t *);
 
 #endif

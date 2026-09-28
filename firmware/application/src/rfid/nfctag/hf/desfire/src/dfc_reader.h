@@ -103,7 +103,7 @@ typedef struct {
 } DfcReaderOptions;
 
 typedef struct {
-    const uint8_t* data;
+    const uint8_t *data;
     size_t length;
     size_t offset;
     uint32_t base_offset;
@@ -115,7 +115,7 @@ typedef struct {
 
 // One operation in flight. Treat the fields as private.
 typedef struct {
-    DfcReaderSession* session;
+    DfcReaderSession *session;
     DfcReaderFraming framing;
     uint8_t kind;
     uint8_t phase;
@@ -159,7 +159,7 @@ typedef struct {
     uint8_t auth_capabilities[DFC_EV2_CAPABILITY_LENGTH];
 } DfcReaderExchange;
 
-const char* dfc_reader_status_name(DfcReaderStatus status);
+const char *dfc_reader_status_name(DfcReaderStatus status);
 
 // An unauthenticated session.
 void dfc_reader_session_init(DfcReaderSession* session);
@@ -180,9 +180,9 @@ DfcReaderStatus dfc_reader_authenticate_begin(
     DfcReaderFraming framing,
     uint8_t cipher,
     uint8_t key_no,
-    const uint8_t* key,
+    const uint8_t *key,
     size_t key_len,
-    const uint8_t* random_a,
+    const uint8_t *random_a,
     size_t random_a_len);
 
 #if DFC_ENABLE_ISO7816_AUTH
@@ -192,11 +192,11 @@ DfcReaderStatus dfc_reader_authenticate_iso7816_begin(
     DfcReaderExchange* exchange,
     DfcReaderSession* session,
     uint8_t key_reference,
-    const uint8_t* key,
+    const uint8_t *key,
     size_t key_len,
     uint8_t algorithm,
-    const uint8_t* random_first,
-    const uint8_t* random_second,
+    const uint8_t *random_first,
+    const uint8_t *random_second,
     size_t random_len);
 #endif
 
@@ -211,7 +211,7 @@ DfcReaderStatus dfc_reader_authenticate_ev2_begin(
     uint8_t key_no,
     const uint8_t key[DFC_AES_KEY_LENGTH],
     const uint8_t random_a[DFC_EV2_RANDOM_LENGTH],
-    const uint8_t* capabilities,
+    const uint8_t *capabilities,
     size_t capabilities_len);
 
 // One command under the session's secure messaging, following every additional
@@ -232,7 +232,7 @@ DfcReaderStatus dfc_reader_write_data_begin(
     DfcReaderFraming framing,
     uint8_t file_number,
     uint32_t offset,
-    const uint8_t* data,
+    const uint8_t *data,
     size_t data_len,
     uint8_t comm_mode);
 DfcReaderStatus dfc_reader_write_record_begin(
@@ -241,7 +241,7 @@ DfcReaderStatus dfc_reader_write_record_begin(
     DfcReaderFraming framing,
     uint8_t file_number,
     uint32_t offset,
-    const uint8_t* data,
+    const uint8_t *data,
     size_t data_len,
     uint8_t comm_mode);
 DfcReaderStatus dfc_reader_update_record_begin(
@@ -251,7 +251,7 @@ DfcReaderStatus dfc_reader_update_record_begin(
     uint8_t file_number,
     uint32_t record_number,
     uint32_t offset,
-    const uint8_t* data,
+    const uint8_t *data,
     size_t data_len,
     uint8_t comm_mode);
 
@@ -260,16 +260,16 @@ DfcReaderStatus dfc_reader_update_record_begin(
 // operation is complete, or the reason it failed.
 DfcReaderStatus dfc_reader_step(
     DfcReaderExchange* exchange,
-    const uint8_t* response,
+    const uint8_t *response,
     size_t response_len,
-    uint8_t* out,
+    uint8_t *out,
     size_t out_cap,
-    size_t* out_len);
+    size_t *out_len);
 
 // The card's final status and its clear response data, after the MAC is
 // stripped and anything encrypted is decrypted.
 uint8_t dfc_reader_result_status(const DfcReaderExchange* exchange);
-const uint8_t* dfc_reader_result_data(const DfcReaderExchange* exchange, size_t* len);
+const uint8_t *dfc_reader_result_data(const DfcReaderExchange* exchange, size_t *len);
 
 // The ChangeKey cryptogram for a legacy, ISO or AES session: the data field
 // after the key number. `current_key` is required when changing a key other
@@ -277,14 +277,14 @@ const uint8_t* dfc_reader_result_data(const DfcReaderExchange* exchange, size_t*
 DfcReaderStatus dfc_reader_change_key_cryptogram(
     const DfcReaderSession* session,
     uint8_t key_no,
-    const uint8_t* new_key,
+    const uint8_t *new_key,
     size_t key_len,
-    const uint8_t* current_key,
+    const uint8_t *current_key,
     bool aes_key,
     uint8_t new_version,
-    uint8_t* out,
+    uint8_t *out,
     size_t out_cap,
-    size_t* out_len);
+    size_t *out_len);
 
 #if DFC_ENABLE_EV2_SECURE_MESSAGING
 // ChangeKeyEV2 for an AES key set, as a command to run with
@@ -296,7 +296,7 @@ DfcReaderStatus dfc_reader_change_key_ev2_command(
     uint8_t key_set_no,
     uint8_t key_no,
     const uint8_t new_key[DFC_AES_KEY_LENGTH],
-    const uint8_t* current_key,
+    const uint8_t *current_key,
     uint8_t new_version,
     DfcCommand* command);
 
@@ -312,7 +312,7 @@ DfcReaderStatus dfc_reader_create_delegated_application_begin(
     const uint8_t dam_encryption_key[DFC_AES_KEY_LENGTH],
     const uint8_t dam_mac_key[DFC_AES_KEY_LENGTH],
     const uint8_t random_prefix[DFC_DELEGATED_RANDOM_PREFIX_LENGTH],
-    const uint8_t* initial_key,
+    const uint8_t *initial_key,
     size_t initial_key_len,
     uint8_t initial_version);
 #endif
@@ -324,9 +324,9 @@ DfcReaderStatus dfc_reader_create_delegated_application_begin(
 bool dfc_reader_proximity_check_mac(
     const uint8_t key[DFC_AES_KEY_LENGTH],
     bool from_card,
-    const uint8_t* published,
+    const uint8_t *published,
     size_t published_len,
-    const uint8_t* transcript,
+    const uint8_t *transcript,
     size_t transcript_len,
     uint8_t mac[DFC_WIRE_MAC_LENGTH]);
 
@@ -334,14 +334,14 @@ bool dfc_reader_proximity_check_mac(
 // decrypted challenge and clear data from the card's answer, and the EXTERNAL
 // AUTHENTICATE that proves the reader holds the select MAC key.
 DfcReaderStatus dfc_reader_virtual_card_select_apdu(
-    const uint8_t* installation_id,
+    const uint8_t *installation_id,
     size_t installation_id_len,
-    uint8_t* out,
+    uint8_t *out,
     size_t out_cap,
-    size_t* out_len);
+    size_t *out_len);
 DfcReaderStatus dfc_reader_virtual_card_open(
     const uint8_t select_encryption_key[DFC_AES_KEY_LENGTH],
-    const uint8_t* response,
+    const uint8_t *response,
     size_t response_len,
     uint8_t challenge[DFC_VIRTUAL_CARD_CHALLENGE_LENGTH],
     uint8_t clear_data[DFC_VIRTUAL_CARD_CLEAR_DATA_LENGTH]);
@@ -349,8 +349,8 @@ DfcReaderStatus dfc_reader_virtual_card_authenticate_apdu(
     const uint8_t select_mac_key[DFC_AES_KEY_LENGTH],
     const uint8_t challenge[DFC_VIRTUAL_CARD_CHALLENGE_LENGTH],
     const uint8_t clear_data[DFC_VIRTUAL_CARD_CLEAR_DATA_LENGTH],
-    uint8_t* out,
+    uint8_t *out,
     size_t out_cap,
-    size_t* out_len);
+    size_t *out_len);
 
 #endif // DFC_ENABLE_READER

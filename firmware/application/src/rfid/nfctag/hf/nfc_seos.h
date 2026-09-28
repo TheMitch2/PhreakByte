@@ -17,7 +17,7 @@ typedef struct __attribute__((packed)) {
 
     uint8_t data[NFC_TAG_SEOS_DATA_MAX];
     uint8_t data_len;
-    
+
     uint8_t oid[NFC_TAG_SEOS_OID_MAX];
     uint8_t oid_len;
 

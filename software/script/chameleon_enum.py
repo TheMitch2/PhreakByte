@@ -183,16 +183,16 @@ class Command(enum.IntEnum):
     DESFIRE_READER_AUTH_ISO7816 = 6012
 
     # Standalone (host-less) modes subsystem
-    STANDALONE_GET_MODE         = 7000
-    STANDALONE_SET_MODE         = 7001
-    STANDALONE_GET_CONFIG       = 7002
-    STANDALONE_SET_CONFIG       = 7003
-    STANDALONE_GET_RESULT       = 7004
-    STANDALONE_CLEAR_RESULT     = 7005
-    STANDALONE_TRIGGER          = 7006
-    STANDALONE_DISARM           = 7009
-    STANDALONE_GET_SIZES        = 7007
-    STANDALONE_RELAY_DIAG       = 7008
+    STANDALONE_GET_MODE = 7000
+    STANDALONE_SET_MODE = 7001
+    STANDALONE_GET_CONFIG = 7002
+    STANDALONE_SET_CONFIG = 7003
+    STANDALONE_GET_RESULT = 7004
+    STANDALONE_CLEAR_RESULT = 7005
+    STANDALONE_TRIGGER = 7006
+    STANDALONE_DISARM = 7009
+    STANDALONE_GET_SIZES = 7007
+    STANDALONE_RELAY_DIAG = 7008
 
     EM410X_SET_EMU_ID = 5000
     EM410X_GET_EMU_ID = 5001
@@ -770,14 +770,14 @@ class StandaloneMode(enum.IntEnum):
     Values match standalone_mode_t in firmware/application/src/app_standalone.h
     and are persisted to FDS - do not renumber.
     """
-    DISABLED    = 0x00
-    AUTOCLONE   = 0x01   # writes_tag, writes_slot - needs HOST_OPTED_IN
+    DISABLED = 0x00
+    AUTOCLONE = 0x01   # writes_tag, writes_slot - needs HOST_OPTED_IN
     READ_REPLAY = 0x02   # writes_slot             - needs HOST_OPTED_IN
-    AUTHTRACE   = 0x03   # active reader; logs auth exchanges (mfkey-ready)
-    SLOT_CYCLE  = 0x04
-    DICT_CHECK  = 0x05
-    EMUL_TRACE  = 0x06   # CU as card; logs reader auth exchanges (mfkey-ready)
-    RELAY       = 0x07   # two-CU BLE peer relay (Ultra only)
+    AUTHTRACE = 0x03   # active reader; logs auth exchanges (mfkey-ready)
+    SLOT_CYCLE = 0x04
+    DICT_CHECK = 0x05
+    EMUL_TRACE = 0x06   # CU as card; logs reader auth exchanges (mfkey-ready)
+    RELAY = 0x07   # two-CU BLE peer relay (Ultra only)
     HF14A_TAP_SNIFF = 0x08   # passive hf14a tap sniff (Ultra only)
 
     @classmethod
@@ -795,15 +795,15 @@ class StandaloneMode(enum.IntEnum):
 
 class StandaloneState(enum.IntEnum):
     """Runtime state of the standalone subsystem (read-only - host observes)."""
-    DISARMED    = 0
-    ARMED_IDLE  = 1
+    DISARMED = 0
+    ARMED_IDLE = 1
     MODE_SELECT = 2
     MODE_ACTIVE = 3
 
 
 class StandaloneFlag(enum.IntFlag):
     """Flags passed to STANDALONE_SET_MODE."""
-    NONE          = 0
+    NONE = 0
     HOST_OPTED_IN = 1 << 0   # required for AUTOCLONE / READ_REPLAY
-    BUZZER_QUIET  = 1 << 1
-    LED_QUIET     = 1 << 2
+    BUZZER_QUIET = 1 << 1
+    LED_QUIET = 1 << 2
