@@ -39,7 +39,7 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install dependencies and set up mergehex shim
+- name: Install dependencies and set up mergehex shim
         run: |
           pip install intelhex --quiet
 
@@ -75,12 +75,14 @@ jobs:
               merged = IntelHex()
               for f in inputs:
                   part = IntelHex(f)
+                  # Explicitly check for address overlaps like Nordic's mergehex does
                   overlap = set(merged.addresses()) & set(part.addresses())
                   if overlap:
                       lo = min(overlap)
                       print(f"mergehex shim: overlap at 0x{lo:X} merging {f}", file=sys.stderr)
                       return 1
-                  merged.merge(part, overlap='error')
+                  # Use overlap='replace' because we already verified there are no overlaps
+                  merged.merge(part, overlap='replace')
 
               merged.write_hex_file(out)
               return 0
