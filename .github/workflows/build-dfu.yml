@@ -1,0 +1,94 @@
+name: Build DFU packages
+
+# Builds the Ultra and Lite firmware and uploads the DFU application packages
+# (and UF2 images) as artifacts. Runs on pushes/PRs that touch the firmware, and
+# attaches the packages to a GitHub Release when you push a tag (v*).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firmware/**'
+      - '.github/workflows/build-dfu.yml'
+    tags:
+      - 'v*'
+  pull_request:
+    paths:
+      - 'firmware/**'
+      - '.github/workflows/build-dfu.yml'
+  workflow_dispatch:        # allow manual runs from the Actions tab
+
+permissions:
+  contents: write           # needed to attach files to a Release on tag builds
+
+jobs:
+  build:
+    name: Build ${{ matrix.device }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false      # build lite even if ultra fails, and vice versa
+      matrix:
+        device: [ultra, lite]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        # The nRF5 SDK (firmware/nrf52_sdk) is committed in the repo, so no
+        # submodule fetch or SDK download is needed.
+
+      - name: Install ARM GCC toolchain + zip
+        run: |
+          sudo apt-get update
+          # gcc-arm-none-eabi provides arm-none-eabi-* at /usr/bin, which is
+          # exactly where the SDK's Makefile.posix expects it (GNU_INSTALL_ROOT).
+          sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi zip
+          arm-none-eabi-gcc --version
+
+      - name: Install nrfutil + nrf5sdk-tools
+        run: |
+          # build.sh calls `nrfutil nrf5sdk-tools pkg/settings generate`.
+          # Install the nrfutil launcher and the nrf5sdk-tools command.
+          curl -fsSL https://files.nordicsemi.com/artifactory/swtools/external/nrfutil/executables/x86_64-unknown-linux-gnu/nrfutil \
+            -o /usr/local/bin/nrfutil
+          chmod +x /usr/local/bin/nrfutil
+          nrfutil install nrf5sdk-tools
+          nrfutil --version
+
+      - name: Build ${{ matrix.device }} firmware
+        working-directory: firmware
+        env:
+          CURRENT_DEVICE_TYPE: ${{ matrix.device }}
+        run: |
+          chmod +x build.sh
+          ./build.sh
+          echo "---- built artifacts ----"
+          ls -la objects/${{ matrix.device }}-dfu-app.zip \
+                 objects/${{ matrix.device }}-dfu-full.zip \
+                 objects/${{ matrix.device }}-application.uf2 || true
+
+      - name: Collect artifacts
+        working-directory: firmware
+        run: |
+          mkdir -p ../dist
+          # The DFU application package — the thing you flash over serial DFU.
+          cp objects/${{ matrix.device }}-dfu-app.zip     ../dist/
+          # The full SD+BL+app package and the UF2 images, for convenience.
+          cp objects/${{ matrix.device }}-dfu-full.zip    ../dist/ 2>/dev/null || true
+          cp objects/${{ matrix.device }}-application.uf2 ../dist/ 2>/dev/null || true
+          cp objects/${{ matrix.device }}-fullimage.uf2   ../dist/ 2>/dev/null || true
+          ls -la ../dist
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.device }}-dfu
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Attach to Release (tag builds only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          fail_on_unmatched_files: true
