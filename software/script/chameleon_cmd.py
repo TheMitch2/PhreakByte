@@ -677,7 +677,8 @@ class ChameleonCMD:
         raise ValueError("The id bytes length must equal 5 (EM410X) or 13 (Electra)")
 
     @expect_response(Status.LF_TAG_OK)
-    def lf_t55xx_write(self, block: int, word: bytes, pwd: bytes = None, page1: bool = False):
+    def lf_t55xx_write(self, block: int, word: bytes, pwd: bytes = None, page1: bool = False,
+                       timeout: int = 4):
         """
         Write a raw 32-bit word to a T55xx block (Ultra only).
 
@@ -685,11 +686,22 @@ class ChameleonCMD:
         :param word:  4-byte big-endian data word
         :param pwd:   4-byte password, or None for open write
         :param page1: target page 1 instead of page 0
+        :param timeout: response timeout (s). A T55xx write is a slow LF/EEPROM
+            operation (~10ms program + gaps + on-air time); over BLE the
+            notification round-trip pushes a single write close to the default
+            3s, so wipes (8+ writes in a row) can spuriously time out. Give it
+            headroom. Raises on a non-LF_TAG_OK device status so a failed write
+            is never silently ignored.
         """
         use_pwd = pwd is not None
         pwd_bytes = pwd if use_pwd else b'\x00\x00\x00\x00'
         data = struct.pack('!B4sB4sB', block, word, int(use_pwd), pwd_bytes, int(page1))
-        return self.device.send_cmd_sync(Command.LF_T55XX_WRITE, data)
+        resp = self.device.send_cmd_sync(Command.LF_T55XX_WRITE, data, timeout=timeout)
+        if resp.status != Status.LF_TAG_OK:
+            raise UnexpectedResponseError(
+                f"T55xx write of block {block}"
+                f"{' page1' if page1 else ''} failed (status 0x{resp.status:02X})")
+        return resp
 
     @expect_response(Status.LF_TAG_OK)
     def lf_t55xx_read(self, block: int, rf_n: int = 32, pwd: bytes = None,
