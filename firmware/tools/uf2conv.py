@@ -11,6 +11,7 @@ Usage:
 
 MIT License.
 """
+
 import argparse
 import struct
 import sys
@@ -36,7 +37,7 @@ def parse_hex(text):
         count = raw[0]
         addr = (raw[1] << 8) | raw[2]
         rtype = raw[3]
-        data = raw[4:4 + count]
+        data = raw[4 : 4 + count]
 
         if rtype == 0x00:
             for i, b in enumerate(data):
@@ -70,11 +71,20 @@ def build_uf2(chunks, family=FAMILY_NRF52840):
     blocks = []
     for i, (addr, payload) in enumerate(chunks):
         block = bytearray(512)
-        struct.pack_into("<IIIIIIII", block, 0,
-                         UF2_MAGIC_START0, UF2_MAGIC_START1,
-                         UF2_FLAG_FAMILYID,
-                         addr, PAYLOAD_SIZE, i, total, family)
-        block[32:32 + PAYLOAD_SIZE] = payload
+        struct.pack_into(
+            "<IIIIIIII",
+            block,
+            0,
+            UF2_MAGIC_START0,
+            UF2_MAGIC_START1,
+            UF2_FLAG_FAMILYID,
+            addr,
+            PAYLOAD_SIZE,
+            i,
+            total,
+            family,
+        )
+        block[32 : 32 + PAYLOAD_SIZE] = payload
         struct.pack_into("<I", block, 508, UF2_MAGIC_END)
         blocks.append(bytes(block))
     return b"".join(blocks)
@@ -84,8 +94,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("input", help="input .hex or .bin")
     ap.add_argument("-o", "--output", help="output .uf2 (default: stdout)")
-    ap.add_argument("--base", type=lambda x: int(x, 0), default=0x27000,
-                    help="base address for .bin input (default 0x27000)")
+    ap.add_argument(
+        "--base",
+        type=lambda x: int(x, 0),
+        default=0x27000,
+        help="base address for .bin input (default 0x27000)",
+    )
     ap.add_argument("--family", type=lambda x: int(x, 0), default=FAMILY_NRF52840)
     args = ap.parse_args()
 

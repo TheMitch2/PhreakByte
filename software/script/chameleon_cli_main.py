@@ -72,15 +72,16 @@ ICEMAN = r"""
 
 class ChameleonCLI:
     """
-        CLI for chameleon
+    CLI for chameleon
     """
 
     def __init__(self):
         # new a device communication instance(only communication)
         self.device_com = chameleon_com.ChameleonCom()
 
-    def get_cmd_node(self, node: chameleon_utils.CLITree,
-                     cmdline: list[str]) -> tuple[chameleon_utils.CLITree, list[str]]:
+    def get_cmd_node(
+        self, node: chameleon_utils.CLITree, cmdline: list[str]
+    ) -> tuple[chameleon_utils.CLITree, list[str]]:
         """
         Recursively traverse the command line tree to get to the matching node
 
@@ -105,10 +106,11 @@ class ChameleonCLI:
         if self.device_com.isOpen():
             ttype = getattr(self.device_com, "transport_type", None)
             label = {"SERIAL": "USB", "BLE": "BLE", "SOCKET": "TCP"}.get(
-                getattr(ttype, "name", ""), "USB")
+                getattr(ttype, "name", ""), "USB"
+            )
             status = color_string((CG, label))
         else:
-            status = color_string((CR, 'Offline'))
+            status = color_string((CR, "Offline"))
         return ANSI(f"[{status}] phreakbyte --> ")
 
     @staticmethod
@@ -124,26 +126,26 @@ class ChameleonCLI:
         model = None
         try:
             if self.device_com.isOpen():
-                model = self.cmd.get_device_model()   # 0 = Ultra, 1 = Lite
+                model = self.cmd.get_device_model()  # 0 = Ultra, 1 = Lite
         except Exception:
             pass
         badge = LITE if model == 1 else ULTRA
         print(color_string((CY, _compose_banner(badge))))
 
     def exec_cmd(self, cmd_str):
-        if cmd_str == '':
+        if cmd_str == "":
             return
 
         # look for alternate exit
         if cmd_str in ["quit", "q", "e"]:
-            cmd_str = 'exit'
+            cmd_str = "exit"
         if cmd_str.strip().lower() in ("iceman", "credits"):
             self.print_iceman_tribute()
             return
 
         # look for alternate comments
         if cmd_str[0] in ";#%":
-            cmd_str = 'rem ' + cmd_str[1:].lstrip()
+            cmd_str = "rem " + cmd_str[1:].lstrip()
 
         # parse cmd
         argv = cmd_str.split()
@@ -155,7 +157,9 @@ class ChameleonCLI:
             for child in tree_node.children:
                 cmd_title = color_string((CG, child.name))
                 if not child.cls:
-                    help_line = (f" - {cmd_title}".ljust(37)) + f"{{ {child.help_text}... }}"
+                    help_line = (
+                        f" - {cmd_title}".ljust(37)
+                    ) + f"{{ {child.help_text}... }}"
                 else:
                     help_line = (f" - {cmd_title}".ljust(37)) + f"{child.help_text}"
                 print(help_line)
@@ -195,10 +199,12 @@ class ChameleonCLI:
             if error is not None:
                 raise error
 
-        except (chameleon_utils.UnexpectedResponseError,
-                chameleon_utils.ArgsParserError,
-                chameleon_com.CMDInvalidException,
-                TimeoutError) as e:
+        except (
+            chameleon_utils.UnexpectedResponseError,
+            chameleon_utils.ArgsParserError,
+            chameleon_com.CMDInvalidException,
+            TimeoutError,
+        ) as e:
             print(color_string((CR, str(e))))
         except Exception:
             print(f"CLI exception: {color_string((CR, traceback.format_exc()))}")
@@ -209,10 +215,13 @@ class ChameleonCLI:
 
         :return:
         """
-        self.completer = chameleon_utils.CustomNestedCompleter.from_clitree(chameleon_cli_unit.root)
-        self.session = prompt_toolkit.PromptSession(completer=self.completer,
-                                                    history=FileHistory(str(pathlib.Path.home() /
-                                                                            ".chameleon_history")))
+        self.completer = chameleon_utils.CustomNestedCompleter.from_clitree(
+            chameleon_cli_unit.root
+        )
+        self.session = prompt_toolkit.PromptSession(
+            completer=self.completer,
+            history=FileHistory(str(pathlib.Path.home() / ".chameleon_history")),
+        )
 
         self.print_banner()
         cmd_strs = []
@@ -222,19 +231,19 @@ class ChameleonCLI:
             else:
                 # wait user input
                 try:
-                    cmd_str = self.session.prompt(
-                        self.get_prompt()).strip()
-                    cmd_strs = cmd_str.replace(
-                        "\r\n", "\n").replace("\r", "\n").split("\n")
+                    cmd_str = self.session.prompt(self.get_prompt()).strip()
+                    cmd_strs = (
+                        cmd_str.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+                    )
                     cmd_str = cmd_strs.pop(0)
                 except EOFError:
-                    cmd_str = 'exit'
+                    cmd_str = "exit"
                 except KeyboardInterrupt:
-                    cmd_str = 'exit'
+                    cmd_str = "exit"
             self.exec_cmd(cmd_str)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if sys.version_info < (3, 9):
         raise Exception("This script requires at least Python 3.9")
     colorama.init(autoreset=True)

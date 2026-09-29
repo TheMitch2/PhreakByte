@@ -54,8 +54,8 @@ from cli_core import (
     lf_viking,
 )
 
-
 # --- LF argument-unit base classes (moved from cli_core) ---
+
 
 class LFEMIdArgsUnit(DeviceRequiredUnit):
     @staticmethod
@@ -227,14 +227,33 @@ class LFIOProxIdArgsUnit(DeviceRequiredUnit):
       --cn  <int>  card number (0-65535)
       --raw8 <hex8> raw 8 bytes hex, e.g. 007854E03A5D65AB
     """
+
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
-        parser.add_argument("--ver", type=int, required=False, help="ioProx version", metavar="<int>")
-        parser.add_argument("--fc",  type=str, required=False,
-                            help="ioProx facility code, e.g., 83 or 0x53", metavar="<str>")
-        parser.add_argument("--cn",  type=int, required=required, help="ioProx card number", metavar="<int>")
-        parser.add_argument("--raw8", type=str, required=False,
-                            help="ioProx raw 8 bytes hex (e.g. 00AABBCCDDEEFF55)", metavar="<hex8>")
+        parser.add_argument(
+            "--ver", type=int, required=False, help="ioProx version", metavar="<int>"
+        )
+        parser.add_argument(
+            "--fc",
+            type=str,
+            required=False,
+            help="ioProx facility code, e.g., 83 or 0x53",
+            metavar="<str>",
+        )
+        parser.add_argument(
+            "--cn",
+            type=int,
+            required=required,
+            help="ioProx card number",
+            metavar="<int>",
+        )
+        parser.add_argument(
+            "--raw8",
+            type=str,
+            required=False,
+            help="ioProx raw 8 bytes hex (e.g. 00AABBCCDDEEFF55)",
+            metavar="<hex8>",
+        )
         return parser
 
     @staticmethod
@@ -252,7 +271,9 @@ class LFIOProxIdArgsUnit(DeviceRequiredUnit):
         s = raw8.replace(" ", "").replace("0x", "").strip()
         b = bytes.fromhex(s)
         if len(b) != 8:
-            raise ArgsParserError("ioProx --raw must be exactly 8 bytes (16 hex chars), e.g. 007854E03A5D65AB")
+            raise ArgsParserError(
+                "ioProx --raw must be exactly 8 bytes (16 hex chars), e.g. 007854E03A5D65AB"
+            )
         return b
 
     @staticmethod
@@ -283,7 +304,9 @@ class LFIOProxIdArgsUnit(DeviceRequiredUnit):
 class LFIOProxReadArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
-        parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+        parser.add_argument(
+            "-v", "--verbose", action="store_true", help="Verbose output"
+        )
         return parser
 
 
@@ -313,7 +336,11 @@ class LFJablotronIdArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
         parser.add_argument(
-            "--id", type=str, required=required, help="Jablotron tag id (5 bytes hex)", metavar="<hex>"
+            "--id",
+            type=str,
+            required=required,
+            help="Jablotron tag id (5 bytes hex)",
+            metavar="<hex>",
         )
         return parser
 
@@ -337,9 +364,11 @@ class LFFdxbIdArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
         parser.add_argument(
-            "--id", type=str, required=required,
+            "--id",
+            type=str,
+            required=required,
             help="FDX-B frame (13 bytes hex: national_id[5] + country[2] + crc[2] + reserved[4])",
-            metavar="<hex>"
+            metavar="<hex>",
         )
         return parser
 
@@ -372,10 +401,12 @@ class LFIdteckIdArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
         parser.add_argument(
-            "--id", type=str, required=required,
+            "--id",
+            type=str,
+            required=required,
             help="IDTECK frame in hex: 16 chars for the full 64-bit frame, or "
-                 "8 chars for the 32-bit payload only (preamble 4944544B is auto-prepended).",
-            metavar="<hex>"
+            "8 chars for the 32-bit payload only (preamble 4944544B is auto-prepended).",
+            metavar="<hex>",
         )
         return parser
 
@@ -400,12 +431,16 @@ class LFIdteckIdArgsUnit(DeviceRequiredUnit):
         # enforce it.
         info = _idteck_frame_info(bytes.fromhex(args.id))
         if not info["preamble_valid"]:
-            print(f"{color_string((CR, 'WARNING'))}: frame preamble {info['preamble_hex']} "
-                  f"is not the IDTECK {IDTECK_PREAMBLE_HEX} — reader will likely reject it")
+            print(
+                f"{color_string((CR, 'WARNING'))}: frame preamble {info['preamble_hex']} "
+                f"is not the IDTECK {IDTECK_PREAMBLE_HEX} — reader will likely reject it"
+            )
         if not info["checksum_valid"]:
-            print(f"{color_string((CY, 'note'))}: payload checksum 0x{info['checksum']:02X} "
-                  f"does not match computed 0x{info['checksum_expected']:02X} "
-                  f"(some readers ignore this, some may reject)")
+            print(
+                f"{color_string((CY, 'note'))}: payload checksum 0x{info['checksum']:02X} "
+                f"does not match computed 0x{info['checksum_expected']:02X} "
+                f"(some readers ignore this, some may reject)"
+            )
         return True
 
     def args_parser(self) -> ArgumentParserNoExit:
@@ -417,18 +452,25 @@ class LFIdteckIdArgsUnit(DeviceRequiredUnit):
 
 # --- LF helpers + command classes ---
 
+
 @lf_fdxb.command("read")
 class LFFdxbRead(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
         parser.description = "Scan FDX-B animal tag (134.2 kHz) and print id"
-        parser.add_argument("--raw", action="store_true", help="also print the raw 13-byte frame")
-        parser.add_argument("-@", dest="continuous", action="store_true",
-                            help="continuous scan until a key is pressed (helps locate an implant)")
+        parser.add_argument(
+            "--raw", action="store_true", help="also print the raw 13-byte frame"
+        )
+        parser.add_argument(
+            "-@",
+            dest="continuous",
+            action="store_true",
+            help="continuous scan until a key is pressed (helps locate an implant)",
+        )
         return parser
 
     def _print_result(self, resp, show_raw: bool) -> bool:
-        if not resp or not hasattr(resp, 'parsed') or resp.parsed is None:
+        if not resp or not hasattr(resp, "parsed") or resp.parsed is None:
             return False
         tag_type, frame = resp.parsed
         # Parse the 13-byte destuffed frame
@@ -473,11 +515,13 @@ class LFFdxbRead(ReaderRequiredUnit):
         """Non-blocking check for any keypress, portable across OSes."""
         if sys.platform == "win32":
             import msvcrt
+
             if msvcrt.kbhit():
                 msvcrt.getch()
                 return True
             return False
         import select
+
         dr, _, _ = select.select([sys.stdin], [], [], 0)
         if dr:
             sys.stdin.readline()
@@ -490,24 +534,50 @@ class LFFdxbWriteT55xx(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
         parser.description = "Write FDX-B frame to T55xx (by fields, or raw --id)"
-        parser.add_argument("--country", type=int, metavar="<0-1023>",
-                            help="country/manufacturer code (ISO 3166 numeric, e.g. 208 for Denmark)")
-        parser.add_argument("--national", type=int, metavar="<id>",
-                            help="national ID, up to 274877906943 (38-bit)")
-        parser.add_argument("--animal", type=int, default=1, choices=(0, 1),
-                            help="animal flag (default 1)")
-        parser.add_argument("--extended", type=lambda x: int(x, 0), default=0, metavar="<0-0xFFFFFF>",
-                            help="optional 24-bit extended data (default 0)")
-        parser.add_argument("--id", type=str, metavar="<hex>",
-                            help="raw 26-hex frame instead of fields (advanced; not validated for reserved bits)")
+        parser.add_argument(
+            "--country",
+            type=int,
+            metavar="<0-1023>",
+            help="country/manufacturer code (ISO 3166 numeric, e.g. 208 for Denmark)",
+        )
+        parser.add_argument(
+            "--national",
+            type=int,
+            metavar="<id>",
+            help="national ID, up to 274877906943 (38-bit)",
+        )
+        parser.add_argument(
+            "--animal",
+            type=int,
+            default=1,
+            choices=(0, 1),
+            help="animal flag (default 1)",
+        )
+        parser.add_argument(
+            "--extended",
+            type=lambda x: int(x, 0),
+            default=0,
+            metavar="<0-0xFFFFFF>",
+            help="optional 24-bit extended data (default 0)",
+        )
+        parser.add_argument(
+            "--id",
+            type=str,
+            metavar="<hex>",
+            help="raw 26-hex frame instead of fields (advanced; not validated for reserved bits)",
+        )
         return parser
 
     def _resolve_frame(self, args) -> bytes:
         """Field args take priority; fall back to raw --id.  Returns 13 bytes."""
         if args.country is not None or args.national is not None:
             if args.country is None or args.national is None:
-                raise ArgsParserError("both --country and --national are required when building by fields")
-            return _fdxb_build_frame(args.country, args.national, args.animal, args.extended)
+                raise ArgsParserError(
+                    "both --country and --national are required when building by fields"
+                )
+            return _fdxb_build_frame(
+                args.country, args.national, args.animal, args.extended
+            )
         if args.id is not None:
             if not re.match(r"^[a-fA-F0-9]{26}$", args.id):
                 raise ArgsParserError("FDX-B --id must be 26 HEX symbols (13 bytes)")
@@ -522,8 +592,10 @@ class LFFdxbWriteT55xx(ReaderRequiredUnit):
         data_bytes = self._resolve_frame(args)
         if not _fdxb_crc_ok(data_bytes):
             calc = _fdxb_crc16(data_bytes[0:8])
-            print(f" [!] CRC-16 in frame does not match data (expected 0x{calc:04x}); "
-                  f"writing anyway, but the tag may not verify on other readers")
+            print(
+                f" [!] CRC-16 in frame does not match data (expected 0x{calc:04x}); "
+                f"writing anyway, but the tag may not verify on other readers"
+            )
         self.cmd.fdxb_write_to_t55xx(data_bytes)
         print(f" - FDX-B frame: {data_bytes.hex().upper()} written to T55xx")
 
@@ -539,8 +611,10 @@ class LFFdxbClone(LFFdxbWriteT55xx):
         data_bytes = self._resolve_frame(args)
         if not _fdxb_crc_ok(data_bytes):
             calc = _fdxb_crc16(data_bytes[0:8])
-            print(f" [!] CRC-16 in frame does not match data (expected 0x{calc:04x}); "
-                  f"cloning anyway, but the tag may not verify on other readers")
+            print(
+                f" [!] CRC-16 in frame does not match data (expected 0x{calc:04x}); "
+                f"cloning anyway, but the tag may not verify on other readers"
+            )
         self.cmd.fdxb_write_to_t55xx(data_bytes)
         print(f" - FDX-B clone complete: {data_bytes.hex().upper()}")
 
@@ -561,7 +635,7 @@ class LFSearch(ReaderRequiredUnit):
         # decoded wiegand card (see hidprox_get_data()), so print the same fields
         # as 'lf hid prox read' instead of hexdumping the struct.
         if tag_type == TagSpecificType.HIDProx:
-            (format, fc, cn1, cn2, il, oem) = struct.unpack(">BIBIBH", id_bytes[:13])
+            format, fc, cn1, cn2, il, oem = struct.unpack(">BIBIBH", id_bytes[:13])
             cn = (cn1 << 32) + cn2
             print(f"HIDProx/{HIDFormat(format)}")
             if fc > 0:
@@ -587,11 +661,17 @@ class LFSearch(ReaderRequiredUnit):
         # id; hexdumping them prints the ASCII codes. Show the same fields as
         # 'lf pac read'.
         if tag_type == TagSpecificType.PAC and len(id_bytes) == 8:
-            card_id_ascii = ''.join(chr(b) if 0x20 <= b < 0x7f else '.' for b in id_bytes)
+            card_id_ascii = "".join(
+                chr(b) if 0x20 <= b < 0x7F else "." for b in id_bytes
+            )
             raw = pac_encode_raw(bytes(id_bytes))
-            print(f" PAC/Stanley - CN: {color_string((CG, card_id_ascii))} | Raw: {raw.hex().upper()}")
+            print(
+                f" PAC/Stanley - CN: {color_string((CG, card_id_ascii))} | Raw: {raw.hex().upper()}"
+            )
             return
-        print(f"{color_string((CG, str(tag_type)))}: {color_string((CG, id_bytes.hex()))}")
+        print(
+            f"{color_string((CG, str(tag_type)))}: {color_string((CG, id_bytes.hex()))}"
+        )
 
 
 @lf_em_410x.command("read")
@@ -660,7 +740,7 @@ def _t55_amplitude_halfbits(samples, rf_n):
     hb = []
     while pos + hb_len <= n:
         c = pos + hb_len // 2
-        seg = b[max(0, c - win):c + win + 1]
+        seg = b[max(0, c - win) : c + win + 1]
         hb.append(1 if sum(seg) * 2 >= len(seg) else 0)
         nb = pos + hb_len
         cand = [e for e in edges if abs(e - nb) <= hb_len // 3]
@@ -745,9 +825,19 @@ def _t55_stream_block(bits):
 # (RfidResearchGroup/proxmark3 client/src/cmdlft55xx.c). Verified against known
 # configs 0x000880E0 (Manchester RF/32, maxblock 7) and 0x00148040 (em410x:
 # Manchester RF/64, maxblock 2).
-_T55_MOD = {0: "DIRECT (ASK/NRZ)", 1: "PSK1", 2: "PSK2", 3: "PSK3",
-            4: "FSK1", 5: "FSK2", 6: "FSK1a", 7: "FSK2a",
-            8: "Manchester", 16: "Biphase", 24: "Biphase-a (CDP)"}
+_T55_MOD = {
+    0: "DIRECT (ASK/NRZ)",
+    1: "PSK1",
+    2: "PSK2",
+    3: "PSK3",
+    4: "FSK1",
+    5: "FSK2",
+    6: "FSK1a",
+    7: "FSK2a",
+    8: "Manchester",
+    16: "Biphase",
+    24: "Biphase-a (CDP)",
+}
 _T55_BITRATE = [8, 16, 32, 40, 50, 64, 100, 128]  # 3-bit non-extended dbr index
 
 # Detected config from `lf t55xx detect`, used as the default RF for `read`.
@@ -756,16 +846,19 @@ _T55_DETECTED = {"rf": None, "mod": "manchester"}
 
 def _t55_parse_block0(b0):
     """Decode a T5577 block-0 config word into its fields."""
-    extend = (b0 >> 17) & 0x01                 # X-mode / extended bit-rate
+    extend = (b0 >> 17) & 0x01  # X-mode / extended bit-rate
     if extend:
-        dbr = (b0 >> 18) & 0x3F                 # extended rate table differs
+        dbr = (b0 >> 18) & 0x3F  # extended rate table differs
         rf = None
     else:
         dbr = (b0 >> 18) & 0x07
         rf = _T55_BITRATE[dbr]
     modulation = (b0 >> 12) & 0x1F
     return {
-        "block0": b0, "extend": bool(extend), "rf": rf, "dbr": dbr,
+        "block0": b0,
+        "extend": bool(extend),
+        "rf": rf,
+        "dbr": dbr,
         "modulation": modulation,
         "mod_name": _T55_MOD.get(modulation, f"0x{modulation:02X} (unknown)"),
         "maxblock": (b0 >> 5) & 0x07,
@@ -800,16 +893,20 @@ def _t55_lock_config(bits, rf, want_mods):
     n = len(bits)
     for i in range(n - 64):
         for inv in (0, 1):
-            seg = bits[i:i + 32]
-            nxt = bits[i + 32:i + 64]
+            seg = bits[i : i + 32]
+            nxt = bits[i + 32 : i + 64]
             if inv:
                 seg = "".join("1" if c == "0" else "0" for c in seg)
                 nxt = "".join("1" if c == "0" else "0" for c in nxt)
             if seg != nxt:
                 continue
             f = _t55_parse_block0(int(seg, 2))
-            if (f["modulation"] in want_mods and not f["extend"]
-                    and f["rf"] == rf and f["maxblock"] >= 1):
+            if (
+                f["modulation"] in want_mods
+                and not f["extend"]
+                and f["rf"] == rf
+                and f["maxblock"] >= 1
+            ):
                 return int(seg, 2), f, inv
     return None
 
@@ -865,16 +962,18 @@ def _t55_frame_block(bits):
             return None, None
     reps = {}
     for i in range(n - 64):
-        w = bits[i:i + 32]
-        if w == bits[i + 32:i + 64]:
+        w = bits[i : i + 32]
+        if w == bits[i + 32 : i + 64]:
             reps[w] = reps.get(w, 0) + 1
     if reps:
         return int(max(reps, key=reps.get), 2), "32-bit block"
     period, unit = _t55_stream_block(bits)
     if period is None:
         return None, None
-    return int((unit * (32 // period + 1))[:32], 2), \
-        f"{period}-bit period — repetitive value or dense-word collapse"
+    return (
+        int((unit * (32 // period + 1))[:32], 2),
+        f"{period}-bit period — repetitive value or dense-word collapse",
+    )
 
 
 def _t55_expect_match(bits, want):
@@ -887,8 +986,8 @@ def _t55_expect_match(bits, want):
             cands.add(base[r:] + base[:r])
     n = len(bits)
     for i in range(n - 64):
-        w = bits[i:i + 32]
-        if w == bits[i + 32:i + 64] and w in cands:
+        w = bits[i : i + 32]
+        if w == bits[i + 32 : i + 64] and w in cands:
             return True
     return False
 
@@ -898,12 +997,30 @@ class LFT55xxWrite(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
         parser.description = "Write a raw 32-bit word to a T55xx block"
-        parser.add_argument("-b", "--block", type=int, required=True, metavar="<0-7>",
-                            help="Block number (0-7 on page 0, 0-3 on page 1)")
-        parser.add_argument("-d", "--data", type=str, required=True, metavar="<hex>",
-                            help="32-bit data word, 4 hex bytes")
-        parser.add_argument("-p", "--pwd", type=str, default=None, metavar="<hex>",
-                            help="Password, 4 hex bytes (password-protected write)")
+        parser.add_argument(
+            "-b",
+            "--block",
+            type=int,
+            required=True,
+            metavar="<0-7>",
+            help="Block number (0-7 on page 0, 0-3 on page 1)",
+        )
+        parser.add_argument(
+            "-d",
+            "--data",
+            type=str,
+            required=True,
+            metavar="<hex>",
+            help="32-bit data word, 4 hex bytes",
+        )
+        parser.add_argument(
+            "-p",
+            "--pwd",
+            type=str,
+            default=None,
+            metavar="<hex>",
+            help="Password, 4 hex bytes (password-protected write)",
+        )
         parser.add_argument("--pg1", action="store_true", help="Target page 1")
         return parser
 
@@ -911,25 +1028,48 @@ class LFT55xxWrite(ReaderRequiredUnit):
         page1 = args.pg1
         max_block = 3 if page1 else 7
         if not (0 <= args.block <= max_block):
-            raise ArgsParserError(f"block must be 0-{max_block} on page {'1' if page1 else '0'}")
+            raise ArgsParserError(
+                f"block must be 0-{max_block} on page {'1' if page1 else '0'}"
+            )
         word = _t55_hex4(args.data, "data")
         pwd = _t55_hex4(args.pwd, "pwd") if args.pwd is not None else None
         self.cmd.lf_t55xx_write(args.block, word, pwd, page1)
-        print(f" - T55xx block {args.block}{' (pg1)' if page1 else ''} <- {word.hex().upper()}")
+        print(
+            f" - T55xx block {args.block}{' (pg1)' if page1 else ''} <- {word.hex().upper()}"
+        )
 
 
 @lf_t55xx.command("wipe")
 class LFT55xxWipe(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = "Wipe a T55xx: default config to block 0, zeros to blocks 1-7"
-        parser.add_argument("-c", "--cfg", type=str, default=None, metavar="<hex>",
-                            help="Override config block 0 (4 hex bytes)")
-        parser.add_argument("-p", "--pwd", type=str, default=None, metavar="<hex>",
-                            help="Current password, 4 hex bytes (to auth the wipe)")
-        parser.add_argument("--q5", action="store_true", help="Target Q5/T5555 (config 0x6001F004)")
-        parser.add_argument("--extended", action="store_true",
-                            help="Also zero block 3 page 1 (extended-mode config)")
+        parser.description = (
+            "Wipe a T55xx: default config to block 0, zeros to blocks 1-7"
+        )
+        parser.add_argument(
+            "-c",
+            "--cfg",
+            type=str,
+            default=None,
+            metavar="<hex>",
+            help="Override config block 0 (4 hex bytes)",
+        )
+        parser.add_argument(
+            "-p",
+            "--pwd",
+            type=str,
+            default=None,
+            metavar="<hex>",
+            help="Current password, 4 hex bytes (to auth the wipe)",
+        )
+        parser.add_argument(
+            "--q5", action="store_true", help="Target Q5/T5555 (config 0x6001F004)"
+        )
+        parser.add_argument(
+            "--extended",
+            action="store_true",
+            help="Also zero block 3 page 1 (extended-mode config)",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -946,8 +1086,10 @@ class LFT55xxWipe(ReaderRequiredUnit):
             self.cmd.lf_t55xx_write(blk, zero, None, page1=False)
         if args.extended:
             self.cmd.lf_t55xx_write(3, zero, None, page1=True)
-        print(f" - T55xx wiped (block 0 = {cfg.hex().upper()}"
-              f"{', Q5' if args.q5 else ''}{', +pg1 blk3' if args.extended else ''})")
+        print(
+            f" - T55xx wiped (block 0 = {cfg.hex().upper()}"
+            f"{', Q5' if args.q5 else ''}{', +pg1 blk3' if args.extended else ''})"
+        )
 
 
 @lf_t55xx.command("detect")
@@ -960,9 +1102,16 @@ class LFT55xxDetect(ReaderRequiredUnit):
             "window that repeats and parses to a valid config at the read rate. Tries "
             "Manchester (amplitude path) and biphase (firmware diphase). FSK/PSK are not "
             "wired; streaming tags with no addressable config block (e.g. FDX-B) are "
-            "reported as such. Sets the default RF/n for subsequent `read`.")
-        parser.add_argument("-p", "--pwd", type=str, default=None, metavar="<hex>",
-                            help="Password, 4 hex bytes (if block 0 is read-protected)")
+            "reported as such. Sets the default RF/n for subsequent `read`."
+        )
+        parser.add_argument(
+            "-p",
+            "--pwd",
+            type=str,
+            default=None,
+            metavar="<hex>",
+            help="Password, 4 hex bytes (if block 0 is read-protected)",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -972,7 +1121,10 @@ class LFT55xxDetect(ReaderRequiredUnit):
         # rate we read it at. That consistency check is what makes a hit trustworthy.
         # Manchester (8) uses the robust amplitude path; biphase (16/24) uses the
         # firmware diphase demod. FSK/PSK are not wired yet.
-        for modname, modcode, want in (("manchester", 0, (8,)), ("biphase", 1, (16, 24))):
+        for modname, modcode, want in (
+            ("manchester", 0, (8,)),
+            ("biphase", 1, (16, 24)),
+        ):
             for rf in (32, 64, 16, 40, 50, 100, 128, 8):
                 for bits in _t55_detect_sources(self.cmd, rf, pwd, modcode):
                     res = _t55_lock_config(bits, rf, want)
@@ -991,33 +1143,66 @@ class LFT55xxDetect(ReaderRequiredUnit):
                     print(f"{CG} - read now defaults to RF/{rf} ({modname}).{C0}")
                     return
         print(f"{CR} - detect failed: no repeating 32-bit config block found.{C0}")
-        print(f"{CY}   Likely a streaming tag with no addressable config block (e.g. FDX-B — "
-              f"use `lf fdxb`), or FSK/PSK (not wired into t55xx read), or a rate not tried. "
-              f"`lf t55xx read -b 0 --adc` shows the raw envelope.{C0}")
+        print(
+            f"{CY}   Likely a streaming tag with no addressable config block (e.g. FDX-B — "
+            f"use `lf fdxb`), or FSK/PSK (not wired into t55xx read), or a rate not tried. "
+            f"`lf t55xx read -b 0 --adc` shows the raw envelope.{C0}"
+        )
 
 
 @lf_t55xx.command("read")
 class LFT55xxRead(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = "Read a T55xx block (Manchester) and dump the demodulated bitstream"
+        parser.description = (
+            "Read a T55xx block (Manchester) and dump the demodulated bitstream"
+        )
         parser.add_argument("-b", "--block", type=int, required=True, metavar="<0-7>")
-        parser.add_argument("--rf", type=int, default=None, metavar="<n>",
-                            help="Bitrate divisor RF/n (default: from `detect`, else 32; em410x uses 64)")
-        parser.add_argument("-p", "--pwd", type=str, default=None, metavar="<hex>",
-                            help="Password, 4 hex bytes")
+        parser.add_argument(
+            "--rf",
+            type=int,
+            default=None,
+            metavar="<n>",
+            help="Bitrate divisor RF/n (default: from `detect`, else 32; em410x uses 64)",
+        )
+        parser.add_argument(
+            "-p",
+            "--pwd",
+            type=str,
+            default=None,
+            metavar="<hex>",
+            help="Password, 4 hex bytes",
+        )
         parser.add_argument("--pg1", action="store_true", help="Target page 1")
-        parser.add_argument("--expect", type=str, default=None, metavar="<hex>",
-                            help="Verify: report whether this 32-bit word (4 hex bytes) is present")
-        parser.add_argument("--raw", action="store_true",
-                            help="Diagnostic: dump raw edge intervals (carrier cycles) instead of decoding")
-        parser.add_argument("--adc", action="store_true",
-                            help="Diagnostic: dump raw SAADC envelope amplitude (robust for dense data)")
-        parser.add_argument("--regread", action="store_true",
-                            help="Diagnostic: skip the addressed downlink, capture the regular-read stream")
-        parser.add_argument("--mod", choices=("auto", "manchester", "biphase"), default="auto",
-                            help="Demod: manchester (SAADC amplitude, robust) or biphase "
-                                 "(firmware diphase_feed). auto = whatever `detect` found (else manchester).")
+        parser.add_argument(
+            "--expect",
+            type=str,
+            default=None,
+            metavar="<hex>",
+            help="Verify: report whether this 32-bit word (4 hex bytes) is present",
+        )
+        parser.add_argument(
+            "--raw",
+            action="store_true",
+            help="Diagnostic: dump raw edge intervals (carrier cycles) instead of decoding",
+        )
+        parser.add_argument(
+            "--adc",
+            action="store_true",
+            help="Diagnostic: dump raw SAADC envelope amplitude (robust for dense data)",
+        )
+        parser.add_argument(
+            "--regread",
+            action="store_true",
+            help="Diagnostic: skip the addressed downlink, capture the regular-read stream",
+        )
+        parser.add_argument(
+            "--mod",
+            choices=("auto", "manchester", "biphase"),
+            default="auto",
+            help="Demod: manchester (SAADC amplitude, robust) or biphase "
+            "(firmware diphase_feed). auto = whatever `detect` found (else manchester).",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -1031,14 +1216,15 @@ class LFT55xxRead(ReaderRequiredUnit):
 
         # --raw: edge-interval diagnostic (fragile on dense data; see --adc).
         if args.raw:
-            n, items = self.cmd.lf_t55xx_read(args.block, args.rf, pwd, args.pg1,
-                                              raw=True, downlink=downlink)
+            n, items = self.cmd.lf_t55xx_read(
+                args.block, args.rf, pwd, args.pg1, raw=True, downlink=downlink
+            )
             if n == 0:
                 print(f"{CR} - no response ({mode}; try --adc to see the envelope){C0}")
                 return
             print(f" - {n} edge intervals ({mode}):")
             for i in range(0, n, 20):
-                print("   " + " ".join(f"{v:3d}" for v in items[i:i + 20]))
+                print("   " + " ".join(f"{v:3d}" for v in items[i : i + 20]))
             nz = [v for v in items if v]
             if nz:
                 hi = {}
@@ -1046,30 +1232,36 @@ class LFT55xxRead(ReaderRequiredUnit):
                     hi[v] = hi.get(v, 0) + 1
                 top = sorted(hi.items(), key=lambda kv: -kv[1])[:6]
                 print("   most common: " + ", ".join(f"{v}({c})" for v, c in top))
-                print(f"   min={min(nz)} max={max(nz)}  (expect clusters near {args.rf}, "
-                      f"{args.rf * 3 // 2}, {args.rf * 2} for RF/{args.rf} Manchester)")
+                print(
+                    f"   min={min(nz)} max={max(nz)}  (expect clusters near {args.rf}, "
+                    f"{args.rf * 3 // 2}, {args.rf * 2} for RF/{args.rf} Manchester)"
+                )
             return
 
         # Optional --adc: amplitude-envelope diagnostic dump (the block value itself
         # is decoded from the firmware demod below).
         if args.adc:
-            n, samples = self.cmd.lf_t55xx_read(args.block, args.rf, pwd, args.pg1,
-                                                adc=True, downlink=downlink)
+            n, samples = self.cmd.lf_t55xx_read(
+                args.block, args.rf, pwd, args.pg1, adc=True, downlink=downlink
+            )
             if n:
                 mean = sum(samples) / n
-                print(f" - {n} amplitude samples ({mode}), mean={mean:.1f} "
-                      f"min={min(samples)} max={max(samples)}:")
+                print(
+                    f" - {n} amplitude samples ({mode}), mean={mean:.1f} "
+                    f"min={min(samples)} max={max(samples)}:"
+                )
                 for i in range(0, n, 32):
-                    print("   " + " ".join(f"{v:3d}" for v in samples[i:i + 32]))
+                    print("   " + " ".join(f"{v:3d}" for v in samples[i : i + 32]))
                 trace = "".join("1" if v >= mean else "0" for v in samples)
                 print(" - threshold@mean:")
                 for i in range(0, len(trace), 64):
-                    print("   " + trace[i:i + 64])
+                    print("   " + trace[i : i + 64])
 
         # Block value via the firmware demod (edge path — the proven decoder detect
         # uses; Manchester or biphase per --mod).
-        n, items = self.cmd.lf_t55xx_read(args.block, args.rf, pwd, args.pg1,
-                                          modulation=modulation, downlink=downlink)
+        n, items = self.cmd.lf_t55xx_read(
+            args.block, args.rf, pwd, args.pg1, modulation=modulation, downlink=downlink
+        )
         if not items:
             print(f"{CR} - no response ({mode}; check --rf / --mod){C0}")
             return
@@ -1077,20 +1269,28 @@ class LFT55xxRead(ReaderRequiredUnit):
         label = "biphase" if modulation == 1 else "manchester"
         val, note = _t55_frame_block(bits)
         if val is None:
-            print(f"{CY} - no stable block ({len(bits)} bits demodulated @ RF/{args.rf}, "
-                  f"{mode}, {label}):{C0}")
+            print(
+                f"{CY} - no stable block ({len(bits)} bits demodulated @ RF/{args.rf}, "
+                f"{mode}, {label}):{C0}"
+            )
             for i in range(0, len(bits), 64):
                 print(f"   {bits[i:i + 64]}")
             return
-        print(f" - block {args.block} @ RF/{args.rf} ({mode}, {label}): {val:08X}  "
-              f"[{note}; may be inverted/rotated — use --expect to test a value]")
+        print(
+            f" - block {args.block} @ RF/{args.rf} ({mode}, {label}): {val:08X}  "
+            f"[{note}; may be inverted/rotated — use --expect to test a value]"
+        )
         if args.expect is not None:
             want = int.from_bytes(_t55_hex4(args.expect, "expect"), "big")
             if _t55_expect_match(bits, want):
-                print(f"{CG} - verify OK: {args.expect.upper()} present "
-                      f"(some rotation/polarity){C0}")
+                print(
+                    f"{CG} - verify OK: {args.expect.upper()} present "
+                    f"(some rotation/polarity){C0}"
+                )
             else:
-                print(f"{CR} - verify MISMATCH: {args.expect.upper()} not in stream{C0}")
+                print(
+                    f"{CR} - verify MISMATCH: {args.expect.upper()} not in stream{C0}"
+                )
 
 
 @lf_hid_prox.command("read")
@@ -1104,7 +1304,7 @@ class LFHIDProxRead(LFHIDIdReadArgsUnit, ReaderRequiredUnit):
         format = 0
         if args.format is not None:
             format = HIDFormat[args.format].value
-        (format, fc, cn1, cn2, il, oem) = self.cmd.hidprox_scan(format)
+        format, fc, cn1, cn2, il, oem = self.cmd.hidprox_scan(format)
         cn = (cn1 << 32) + cn2
         print(f"HIDProx/{HIDFormat(format)}")
         if fc > 0:
@@ -1189,7 +1389,7 @@ class LFHIDProxEconfig(SlotIndexArgsAndGoUnit, LFHIDIdArgsUnit):
             self.cmd.hidprox_set_emu_id(id)
             print(" - SET hidprox tag id success.")
         else:
-            (format, fc, cn1, cn2, il, oem) = self.cmd.hidprox_get_emu_id()
+            format, fc, cn1, cn2, il, oem = self.cmd.hidprox_get_emu_id()
             cn = (cn1 << 32) + cn2
             print(" - GET hidprox tag id success.")
             print(f" - HIDProx/{HIDFormat(format)}")
@@ -1206,7 +1406,9 @@ class LFHIDProxEconfig(SlotIndexArgsAndGoUnit, LFHIDIdArgsUnit):
 class LFIOProxRead(LFIOProxReadArgsUnit, ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = "Scan ioProx tag and print version, facility, card number and raw"
+        parser.description = (
+            "Scan ioProx tag and print version, facility, card number and raw"
+        )
         return self.add_card_arg(parser, required=False)
 
     def on_exec(self, args: argparse.Namespace):
@@ -1239,13 +1441,7 @@ class LFIOProxWriteT55xx(LFIOProxIdArgsUnit, ReaderRequiredUnit):
             res = self.cmd.ioprox_compose_id(args.ver, args.fc, args.cn)
             raw8 = res[3]
 
-        payload16 = struct.pack(
-            ">BBH8s4x",
-            ver & 0xFF,
-            fc & 0xFF,
-            cn & 0xFFFF,
-            raw8
-        )
+        payload16 = struct.pack(">BBH8s4x", ver & 0xFF, fc & 0xFF, cn & 0xFFFF, raw8)
         result = self.cmd.ioprox_write_to_t55xx(payload16)
 
         print(f"ioProx XSF format")
@@ -1262,11 +1458,18 @@ class LFIOProxEconfig(SlotIndexArgsAndGoUnit, LFIOProxIdArgsUnit):
         parser = ArgumentParserNoExit()
         parser.description = "Set/Get emulated ioProx card id (stored in slot)"
         self.add_slot_args(parser)
-        self.add_card_arg(parser, required=False)  # SET when --cn or --raw present; GET otherwise
+        self.add_card_arg(
+            parser, required=False
+        )  # SET when --cn or --raw present; GET otherwise
         return parser
 
     def on_exec(self, args: argparse.Namespace):
-        do_set = (args.cn is not None) or (args.raw8 is not None) or (args.fc is not None) or (args.ver is not None)
+        do_set = (
+            (args.cn is not None)
+            or (args.raw8 is not None)
+            or (args.fc is not None)
+            or (args.ver is not None)
+        )
 
         if do_set:
             # warn if slot isn't ioProx
@@ -1290,11 +1493,7 @@ class LFIOProxEconfig(SlotIndexArgsAndGoUnit, LFIOProxIdArgsUnit):
                 raw8 = res[3]
 
             payload16 = struct.pack(
-                ">BBH8s4x",
-                ver & 0xFF,
-                fc & 0xFF,
-                cn & 0xFFFF,
-                raw8
+                ">BBH8s4x", ver & 0xFF, fc & 0xFF, cn & 0xFFFF, raw8
             )
 
             result = self.cmd.ioprox_set_emu_id(payload16)
@@ -1360,35 +1559,45 @@ def pac_decode_raw(raw: bytes) -> bytes:
     for b in card_id:
         xor_check ^= b
     if xor_check != decoded[11]:
-        raise ValueError(f"Checksum error: expected 0x{xor_check:02X}, got 0x{decoded[11]:02X}")
+        raise ValueError(
+            f"Checksum error: expected 0x{xor_check:02X}, got 0x{decoded[11]:02X}"
+        )
 
     return card_id
 
 
-@lf_pac.command('read')
+@lf_pac.command("read")
 class LFPacRead(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Scan PAC/Stanley tag and print card ID'
+        parser.description = "Scan PAC/Stanley tag and print card ID"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         card_id = self.cmd.pac_scan()
-        card_id_ascii = ''.join(chr(b) if 0x20 <= b < 0x7f else '.' for b in card_id)
+        card_id_ascii = "".join(chr(b) if 0x20 <= b < 0x7F else "." for b in card_id)
         raw = pac_encode_raw(card_id)
-        print(f" PAC/Stanley - CN: {color_string((CG, card_id_ascii))} | Raw: {raw.hex().upper()}")
+        print(
+            f" PAC/Stanley - CN: {color_string((CG, card_id_ascii))} | Raw: {raw.hex().upper()}"
+        )
 
 
 class LFPacIdArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
         group = parser.add_mutually_exclusive_group(required=required)
-        group.add_argument("--cn", type=str,
-                           help="Card number (8 ASCII characters, e.g. CARD0001)",
-                           metavar="<ascii>")
-        group.add_argument("--raw", type=str,
-                           help="T55XX bitstream (32 hex chars, PM3 raw format)",
-                           metavar="<hex>")
+        group.add_argument(
+            "--cn",
+            type=str,
+            help="Card number (8 ASCII characters, e.g. CARD0001)",
+            metavar="<ascii>",
+        )
+        group.add_argument(
+            "--raw",
+            type=str,
+            help="T55XX bitstream (32 hex chars, PM3 raw format)",
+            metavar="<hex>",
+        )
         return parser
 
     def before_exec(self, args: argparse.Namespace):
@@ -1398,12 +1607,14 @@ class LFPacIdArgsUnit(DeviceRequiredUnit):
             if len(args.cn) != 8:
                 raise ArgsParserError("Card number must be exactly 8 characters")
             try:
-                args.id = args.cn.encode('ascii').hex()
+                args.id = args.cn.encode("ascii").hex()
             except UnicodeEncodeError:
                 raise ArgsParserError("Card number must be ASCII characters only")
         elif args.raw is not None:
             if not re.match(r"^[a-fA-F0-9]{32}$", args.raw):
-                raise ArgsParserError("Raw must be exactly 32 hex characters (128-bit T55XX bitstream)")
+                raise ArgsParserError(
+                    "Raw must be exactly 32 hex characters (128-bit T55XX bitstream)"
+                )
             try:
                 card_id = pac_decode_raw(bytes.fromhex(args.raw))
             except ValueError as e:
@@ -1415,7 +1626,9 @@ class LFPacIdArgsUnit(DeviceRequiredUnit):
         # PAC uses 7-bit UART frames; MSB of each byte is not encoded
         id_bytes = bytes.fromhex(args.id)
         if any(b > 0x7F for b in id_bytes):
-            raise ArgsParserError("PAC card IDs are 7-bit only (each byte must be 0x00-0x7F)")
+            raise ArgsParserError(
+                "PAC card IDs are 7-bit only (each byte must be 0x00-0x7F)"
+            )
         return True
 
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1425,26 +1638,26 @@ class LFPacIdArgsUnit(DeviceRequiredUnit):
         raise NotImplementedError("Please implement this")
 
 
-@lf_pac.command('write')
+@lf_pac.command("write")
 class LFPacWriteT55xx(LFPacIdArgsUnit, ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Write PAC/Stanley id to T55xx'
+        parser.description = "Write PAC/Stanley id to T55xx"
         return self.add_card_arg(parser, required=True)
 
     def on_exec(self, args: argparse.Namespace):
         id_bytes = bytes.fromhex(args.id)
         self.cmd.pac_write_to_t55xx(id_bytes)
-        id_ascii = ''.join(chr(b) if 0x20 <= b < 0x7f else '.' for b in id_bytes)
+        id_ascii = "".join(chr(b) if 0x20 <= b < 0x7F else "." for b in id_bytes)
         raw = pac_encode_raw(id_bytes)
         print(f" - PAC/Stanley write done - CN: {id_ascii} | Raw: {raw.hex().upper()}")
 
 
-@lf_pac.command('econfig')
+@lf_pac.command("econfig")
 class LFPacEconfig(SlotIndexArgsAndGoUnit, LFPacIdArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Set emulated PAC/Stanley card ID'
+        parser.description = "Set emulated PAC/Stanley card ID"
         self.add_slot_args(parser)
         self.add_card_arg(parser)
         return parser
@@ -1453,17 +1666,19 @@ class LFPacEconfig(SlotIndexArgsAndGoUnit, LFPacIdArgsUnit):
         if args.id is not None:
             slotinfo = self.cmd.get_slot_info()
             selected = SlotNumber.from_fw(self.cmd.get_active_slot())
-            lf_tag_type = TagSpecificType(slotinfo[selected - 1]['lf'])
+            lf_tag_type = TagSpecificType(slotinfo[selected - 1]["lf"])
             if lf_tag_type != TagSpecificType.PAC:
                 print(f"{color_string((CR, 'WARNING'))}: Slot type not set to PAC.")
             self.cmd.pac_set_emu_id(bytes.fromhex(args.id))
-            print(' - Set PAC/Stanley tag id success.')
+            print(" - Set PAC/Stanley tag id success.")
         else:
             response = self.cmd.pac_get_emu_id()
-            card_id_ascii = ''.join(chr(b) if 0x20 <= b < 0x7f else '.' for b in response)
+            card_id_ascii = "".join(
+                chr(b) if 0x20 <= b < 0x7F else "." for b in response
+            )
             raw = pac_encode_raw(response)
-            print(' - Get PAC/Stanley tag id success.')
-            print(f'CN: {card_id_ascii} | Raw: {raw.hex().upper()}')
+            print(" - Get PAC/Stanley tag id success.")
+            print(f"CN: {card_id_ascii} | Raw: {raw.hex().upper()}")
 
 
 @lf_viking.command("read")
@@ -1524,20 +1739,34 @@ class LFIdteckEconfig(SlotIndexArgsAndGoUnit, LFIdteckIdArgsUnit):
             selected = SlotNumber.from_fw(self.cmd.get_active_slot())
             lf_tag_type = TagSpecificType(slotinfo[selected - 1]["lf"])
             if lf_tag_type != TagSpecificType.IDTECK:
-                print(f"{color_string((CR, 'WARNING'))}: Slot LF type is not IDTECK. "
-                      f"Set it with: hw slot type -s <n> -t IDTECK")
+                print(
+                    f"{color_string((CR, 'WARNING'))}: Slot LF type is not IDTECK. "
+                    f"Set it with: hw slot type -s <n> -t IDTECK"
+                )
             self.cmd.idteck_set_emu_id(bytes.fromhex(args.id))
             print(f" - IDTECK emu id set to {args.id.upper()}.")
         else:
             response = self.cmd.idteck_get_emu_id()
             info = _idteck_frame_info(response)
             print(f" - IDTECK emu id: {response.hex().upper()}")
-            print(f"   Preamble : {info['preamble_hex']}"
-                  + ("" if info["preamble_valid"] else f"  {color_string((CR, '(not IDTK)'))}"))
+            print(
+                f"   Preamble : {info['preamble_hex']}"
+                + (
+                    ""
+                    if info["preamble_valid"]
+                    else f"  {color_string((CR, '(not IDTK)'))}"
+                )
+            )
             print(f"   Payload  : {info['payload_hex']}")
             print(f"   Card ID  : {info['card_id']} (0x{info['card_id']:06X})")
-            chk_tag = color_string((CG, "ok")) if info["checksum_valid"] else color_string((CY, "mismatch"))
-            print(f"   Checksum : 0x{info['checksum']:02X} (expected 0x{info['checksum_expected']:02X}, {chk_tag})")
+            chk_tag = (
+                color_string((CG, "ok"))
+                if info["checksum_valid"]
+                else color_string((CY, "mismatch"))
+            )
+            print(
+                f"   Checksum : 0x{info['checksum']:02X} (expected 0x{info['checksum_expected']:02X}, {chk_tag})"
+            )
 
 
 @lf.command("clone")
@@ -1569,7 +1798,8 @@ class LFT55xxClone(ReaderRequiredUnit):
             "Only supported on Chameleon Ultra (Lite has no LF writer)."
         )
         parser.add_argument(
-            "-t", "--type",
+            "-t",
+            "--type",
             type=str,
             required=True,
             choices=self.TYPES,
@@ -1586,7 +1816,8 @@ class LFT55xxClone(ReaderRequiredUnit):
         )
         # HID Prox
         parser.add_argument(
-            "-f", "--format",
+            "-f",
+            "--format",
             type=str,
             required=False,
             choices=[x.name for x in HIDFormat],
@@ -1641,7 +1872,9 @@ class LFT55xxClone(ReaderRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         # Clone requires LF writer — only available on Chameleon Ultra (not Lite)
         if self.cmd.get_device_model() != 0:
-            print(f" - Error: LF clone requires Chameleon Ultra. Lite has no LF writer.")
+            print(
+                f" - Error: LF clone requires Chameleon Ultra. Lite has no LF writer."
+            )
             return
         t = args.type
 
@@ -1699,7 +1932,9 @@ class LFT55xxClone(ReaderRequiredUnit):
             else:
                 res = self.cmd.ioprox_compose_id(ver, fc, cn)
                 raw8 = res[3]
-            payload16 = struct.pack(">BBH8s4x", ver & 0xFF, fc & 0xFF, cn & 0xFFFF, raw8)
+            payload16 = struct.pack(
+                ">BBH8s4x", ver & 0xFF, fc & 0xFF, cn & 0xFFFF, raw8
+            )
             self.cmd.ioprox_write_to_t55xx(payload16)
             print(f" - ioProx cloned to T55xx")
             print(f"   Ver    : {ver}")
@@ -1720,7 +1955,9 @@ class LFT55xxClone(ReaderRequiredUnit):
             if args.id is None:
                 raise ArgsParserError("--id is required for viking")
             if not re.match(r"^[a-fA-F0-9]{8}$", args.id):
-                raise ArgsParserError("--id must be exactly 8 hex characters for viking")
+                raise ArgsParserError(
+                    "--id must be exactly 8 hex characters for viking"
+                )
             id_bytes = bytes.fromhex(args.id)
             self.cmd.viking_write_to_t55xx(id_bytes)
             print(f" - Viking ID cloned to T55xx: {args.id.upper()}")
@@ -1753,7 +1990,7 @@ class LFADCGenericRead(ReaderRequiredUnit):
             print(f"generic read data[{len(resp)}]:")
             width = 50
             for i in range(0, len(resp), width):
-                chunk = resp[i: i + width]
+                chunk = resp[i : i + width]
                 hexpart = " ".join(f"{b:02x}" for b in chunk)
                 binpart = "".join("1" if b >= 0xBF else "0" for b in chunk)
                 print(f"{i:04x} {hexpart:<{width * 3}} {binpart}")
@@ -1852,7 +2089,9 @@ class LFJablotronEconfig(SlotIndexArgsAndGoUnit, LFJablotronIdArgsUnit):
             selected = SlotNumber.from_fw(self.cmd.get_active_slot())
             lf_tag_type = TagSpecificType(slotinfo[selected - 1]["lf"])
             if lf_tag_type != TagSpecificType.Jablotron:
-                print(f"{color_string((CR, 'WARNING'))}: Slot type not set to Jablotron.")
+                print(
+                    f"{color_string((CR, 'WARNING'))}: Slot type not set to Jablotron."
+                )
             self.cmd.jablotron_set_emu_id(bytes.fromhex(args.id))
             print(" - Set Jablotron tag id success.")
         else:
@@ -1874,11 +2113,11 @@ class LFEm4x05Read(ReaderRequiredUnit):
 
     def on_exec(self, args: argparse.Namespace):
         try:
-            pwd = int(args.pwd, 16) if hasattr(args, 'pwd') and args.pwd else 0
+            pwd = int(args.pwd, 16) if hasattr(args, "pwd") and args.pwd else 0
         except ValueError:
             print(f"{CR}Invalid password, expected hex{C0}")
             return
-        (config, uid, uid_hi, is_em4x69, uid_block) = self.cmd.em4x05_scan(pwd=pwd)
+        config, uid, uid_hi, is_em4x69, uid_block = self.cmd.em4x05_scan(pwd=pwd)
         tag_label = "EM4x69" if is_em4x69 else "EM4x05"
         rl = bool((config >> 6) & 1)
         print(f" Tag type : {CG}{tag_label}{C0}")
@@ -1886,7 +2125,8 @@ class LFEm4x05Read(ReaderRequiredUnit):
         print(f" UID block: {CG}{uid_block}{C0}")
         if rl:
             print(
-                f" Auth     : {CG}LOGIN used (pwd={args.pwd.upper() if hasattr(args, 'pwd') and args.pwd else '00000000'}){C0}")
+                f" Auth     : {CG}LOGIN used (pwd={args.pwd.upper() if hasattr(args, 'pwd') and args.pwd else '00000000'}){C0}"
+            )
         if is_em4x69:
             uid64 = (uid_hi << 32) | uid
             print(f" UID (64) : {CG}{uid64:016x}{C0}")
@@ -1894,7 +2134,7 @@ class LFEm4x05Read(ReaderRequiredUnit):
             print(f" UID      : {CG}{uid:08x}{C0}")
 
 
-@lf.command('sniff')
+@lf.command("sniff")
 class LFSniff(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
@@ -1903,16 +2143,21 @@ class LFSniff(ReaderRequiredUnit):
             "~0x80 = field on, lower values = gap or no field."
         )
         parser.add_argument(
-            '--timeout', type=int, default=2000, metavar='MS',
-            help='Capture duration in milliseconds (default: 2000, max: 10000, firmware blocks for full duration)'
+            "--timeout",
+            type=int,
+            default=2000,
+            metavar="MS",
+            help="Capture duration in milliseconds (default: 2000, max: 10000, firmware blocks for full duration)",
         )
         parser.add_argument(
-            '--out', type=str, default=None, metavar='FILE',
-            help='Save raw samples to binary file (for offline analysis)'
+            "--out",
+            type=str,
+            default=None,
+            metavar="FILE",
+            help="Save raw samples to binary file (for offline analysis)",
         )
         parser.add_argument(
-            '--hex', action='store_true',
-            help='Print hex dump of samples to screen'
+            "--hex", action="store_true", help="Print hex dump of samples to screen"
         )
         return parser
 
@@ -1926,6 +2171,7 @@ class LFSniff(ReaderRequiredUnit):
             return
 
         import chameleon_cli_unit as _self_mod
+
         data = bytes(resp.data)
         _self_mod._last_capture = data
 
@@ -1936,7 +2182,9 @@ class LFSniff(ReaderRequiredUnit):
         mn = min(data)
         mx = max(data)
         mean = sum(data) // len(data)
-        print(f" Range    : {CG}0x{mn:02x}{C0} – {CG}0x{mx:02x}{C0}  mean: {CG}0x{mean:02x}{C0}")
+        print(
+            f" Range    : {CG}0x{mn:02x}{C0} – {CG}0x{mx:02x}{C0}  mean: {CG}0x{mean:02x}{C0}"
+        )
 
         # Detect real field gaps — they drop to near zero (0x00-0x40),
         # well below the steady carrier (~0xb0). Use half of mean as threshold
@@ -1946,33 +2194,37 @@ class LFSniff(ReaderRequiredUnit):
         steady_data = data[200:]
         gap_count = sum(1 for b in steady_data if b < gap_threshold)
         if gap_count > 0:
-            print(f" Gaps     : {CG}{gap_count}{C0} samples below 0x{gap_threshold:02x} (real field drops)")
+            print(
+                f" Gaps     : {CG}{gap_count}{C0} samples below 0x{gap_threshold:02x} (real field drops)"
+            )
         else:
-            print(f" Gaps     : {CR}none detected — flat carrier (no gap commands sent){C0}")
+            print(
+                f" Gaps     : {CR}none detected — flat carrier (no gap commands sent){C0}"
+            )
 
         if args.hex:
             print()
             print(f"  addr  {'hex bytes':47s}  level")
             print(f"  ----  {'-'*47}  ----------------")
             for i in range(0, min(n, 256), 16):
-                row = data[i:i+16]
-                hex_part = ' '.join(f'{b:02x}' for b in row)
-                bar = ''
+                row = data[i : i + 16]
+                hex_part = " ".join(f"{b:02x}" for b in row)
+                bar = ""
                 for b in row:
                     if b < 0x10:
-                        bar += '_'   # gap / field off
+                        bar += "_"  # gap / field off
                     elif b < 0x40:
-                        bar += '.'   # ringing decay
+                        bar += "."  # ringing decay
                     elif b < 0x80:
-                        bar += '-'   # low
-                    elif b < 0xa0:
-                        bar += '+'   # mid
-                    elif b < 0xc0:
-                        bar += 'o'   # steady carrier
-                    elif b < 0xe0:
-                        bar += 'O'   # high
+                        bar += "-"  # low
+                    elif b < 0xA0:
+                        bar += "+"  # mid
+                    elif b < 0xC0:
+                        bar += "o"  # steady carrier
+                    elif b < 0xE0:
+                        bar += "O"  # high
                     else:
-                        bar += '#'   # clipped 0xff
+                        bar += "#"  # clipped 0xff
                 print(f"  {i:04x}  {hex_part:<47s}  {bar}")
             if n > 256:
                 print(f"  ... ({n - 256} more bytes, use --out to save all)")
@@ -1981,7 +2233,7 @@ class LFSniff(ReaderRequiredUnit):
 
         if args.out:
             try:
-                with open(args.out, 'wb') as f:
+                with open(args.out, "wb") as f:
                     f.write(data)
                 print(f" Saved    : {CG}{args.out}{C0} ({n} bytes)")
             except Exception as e:
@@ -1992,22 +2244,34 @@ class LFIndalaIdArgsUnit(DeviceRequiredUnit):
     @staticmethod
     def add_card_arg(parser: ArgumentParserNoExit, required=False):
         group = parser.add_mutually_exclusive_group(required=required)
-        group.add_argument("-r", "--raw", type=str,
-                           help="Raw 64-bit frame (16 hex chars)",
-                           metavar="<hex>")
-        group.add_argument("--fc", type=int, dest="_indala_fc",
-                           help="Facility code (26-bit format, use with --cn)",
-                           metavar="<dec>")
-        parser.add_argument("--cn", type=int, dest="_indala_cn",
-                            help="Card number (26-bit format, use with --fc)",
-                            metavar="<dec>")
+        group.add_argument(
+            "-r",
+            "--raw",
+            type=str,
+            help="Raw 64-bit frame (16 hex chars)",
+            metavar="<hex>",
+        )
+        group.add_argument(
+            "--fc",
+            type=int,
+            dest="_indala_fc",
+            help="Facility code (26-bit format, use with --cn)",
+            metavar="<dec>",
+        )
+        parser.add_argument(
+            "--cn",
+            type=int,
+            dest="_indala_cn",
+            help="Card number (26-bit format, use with --fc)",
+            metavar="<dec>",
+        )
         return parser
 
     def before_exec(self, args: argparse.Namespace):
         if not super().before_exec(args):
             return False
-        fc = getattr(args, '_indala_fc', None)
-        cn = getattr(args, '_indala_cn', None)
+        fc = getattr(args, "_indala_fc", None)
+        cn = getattr(args, "_indala_cn", None)
         if fc is not None or cn is not None:
             if fc is None or cn is None:
                 raise ArgsParserError("--fc and --cn must be used together")
@@ -2046,7 +2310,9 @@ class LFIndalaRead(ReaderRequiredUnit):
 class LFIndalaWriteT55xx(LFIndalaIdArgsUnit, ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = "Clone Indala tag to T55XX (use -r <hex>, or --fc <n> --cn <n>)"
+        parser.description = (
+            "Clone Indala tag to T55XX (use -r <hex>, or --fc <n> --cn <n>)"
+        )
         parser = self.add_card_arg(parser, required=True)
         return parser
 

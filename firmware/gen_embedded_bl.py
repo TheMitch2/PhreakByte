@@ -17,34 +17,34 @@ Both are valid; whichever record was last seen sets the current base.
 Usage:
     ./gen_embedded_bl.py objects/bootloader.hex application/src/embedded_bootloader.h
 """
+
 import os
 import sys
 import zlib
 
-
 BL_REGION_START = 0x000F3000
-BL_REGION_END = 0x000FE000   # exclusive
+BL_REGION_END = 0x000FE000  # exclusive
 BL_REGION_BYTES = BL_REGION_END - BL_REGION_START
 
 
 def parse_ihex_region(path, start, end):
     """Read Intel HEX, return (bytes, populated_length)."""
-    region = bytearray(b'\xff' * (end - start))
+    region = bytearray(b"\xff" * (end - start))
     populated_end = 0
-    addr_base = 0   # current extended-address base; updated by type 02/04 records
+    addr_base = 0  # current extended-address base; updated by type 02/04 records
 
-    with open(path, 'r') as f:
+    with open(path, "r") as f:
         for lineno, raw in enumerate(f, 1):
             line = raw.strip()
-            if not line.startswith(':'):
+            if not line.startswith(":"):
                 continue
             try:
                 n = int(line[1:3], 16)
                 addr_lo = int(line[3:7], 16)
                 rectype = int(line[7:9], 16)
-                payload_hex = line[9:9 + 2 * n]
+                payload_hex = line[9 : 9 + 2 * n]
                 payload = bytes(
-                    int(payload_hex[i:i + 2], 16)
+                    int(payload_hex[i : i + 2], 16)
                     for i in range(0, len(payload_hex), 2)
                 )
             except ValueError as e:
@@ -86,7 +86,7 @@ def main():
 
     in_path, out_path = sys.argv[1], sys.argv[2]
 
-    if not in_path.endswith('.hex'):
+    if not in_path.endswith(".hex"):
         print(
             f"warning: {in_path} doesn't end in .hex — pass the Intel HEX, "
             "not a raw bin (objcopy on .out includes UICR and produces a "
@@ -113,25 +113,31 @@ def main():
     crc = zlib.crc32(data) & 0xFFFFFFFF
 
     with open(out_path, "w") as f:
-        f.write(f"/* Auto-generated from {os.path.basename(in_path)} — do not edit by hand. */\n")
+        f.write(
+            f"/* Auto-generated from {os.path.basename(in_path)} — do not edit by hand. */\n"
+        )
         f.write(f"/* BL region [0x{BL_REGION_START:08X}, 0x{BL_REGION_END:08X}) */\n")
         f.write("#ifndef EMBEDDED_BOOTLOADER_H\n")
         f.write("#define EMBEDDED_BOOTLOADER_H\n\n")
         f.write("#include <stdint.h>\n\n")
         f.write(f"#define EMBEDDED_BOOTLOADER_BIN_SIZE  {len(data)}u\n")
         f.write(f"#define EMBEDDED_BOOTLOADER_BIN_CRC32 0x{crc:08X}u\n\n")
-        f.write("static const uint8_t EMBEDDED_BOOTLOADER_BIN[EMBEDDED_BOOTLOADER_BIN_SIZE]\n")
+        f.write(
+            "static const uint8_t EMBEDDED_BOOTLOADER_BIN[EMBEDDED_BOOTLOADER_BIN_SIZE]\n"
+        )
         f.write("    __attribute__((aligned(4))) = {\n")
         for i in range(0, len(data), 16):
-            chunk = data[i:i + 16]
+            chunk = data[i : i + 16]
             hex_bytes = ", ".join(f"0x{b:02x}" for b in chunk)
             f.write(f"    {hex_bytes},\n")
         f.write("};\n\n")
         f.write("#endif /* EMBEDDED_BOOTLOADER_H */\n")
 
     print(f"Wrote {out_path}: {len(data)} bytes, CRC32 = 0x{crc:08X}")
-    print(f"BL region usage: {len(data)} / {BL_REGION_BYTES} bytes "
-          f"({100.0 * len(data) / BL_REGION_BYTES:.1f}%)")
+    print(
+        f"BL region usage: {len(data)} / {BL_REGION_BYTES} bytes "
+        f"({100.0 * len(data) / BL_REGION_BYTES:.1f}%)"
+    )
 
 
 if __name__ == "__main__":

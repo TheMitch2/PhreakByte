@@ -7,6 +7,7 @@ dfc_decode_probe harness). A mismatch — codec says "fine", engine says
 "malformed" — is exactly the tag-order class of bug the engine-only C suite
 cannot see. Run:  python3 test_codec_roundtrip.py /path/to/probe /path/to/*.dfc
 """
+
 import chameleon_dfc as D
 import subprocess
 import sys
@@ -14,9 +15,10 @@ import tempfile
 import os
 import glob
 
-SCRIPT_DIR = os.environ.get("DFC_SCRIPT_DIR",
-                            os.path.join(os.path.dirname(__file__),
-                                         "../../../../../../../software/script"))
+SCRIPT_DIR = os.environ.get(
+    "DFC_SCRIPT_DIR",
+    os.path.join(os.path.dirname(__file__), "../../../../../../../software/script"),
+)
 sys.path.insert(0, os.path.abspath(SCRIPT_DIR))
 
 
@@ -50,9 +52,11 @@ def main():
             continue
         blob = cred.to_wire()
         code, name = probe(path_probe, blob)
-        ok = (code == 0)
-        print(f"  {'PASS' if ok else 'FAIL'}  {os.path.basename(f)}: "
-              f"codec->{len(blob)}B, engine={name}")
+        ok = code == 0
+        print(
+            f"  {'PASS' if ok else 'FAIL'}  {os.path.basename(f)}: "
+            f"codec->{len(blob)}B, engine={name}"
+        )
         if not ok:
             fails += 1
     print(f"\n{'ALL PASS' if fails == 0 else str(fails) + ' FAILED'}")

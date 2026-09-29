@@ -80,13 +80,14 @@ from cli_core import (
 )
 import cli_core  # noqa: F401 (kept for cli_core.<name> refs if any)
 from fdxb_country import ISO3166_NUMERIC
+
 # re-export everything cli_core defined so command bodies resolve names
-globals().update({k: v for k, v in vars(cli_core).items() if not k.startswith('__')})
+globals().update({k: v for k, v in vars(cli_core).items() if not k.startswith("__")})
 
 # --- split-out command modules (register on `root` by import side-effect) ---
 import cli_hf_des  # noqa: F401,E402  (hf des ...)
-import cli_lf      # noqa: F401,E402  (lf ...)
-import cli_hf_mf   # noqa: F401,E402  (hf mf ...)
+import cli_lf  # noqa: F401,E402  (lf ...)
+import cli_hf_mf  # noqa: F401,E402  (hf mf ...)
 import cli_hf_mfu  # noqa: F401,E402  (hf mfu ...)
 
 
@@ -188,9 +189,11 @@ class RootDumpHelp(BaseCLIUnit):
 class HWConnect(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = ("Connect to chameleon by serial port, TCP, or BLE. "
-                              "Examples: -p /dev/ttyACM0 | -p tcp:127.0.0.1:4321 | "
-                              "-p ble (scan) | -p ble:AA:BB:CC:DD:EE:FF (needs 'bleak')")
+        parser.description = (
+            "Connect to chameleon by serial port, TCP, or BLE. "
+            "Examples: -p /dev/ttyACM0 | -p tcp:127.0.0.1:4321 | "
+            "-p ble (scan) | -p ble:AA:BB:CC:DD:EE:FF (needs 'bleak')"
+        )
         parser.add_argument("-p", "--port", type=str, required=False)
         return parser
 
@@ -328,7 +331,9 @@ class HWStatus(DeviceRequiredUnit):
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = "Show a one-shot summary of connection, firmware and hardware status"
+        parser.description = (
+            "Show a one-shot summary of connection, firmware and hardware status"
+        )
         return parser
 
     def get_link_speed(self) -> Union[str, None]:
@@ -382,7 +387,9 @@ class HWStatus(DeviceRequiredUnit):
         except chameleon_com.CMDInvalidException:
             print("   ble name    -> not supported by current firmware")
 
-        print(f"   mode        -> Tag {'Reader' if self.cmd.is_device_reader_mode() else 'Emulator'}")
+        print(
+            f"   mode        -> Tag {'Reader' if self.cmd.is_device_reader_mode() else 'Emulator'}"
+        )
 
         try:
             active_slot = SlotNumber.from_fw(self.cmd.get_active_slot())
@@ -392,14 +399,18 @@ class HWStatus(DeviceRequiredUnit):
 
         try:
             voltage, percentage = self.cmd.get_battery_info()
-            low = " " + color_string((CR, "[!] Low battery")) if percentage < self.BATTERY_LOW_LEVEL else ""
+            low = (
+                " " + color_string((CR, "[!] Low battery"))
+                if percentage < self.BATTERY_LOW_LEVEL
+                else ""
+            )
             print(f"   battery     -> {voltage} mV, {percentage}%{low}")
         except chameleon_com.CMDInvalidException:
             print("   battery     -> not supported by current firmware")
 
         try:
             mem = self.cmd.get_free_memory()
-            free, total = mem['free'], mem['total']
+            free, total = mem["free"], mem["total"]
             used = total - free
             pct = (used / total * 100.0) if total > 0 else 0.0
             print(f"   heap        -> {used:,}/{total:,} bytes used ({pct:.1f}%)")
@@ -513,7 +524,9 @@ class HWBootloaderVersion(DeviceRequiredUnit):
             version = self.cmd.get_bootloader_version()
             print(f" - Bootloader Version: {version}")
         except chameleon_com.CMDInvalidException:
-            print(" - Bootloader version not supported by current firmware, please update")
+            print(
+                " - Bootloader version not supported by current firmware, please update"
+            )
 
 
 @hw.command("freemem")
@@ -526,8 +539,8 @@ class HWFreeMemory(DeviceRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         try:
             mem = self.cmd.get_free_memory()
-            free = mem['free']
-            total = mem['total']
+            free = mem["free"]
+            total = mem["total"]
             used = total - free
             pct = (used / total * 100.0) if total > 0 else 0.0
             print(f" - Heap free  : {free:,} bytes")
@@ -752,7 +765,7 @@ class HWSlotList(DeviceRequiredUnit):
                         prng_type = MifareClassicPrngType(prng_resp.parsed)
                         print(
                             f'      {"PRNG type:":40}'
-                            f'{color_string((CY, str(prng_type)))}'
+                            f"{color_string((CY, str(prng_type)))}"
                         )
                     except Exception:
                         pass
@@ -788,7 +801,7 @@ class HWSlotList(DeviceRequiredUnit):
                     id = self.cmd.em410x_get_emu_id()
                     print(f'      {"ID:":40}{color_string((CY, id.hex().upper()))}')
                 if lf_tag_type == TagSpecificType.HIDProx:
-                    (format, fc, cn1, cn2, il, oem) = self.cmd.hidprox_get_emu_id()
+                    format, fc, cn1, cn2, il, oem = self.cmd.hidprox_get_emu_id()
                     cn = (cn1 << 32) + cn2
                     print(
                         f"      {'Format:':40}{color_string((CY, HIDFormat(format)))}"
@@ -803,7 +816,9 @@ class HWSlotList(DeviceRequiredUnit):
                 if lf_tag_type == TagSpecificType.ioProx:
                     ver, fc, cn, raw8, *futureuse = self.cmd.ioprox_get_emu_id()
                     print(f"      {'Version:':40}{color_string((CG, ver))}")
-                    print(f"      {'Facility:':40}{color_string((CG, f'{fc} [0x{fc:02X}]'))}")
+                    print(
+                        f"      {'Facility:':40}{color_string((CG, f'{fc} [0x{fc:02X}]'))}"
+                    )
                     print(f"      {'ID:':40}{color_string((CY, cn))}")
                     print(f"      {'Raw:':40}{color_string((CY, raw8.hex().upper()))}")
                 if lf_tag_type == TagSpecificType.Viking:
@@ -816,7 +831,7 @@ class HWSlotList(DeviceRequiredUnit):
                     print(f"      {'Card:':40}{color_string((CG, str(card_id)))}")
                 if lf_tag_type == TagSpecificType.PAC:
                     id = self.cmd.pac_get_emu_id()
-                    id_ascii = ''.join(chr(b) if 0x20 <= b < 0x7f else '.' for b in id)
+                    id_ascii = "".join(chr(b) if 0x20 <= b < 0x7F else "." for b in id)
                     raw = pac_encode_raw(id)
                     print(f"      {'CN:':40}{color_string((CY, id_ascii))}")
                     print(f"      {'Raw:':40}{color_string((CY, raw.hex().upper()))}")
@@ -824,7 +839,9 @@ class HWSlotList(DeviceRequiredUnit):
                     frame = self.cmd.idteck_get_emu_id()
                     info = _idteck_frame_info(frame)
                     card_id_str = f"{info['card_id']} (0x{info['card_id']:06X})"
-                    print(f"      {'Frame:':40}{color_string((CY, frame.hex().upper()))}")
+                    print(
+                        f"      {'Frame:':40}{color_string((CY, frame.hex().upper()))}"
+                    )
                     print(f"      {'Card ID:':40}{color_string((CG, card_id_str))}")
         if current != selected:
             self.cmd.set_active_slot(selected)
@@ -858,13 +875,19 @@ class HWSlotPrng(SlotIndexArgsAndGoUnit):
             resp = self.cmd.mf1_get_prng_type()
             try:
                 prng_type = MifareClassicPrngType(resp.parsed)
-                print(f" - Slot {self.slot_num} PRNG type: {color_string((CY, str(prng_type)))} ({resp.parsed})")
+                print(
+                    f" - Slot {self.slot_num} PRNG type: {color_string((CY, str(prng_type)))} ({resp.parsed})"
+                )
             except ValueError:
-                print(f" - Slot {self.slot_num} PRNG type: {color_string((CR, f'unknown ({resp.parsed})'))} ")
+                print(
+                    f" - Slot {self.slot_num} PRNG type: {color_string((CR, f'unknown ({resp.parsed})'))} "
+                )
         else:
             self.cmd.mf1_set_prng_type(args.type)
             prng_type = MifareClassicPrngType(args.type)
-            print(f" - Slot {self.slot_num} PRNG type set to: {color_string((CG, str(prng_type)))} ({args.type})")
+            print(
+                f" - Slot {self.slot_num} PRNG type set to: {color_string((CG, str(prng_type)))} ({args.type})"
+            )
 
 
 @hw_slot.command("change")
@@ -1094,14 +1117,26 @@ class HWFlash(BaseCLIUnit):
             "tools required (no nrfutil)."
         )
         parser.add_argument("file", type=str, help="Path to the DFU package .zip")
-        parser.add_argument("--no-enter", action="store_true",
-                            help="Skip enter-bootloader; device is already in DFU mode")
-        parser.add_argument("-p", "--port", type=str, default=None,
-                            help="Override the upload transport (default: the same transport the "
-                                 "client is connected on). A serial port path, or "
-                                 "'ble' / 'ble:AA:BB:CC:DD:EE:FF' to force BLE DFU (needs bleak)")
-        parser.add_argument("--wait", type=float, default=30.0,
-                            help="Seconds to wait for the DFU device to appear (default: 30)")
+        parser.add_argument(
+            "--no-enter",
+            action="store_true",
+            help="Skip enter-bootloader; device is already in DFU mode",
+        )
+        parser.add_argument(
+            "-p",
+            "--port",
+            type=str,
+            default=None,
+            help="Override the upload transport (default: the same transport the "
+            "client is connected on). A serial port path, or "
+            "'ble' / 'ble:AA:BB:CC:DD:EE:FF' to force BLE DFU (needs bleak)",
+        )
+        parser.add_argument(
+            "--wait",
+            type=float,
+            default=30.0,
+            help="Seconds to wait for the DFU device to appear (default: 30)",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -1137,8 +1172,10 @@ class HWFlash(BaseCLIUnit):
             already_dfu = (not use_ble) and chameleon_dfu.find_dfu_port() is not None
             if not already_dfu:
                 if not self.device_com.isOpen():
-                    print("Please connect to chameleon device first (use 'hw connect'), "
-                          "or pass --no-enter if it is already in DFU mode.")
+                    print(
+                        "Please connect to chameleon device first (use 'hw connect'), "
+                        "or pass --no-enter if it is already in DFU mode."
+                    )
                     return
                 print("Application restarting into DFU mode...")
                 self.cmd.enter_bootloader()
@@ -1153,8 +1190,9 @@ class HWFlash(BaseCLIUnit):
         try:
             if use_ble:
                 print("Scanning for DFU device (BLE, service 0xFE59)...")
-                transport = chameleon_dfu.ble_transport(address=ble_address,
-                                                        scan_timeout=args.wait)
+                transport = chameleon_dfu.ble_transport(
+                    address=ble_address, scan_timeout=args.wait
+                )
                 where = f"BLE {ble_address}" if ble_address else "BLE"
             else:
                 port = serial_port
@@ -1162,8 +1200,15 @@ class HWFlash(BaseCLIUnit):
                     print("Waiting for DFU device...")
                     port = chameleon_dfu.wait_for_dfu_port(timeout=args.wait)
                     if port is None:
-                        print(color_string((CR, "DFU device (1915:521f) not found. "
-                                                "Put the device in DFU mode and retry.")))
+                        print(
+                            color_string(
+                                (
+                                    CR,
+                                    "DFU device (1915:521f) not found. "
+                                    "Put the device in DFU mode and retry.",
+                                )
+                            )
+                        )
                         return
                 transport = chameleon_dfu.serial_transport(port)
                 where = port
@@ -1222,7 +1267,9 @@ class HWSettingsAnimation(DeviceRequiredUnit):
 class HWSettingsSleepTimeout(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = "Get or set the wake timeout after a button press (5-60 seconds)"
+        parser.description = (
+            "Get or set the wake timeout after a button press (5-60 seconds)"
+        )
         parser.add_argument(
             "-s",
             "--seconds",
@@ -1237,13 +1284,34 @@ class HWSettingsSleepTimeout(DeviceRequiredUnit):
         if args.seconds is not None:
             seconds = args.seconds
             if seconds < 5:
-                print(color_string((CR, "Error: value is too low. Please enter a value between 5 and 60 seconds.")))
+                print(
+                    color_string(
+                        (
+                            CR,
+                            "Error: value is too low. Please enter a value between 5 and 60 seconds.",
+                        )
+                    )
+                )
                 return
             if seconds > 60:
-                print(color_string((CR, "Error: value is too high. Please enter a value between 5 and 60 seconds.")))
+                print(
+                    color_string(
+                        (
+                            CR,
+                            "Error: value is too high. Please enter a value between 5 and 60 seconds.",
+                        )
+                    )
+                )
                 return
             if seconds >= 30:
-                print(color_string((CY, "Warning: a long wake timeout will drain the battery faster.")))
+                print(
+                    color_string(
+                        (
+                            CY,
+                            "Warning: a long wake timeout will drain the battery faster.",
+                        )
+                    )
+                )
             self.cmd.set_sleep_timeout(seconds)
             print(f"Wake timeout set to {seconds} seconds.")
             print(color_string((CY, "Do not forget to store your settings in flash!")))
@@ -1532,14 +1600,19 @@ class HWSettingsBLEName(DeviceRequiredUnit):
         parser = ArgumentParserNoExit()
         parser.description = "Get or set the BLE advertised name (max 20 chars). Pass an empty string to reset to the firmware default."
         parser.add_argument(
-            "-n", "--name", required=False, help="BLE advertised name for your device (max 20 chars), or \"\" to reset to default"
+            "-n",
+            "--name",
+            required=False,
+            help='BLE advertised name for your device (max 20 chars), or "" to reset to default',
         )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         current = self.cmd.get_ble_name()
         current_display = current if current else color_string((CY, "(default)"))
-        print(f" - The current BLE name of the device: {color_string((CG, current_display))}")
+        print(
+            f" - The current BLE name of the device: {color_string((CG, current_display))}"
+        )
 
         if args.name is not None:
             if len(args.name) > 20:
@@ -1549,14 +1622,15 @@ class HWSettingsBLEName(DeviceRequiredUnit):
                 return
             self.cmd.set_ble_name(args.name)
             new_display = args.name if args.name else color_string((CY, "(default)"))
+            print(f" - Successfully set BLE name to: {color_string((CG, new_display))}")
+            print(color_string((CY, "Do not forget to store your settings in flash!")))
             print(
-                f" - Successfully set BLE name to: {color_string((CG, new_display))}"
-            )
-            print(
-                color_string((CY, "Do not forget to store your settings in flash!"))
-            )
-            print(
-                color_string((CY, "You may need to reconnect/rescan for the new name to show up."))
+                color_string(
+                    (
+                        CY,
+                        "You may need to reconnect/rescan for the new name to show up.",
+                    )
+                )
             )
 
 
@@ -1754,7 +1828,7 @@ examples/notes:
             print(f" [*] {color_string((CY, 'No response'))}")
 
 
-@hf_14a.command('sniff')
+@hf_14a.command("sniff")
 class HF14ASniff(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
@@ -1764,17 +1838,26 @@ class HF14ASniff(BaseCLIUnit):
             "Useful for understanding what a reader expects before configuring emulation."
         )
         parser.add_argument(
-            '--timeout', type=int, default=5000, metavar='MS',
-            help='Listen duration in milliseconds (default: 5000, max: 30000, firmware blocks for full duration)'
+            "--timeout",
+            type=int,
+            default=5000,
+            metavar="MS",
+            help="Listen duration in milliseconds (default: 5000, max: 30000, firmware blocks for full duration)",
         )
         parser.add_argument(
-            '--tap', action='store_true',
-            help='Passive tap: CU stays silent while a REAL card answers the reader. '
-                 'Captures reader->card on NFCT and card->reader via the RC522. '
-                 'Place CU, card, and reader in the same field.'
+            "--tap",
+            action="store_true",
+            help="Passive tap: CU stays silent while a REAL card answers the reader. "
+            "Captures reader->card on NFCT and card->reader via the RC522. "
+            "Place CU, card, and reader in the same field.",
         )
-        parser.add_argument('-o', '--trace', type=str, default=None,
-                            help='Write capture as a Proxmark3 .trace file')
+        parser.add_argument(
+            "-o",
+            "--trace",
+            type=str,
+            default=None,
+            help="Write capture as a Proxmark3 .trace file",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -1790,8 +1873,10 @@ class HF14ASniff(BaseCLIUnit):
         try:
             resp = self.cmd.hf14a_sniff(timeout_ms=timeout, tap=args.tap)
         except Exception as e:
-            if 'CMDInvalid' in type(e).__name__ or '2020' in str(e):
-                print(f"{CR}Command not supported — reflash firmware to enable hf 14a sniff{C0}")
+            if "CMDInvalid" in type(e).__name__ or "2020" in str(e):
+                print(
+                    f"{CR}Command not supported — reflash firmware to enable hf 14a sniff{C0}"
+                )
             else:
                 print(f"{CR}{e}{C0}")
             return
@@ -1801,7 +1886,9 @@ class HF14ASniff(BaseCLIUnit):
             if resp.data and len(resp.data) >= 2:
                 cb_count = (resp.data[0] << 8) | resp.data[1]
             if cb_count > 0:
-                print(f"{CY} Callback fired {cb_count}x but no valid frames buffered{C0}")
+                print(
+                    f"{CY} Callback fired {cb_count}x but no valid frames buffered{C0}"
+                )
             else:
                 print(" No frames captured — no reader detected")
             return
@@ -1813,7 +1900,7 @@ class HF14ASniff(BaseCLIUnit):
         frames = []  # (szBits, data, is_tx, parity)
         i = 0
         while i + 2 <= len(buf):
-            hdr = (buf[i] << 8) | buf[i+1]
+            hdr = (buf[i] << 8) | buf[i + 1]
             i += 2
             is_tx = bool(hdr & 0x8000)
             szBits = hdr & 0x7FFF
@@ -1822,7 +1909,7 @@ class HF14ASniff(BaseCLIUnit):
             szBytes = (szBits + 7) // 8
             if i + szBytes > len(buf):
                 break
-            raw = buf[i:i+szBytes]
+            raw = buf[i : i + szBytes]
             i += szBytes
 
             # parity array: parity for each byte of data array
@@ -1855,21 +1942,27 @@ class HF14ASniff(BaseCLIUnit):
             print(f"{CR}No frames decoded{C0}")
             return
 
-        if getattr(args, 'trace', None):
+        if getattr(args, "trace", None):
             blob = pm3_trace.frames_to_pm3_trace(frames)
-            with open(args.trace, 'wb') as f:
+            with open(args.trace, "wb") as f:
                 f.write(blob)
-            print(f" Saved Proxmark3 trace: {CG}{args.trace}{C0} "
-                  f"({len(blob)} bytes, {len(frames)} frame(s))")
+            print(
+                f" Saved Proxmark3 trace: {CG}{args.trace}{C0} "
+                f"({len(blob)} bytes, {len(frames)} frame(s))"
+            )
         rx_count = sum(1 for _, _, tx, _ in frames if not tx)
         tx_count = sum(1 for _, _, tx, _ in frames if tx)
 
         if tx_count > 0:
-            print(f" Captured : {CG}{len(frames)}{C0} frame(s)  "
-                  f"({CY}{rx_count}{C0} reader→card  {CG}{tx_count}{C0} card→reader)")
+            print(
+                f" Captured : {CG}{len(frames)}{C0} frame(s)  "
+                f"({CY}{rx_count}{C0} reader→card  {CG}{tx_count}{C0} card→reader)"
+            )
         else:
-            print(f" Captured : {CG}{len(frames)}{C0} frame(s)  "
-                  f"{CY}(reader→card only — reflash for both directions){C0}")
+            print(
+                f" Captured : {CG}{len(frames)}{C0} frame(s)  "
+                f"{CY}(reader→card only — reflash for both directions){C0}"
+            )
         print()
         print(f"  {'#':>3}  {'dir':<3}  {'bits':>4}  {'hex data':<42}  decoded")
         print(f"  {'---':>3}  {'---':<3}  {'----':>4}  {'-'*42}  {'-'*35}")
@@ -1886,11 +1979,13 @@ class HF14ASniff(BaseCLIUnit):
         iso_dep = False
 
         for n, (szBits, data, is_tx, parity_bits) in enumerate(frames):
-            if (len(data) == len(parity_bits)):
-                hex_str = ' '.join(f"{b:02x}{'!' if odd_parity_byte(b) != p else ' '}" for (b, p)
-                                   in zip(data, parity_bits))
+            if len(data) == len(parity_bits):
+                hex_str = " ".join(
+                    f"{b:02x}{'!' if odd_parity_byte(b) != p else ' '}"
+                    for (b, p) in zip(data, parity_bits)
+                )
             else:
-                hex_str = ' '.join(f"{b:02x}" for b in data)
+                hex_str = " ".join(f"{b:02x}" for b in data)
 
             # is_tx==True means CU transmitted (card -> reader).
             # is_tx==False means reader -> card.
@@ -1898,10 +1993,15 @@ class HF14ASniff(BaseCLIUnit):
             col_ctx = None
 
             # Reader -> card: AUTH command (0x60/0x61 + block + CRC-A)
-            if (not is_tx) and szBits == 32 and len(data) == 4 and data[0] in (0x60, 0x61):
-                last_auth_keytype = 'A' if data[0] == 0x60 else 'B'
+            if (
+                (not is_tx)
+                and szBits == 32
+                and len(data) == 4
+                and data[0] in (0x60, 0x61)
+            ):
+                last_auth_keytype = "A" if data[0] == 0x60 else "B"
                 last_auth_block = data[1]
-                auth_nt_slot = n + 1     # NT must be the very next frame, nothing later
+                auth_nt_slot = n + 1  # NT must be the very next frame, nothing later
                 expect_nr_ar = False
                 nt_clean = None
                 decoded_ctx = f"MIFARE Classic AUTH Key{last_auth_keytype} block=0x{last_auth_block:02X} ({last_auth_block})"
@@ -1916,7 +2016,9 @@ class HF14ASniff(BaseCLIUnit):
                     decoded_ctx = f"AUTH: NT (card nonce) = {nt_clean}"
                     col_ctx = CG
                 else:
-                    decoded_ctx = f"AUTH: NT (card nonce) GARBLED — {szBits}b, need clean 32b"
+                    decoded_ctx = (
+                        f"AUTH: NT (card nonce) GARBLED — {szBits}b, need clean 32b"
+                    )
                     col_ctx = CR
                 expect_nr_ar = True
 
@@ -1928,7 +2030,7 @@ class HF14ASniff(BaseCLIUnit):
                 decoded_ctx = f"AUTH: NR||AR (enc)  NR={nr}  AR={ar}{note}"
                 col_ctx = CG if nt_clean else CY
                 expect_nr_ar = False
-                at_slot = n + 1     # {at} is the very next frame (card->reader, 32b)
+                at_slot = n + 1  # {at} is the very next frame (card->reader, 32b)
 
             # Card -> reader: AT — the frame immediately after NR||AR. mfkey64
             # needs this (clean 4 bytes) plus a clean NT to recover the key.
@@ -1944,25 +2046,29 @@ class HF14ASniff(BaseCLIUnit):
 
             # Generic decoder -- direction- and context-gated
             decoded, col, cmd_tag = _decode_14a_frame_col(
-                data, szBits, is_tx, prev_cmd, iso_dep)
+                data, szBits, is_tx, prev_cmd, iso_dep
+            )
             if not is_tx:
                 prev_cmd = cmd_tag
-                if cmd_tag == 'rats':
+                if cmd_tag == "rats":
                     iso_dep = True
-                elif cmd_tag in ('halt', 'deselect'):
+                elif cmd_tag in ("halt", "deselect"):
                     iso_dep = False
             else:
-                prev_cmd = None      # a response consumes its command context
+                prev_cmd = None  # a response consumes its command context
             if decoded_ctx is not None:
                 decoded, col = decoded_ctx, col_ctx
 
-            dir_str = f'{CG}<<<{C0}' if is_tx else f'{CY}>>>{C0}'
-            print(f"  {CY}{n+1:>3}{C0}  {dir_str}  {szBits:>4}  {hex_str:<42}  {col}{decoded}{C0}")
+            dir_str = f"{CG}<<<{C0}" if is_tx else f"{CY}>>>{C0}"
+            print(
+                f"  {CY}{n+1:>3}{C0}  {dir_str}  {szBits:>4}  {hex_str:<42}  {col}{decoded}{C0}"
+            )
 
         # Summary block (pass only reader→card frames for protocol decode)
         print()
-        _print_14a_sniff_summary([(szBits, data, is_tx) for (szBits, data, is_tx, parity)
-                                 in frames])  # full frames needed for nonce extraction
+        _print_14a_sniff_summary(
+            [(szBits, data, is_tx) for (szBits, data, is_tx, parity) in frames]
+        )  # full frames needed for nonce extraction
 
 
 @hf_14a.command("auth-trace")
@@ -1978,19 +2084,33 @@ class HF14AAuthTrace(ReaderRequiredUnit):
             "the auth sub-frames for verification."
         )
         parser.add_argument(
-            "--blk", "--block", type=int, required=True, metavar="<dec>",
-            help="Target block number"
+            "--blk",
+            "--block",
+            type=int,
+            required=True,
+            metavar="<dec>",
+            help="Target block number",
         )
         keytype_group = parser.add_mutually_exclusive_group()
-        keytype_group.add_argument("-a", "-A", action="store_true", help="Use Key A (default)")
+        keytype_group.add_argument(
+            "-a", "-A", action="store_true", help="Use Key A (default)"
+        )
         keytype_group.add_argument("-b", "-B", action="store_true", help="Use Key B")
         parser.add_argument(
-            "-k", "--key", type=str, required=True, metavar="<hex>",
-            help="6-byte sector key (12 hex chars)"
+            "-k",
+            "--key",
+            type=str,
+            required=True,
+            metavar="<hex>",
+            help="6-byte sector key (12 hex chars)",
         )
         parser.add_argument(
-            "-t", "--timeout", type=int, default=5000, metavar="<ms>",
-            help="Tag-presence polling timeout in ms (1-30000, default 5000)"
+            "-t",
+            "--timeout",
+            type=int,
+            default=5000,
+            metavar="<ms>",
+            help="Tag-presence polling timeout in ms (1-30000, default 5000)",
         )
         parser.epilog = """
 examples:
@@ -2011,16 +2131,24 @@ examples:
         block = args.blk
         timeout_ms = max(1, min(30000, int(args.timeout)))
 
-        print(f" Running auth trace: block={block} keyType={'B' if args.b else 'A'} key={key_hex.upper()}")
-        print(f" Waiting up to {timeout_ms} ms for a MIFARE Classic card... "
-              f"({CY}place CU on a card now{C0})")
+        print(
+            f" Running auth trace: block={block} keyType={'B' if args.b else 'A'} key={key_hex.upper()}"
+        )
+        print(
+            f" Waiting up to {timeout_ms} ms for a MIFARE Classic card... "
+            f"({CY}place CU on a card now{C0})"
+        )
         print()
 
         try:
-            resp = self.cmd.hf14a_auth_trace(block, key_type, key_bytes, timeout_ms=timeout_ms)
+            resp = self.cmd.hf14a_auth_trace(
+                block, key_type, key_bytes, timeout_ms=timeout_ms
+            )
         except Exception as e:
-            if 'CMDInvalid' in type(e).__name__ or '2017' in str(e):
-                print(f"{CR}Command not supported — reflash firmware to enable hf 14a auth-trace{C0}")
+            if "CMDInvalid" in type(e).__name__ or "2017" in str(e):
+                print(
+                    f"{CR}Command not supported — reflash firmware to enable hf 14a auth-trace{C0}"
+                )
             else:
                 print(f"{CR}{e}{C0}")
             return
@@ -2053,7 +2181,7 @@ examples:
             szBytes = (szBits + 7) // 8
             if i + szBytes > len(buf):
                 break
-            raw = buf[i:i + szBytes]
+            raw = buf[i : i + szBytes]
             i += szBytes
             # Auth-trace stores parity-stripped data (firmware byte/bits
             # transfer primitives strip parity automatically), so szBits is
@@ -2068,30 +2196,32 @@ examples:
         rx_count = sum(1 for _, _, tx in frames if not tx)
         tx_count = sum(1 for _, _, tx in frames if tx)
         status_label = {
-            Status.HF_TAG_OK:    f"{CG}auth OK{C0}",
-            Status.MF_ERR_AUTH:  f"{CR}auth FAILED{C0}",
-            Status.HF_ERR_STAT:  f"{CR}no NT received{C0}",
+            Status.HF_TAG_OK: f"{CG}auth OK{C0}",
+            Status.MF_ERR_AUTH: f"{CR}auth FAILED{C0}",
+            Status.HF_ERR_STAT: f"{CR}no NT received{C0}",
         }.get(Status(resp.status), f"{CY}status={Status(resp.status).name}{C0}")
-        print(f" Captured : {CG}{len(frames)}{C0} frame(s)  "
-              f"({CY}{rx_count}{C0} reader→card  {CG}{tx_count}{C0} card→reader)  "
-              f"{status_label}")
+        print(
+            f" Captured : {CG}{len(frames)}{C0} frame(s)  "
+            f"({CY}{rx_count}{C0} reader→card  {CG}{tx_count}{C0} card→reader)  "
+            f"{status_label}"
+        )
         print()
         print(f"  {'#':>3}  {'dir':<3}  {'bits':>4}  {'hex data':<42}  decoded")
         print(f"  {'---':>3}  {'---':<3}  {'----':>4}  {'-' * 42}  {'-' * 35}")
 
         # Auth-state tracker — annotate AUTH cmd, NT, NR||AR, AT specifically.
-        auth_state = 'idle'    # idle → cmd_seen → nt_seen → nr_ar_seen → done
+        auth_state = "idle"  # idle → cmd_seen → nt_seen → nr_ar_seen → done
         last_auth_keytype = None
         last_auth_block = None
         nt_int = None
         nr_ar_enc = None
         at_enc = None
-        uid_bytes = b''
+        uid_bytes = b""
         prev_cmd = None
         iso_dep = False
 
         for n, (szBits, data, is_tx) in enumerate(frames):
-            hex_str = ' '.join(f'{b:02x}' for b in data)
+            hex_str = " ".join(f"{b:02x}" for b in data)
             decoded_ctx = None
             col_ctx = None
 
@@ -2107,97 +2237,128 @@ examples:
                 uid_bytes = uid_bytes + data[0:4]  # 7-byte UID complete
 
             # AUTH cmd: 0x60/0x61 + block + 2 CRC bytes, reader→card, 32 bits
-            if (not is_tx) and szBits == 32 and len(data) == 4 and data[0] in (0x60, 0x61):
-                last_auth_keytype = 'A' if data[0] == 0x60 else 'B'
+            if (
+                (not is_tx)
+                and szBits == 32
+                and len(data) == 4
+                and data[0] in (0x60, 0x61)
+            ):
+                last_auth_keytype = "A" if data[0] == 0x60 else "B"
                 last_auth_block = data[1]
-                auth_state = 'cmd_seen'
+                auth_state = "cmd_seen"
                 decoded_ctx = f"AUTH Key{last_auth_keytype} block=0x{last_auth_block:02X} ({last_auth_block}) +CRC"
                 col_ctx = CG
 
             # NT: 4 bytes, card→reader, immediately after AUTH cmd
-            elif is_tx and auth_state == 'cmd_seen' and szBits == 32 and len(data) == 4:
-                nt_int = int.from_bytes(data, 'big')
-                auth_state = 'nt_seen'
+            elif is_tx and auth_state == "cmd_seen" and szBits == 32 and len(data) == 4:
+                nt_int = int.from_bytes(data, "big")
+                auth_state = "nt_seen"
                 decoded_ctx = f"NT (card nonce, plaintext) = {data.hex().upper()}"
                 col_ctx = CG
 
             # NR||AR encrypted: 8 bytes, reader→card, after NT
-            elif (not is_tx) and auth_state == 'nt_seen' and szBits == 64 and len(data) == 8:
+            elif (
+                (not is_tx)
+                and auth_state == "nt_seen"
+                and szBits == 64
+                and len(data) == 8
+            ):
                 nr_ar_enc = bytes(data)
-                auth_state = 'nr_ar_seen'
+                auth_state = "nr_ar_seen"
                 decoded_ctx = f"NR||AR (enc)  NR={data[:4].hex().upper()}  AR={data[4:].hex().upper()}"
                 col_ctx = CG
 
             # AT encrypted: 4 bytes, card→reader, after NR||AR
-            elif is_tx and auth_state == 'nr_ar_seen' and szBits == 32 and len(data) == 4:
+            elif (
+                is_tx and auth_state == "nr_ar_seen" and szBits == 32 and len(data) == 4
+            ):
                 at_enc = bytes(data)
-                auth_state = 'done'
+                auth_state = "done"
                 decoded_ctx = f"AT (enc) = {data.hex().upper()}"
                 col_ctx = CG
 
             decoded, col, cmd_tag = _decode_14a_frame_col(
-                data, szBits, is_tx, prev_cmd, iso_dep)
+                data, szBits, is_tx, prev_cmd, iso_dep
+            )
             if not is_tx:
                 prev_cmd = cmd_tag
-                if cmd_tag == 'rats':
+                if cmd_tag == "rats":
                     iso_dep = True
-                elif cmd_tag in ('halt', 'deselect'):
+                elif cmd_tag in ("halt", "deselect"):
                     iso_dep = False
             else:
-                prev_cmd = None      # a response consumes its command context
+                prev_cmd = None  # a response consumes its command context
             if decoded_ctx is not None:
                 decoded, col = decoded_ctx, col_ctx
 
-            dir_str = f'{CG}<<<{C0}' if is_tx else f'{CY}>>>{C0}'
-            print(f"  {CY}{n + 1:>3}{C0}  {dir_str}  {szBits:>4}  {hex_str:<42}  {col}{decoded}{C0}")
+            dir_str = f"{CG}<<<{C0}" if is_tx else f"{CY}>>>{C0}"
+            print(
+                f"  {CY}{n + 1:>3}{C0}  {dir_str}  {szBits:>4}  {hex_str:<42}  {col}{decoded}{C0}"
+            )
 
         # Crypto1 verification block — if we have NT + NR||AR, decrypt AR/AT
         # and confirm they match prng_successor(NT, 32) / prng_successor(NT, 64).
         print()
         if nt_int is not None and nr_ar_enc is not None and len(uid_bytes) >= 4:
-            uid32 = int.from_bytes(uid_bytes[-4:], 'big')  # last 4 bytes for cascade≥2
+            uid32 = int.from_bytes(uid_bytes[-4:], "big")  # last 4 bytes for cascade≥2
             print(f" {CC}Crypto1 analysis:{C0}")
             print(f"   UID (low 4 bytes) : {uid_bytes[-4:].hex().upper()}")
             print(f"   NT (plaintext)    : {nt_int:08X}")
-            print(f"   NR (fixed in fw)  : 12345678  (encrypted on wire: {nr_ar_enc[:4].hex().upper()})")
+            print(
+                f"   NR (fixed in fw)  : 12345678  (encrypted on wire: {nr_ar_enc[:4].hex().upper()})"
+            )
             ar_expected = Crypto1.prng_next(nt_int, 64)
             at_expected = Crypto1.prng_next(nt_int, 96)
             if at_enc is not None:
                 # Re-run Crypto1 forward to recover ks2 (AR keystream) and ks3 (AT keystream).
                 state = Crypto1()
                 state.key = key_hex
-                state.lfsr48_u32(uid32 ^ nt_int, False)                            # ks0
-                state.lfsr48_u32(int.from_bytes(nr_ar_enc[:4], 'big'), True)       # ks1
-                ks_ar = state.lfsr48_u32(0, False)                                  # ks2 (AR keystream)
-                ks_at = state.lfsr48_u32(0, False)                                  # ks3 (AT keystream)
-                ar_int = int.from_bytes(nr_ar_enc[4:], 'big')
+                state.lfsr48_u32(uid32 ^ nt_int, False)  # ks0
+                state.lfsr48_u32(int.from_bytes(nr_ar_enc[:4], "big"), True)  # ks1
+                ks_ar = state.lfsr48_u32(0, False)  # ks2 (AR keystream)
+                ks_at = state.lfsr48_u32(0, False)  # ks3 (AT keystream)
+                ar_int = int.from_bytes(nr_ar_enc[4:], "big")
                 ar_decoded = ar_int ^ ks_ar
-                ar_ok = (ar_decoded == ar_expected)
+                ar_ok = ar_decoded == ar_expected
                 ar_colour = CG if ar_ok else CR
-                ar_mark = '✓' if ar_ok else '✗'
-                print(f"   AR expected       : {ar_expected:08X}  = prng_successor(NT, 64)")
+                ar_mark = "✓" if ar_ok else "✗"
+                print(
+                    f"   AR expected       : {ar_expected:08X}  = prng_successor(NT, 64)"
+                )
                 print(f"   AR (encrypted)    : {nr_ar_enc[4:].hex().upper()}")
-                print(f"   AR decrypted      : {ar_colour}{ar_decoded:08X}{C0}  {ar_colour}{ar_mark} "
-                      f"{'MATCH' if ar_ok else 'MISMATCH — wrong key or replay'}{C0}")
-                at_int = int.from_bytes(at_enc, 'big')
+                print(
+                    f"   AR decrypted      : {ar_colour}{ar_decoded:08X}{C0}  {ar_colour}{ar_mark} "
+                    f"{'MATCH' if ar_ok else 'MISMATCH — wrong key or replay'}{C0}"
+                )
+                at_int = int.from_bytes(at_enc, "big")
                 at_decoded = at_int ^ ks_at
-                ok = (at_decoded == at_expected)
+                ok = at_decoded == at_expected
                 colour = CG if ok else CR
-                mark = '✓' if ok else '✗'
-                print(f"   AT expected       : {at_expected:08X}  = prng_successor(NT, 96)")
+                mark = "✓" if ok else "✗"
+                print(
+                    f"   AT expected       : {at_expected:08X}  = prng_successor(NT, 96)"
+                )
                 print(f"   AT (encrypted)    : {at_enc.hex().upper()}")
-                print(f"   AT decrypted      : {colour}{at_decoded:08X}{C0}  {colour}{mark} "
-                      f"{'MATCH — auth verified' if ok else 'MISMATCH — wrong key or replay'}{C0}")
+                print(
+                    f"   AT decrypted      : {colour}{at_decoded:08X}{C0}  {colour}{mark} "
+                    f"{'MATCH — auth verified' if ok else 'MISMATCH — wrong key or replay'}{C0}"
+                )
                 # Cross-check against mfkey32 prediction too.
-                nr_enc_int = int.from_bytes(nr_ar_enc[:4], 'big')
-                ar_enc_int = int.from_bytes(nr_ar_enc[4:], 'big')
-                key_match = Crypto1.mfkey32_is_reader_has_key(uid32, nt_int, nr_enc_int, ar_enc_int, key_hex)
+                nr_enc_int = int.from_bytes(nr_ar_enc[:4], "big")
+                ar_enc_int = int.from_bytes(nr_ar_enc[4:], "big")
+                key_match = Crypto1.mfkey32_is_reader_has_key(
+                    uid32, nt_int, nr_enc_int, ar_enc_int, key_hex
+                )
                 if key_match:
-                    print(f"   mfkey32 forward   : {CG}key {key_hex.upper()} verified against NT/NR/AR{C0}")
+                    print(
+                        f"   mfkey32 forward   : {CG}key {key_hex.upper()} verified against NT/NR/AR{C0}"
+                    )
             else:
                 print(f"   {CR}AT not received — auth was rejected by the card{C0}")
         elif nt_int is not None:
-            print(f" {CY}Auth aborted before NR||AR — NT={nt_int:08X}, no further analysis{C0}")
+            print(
+                f" {CY}Auth aborted before NR||AR — NT={nt_int:08X}, no further analysis{C0}"
+            )
 
 
 def _extract_sniff_nonces(frames):
@@ -2222,29 +2383,28 @@ def _extract_sniff_nonces(frames):
             continue
 
         # Track UID from completed SELECT (NVB=0x70), reader→card
-        if (not is_tx
-                and data[0] in (0x93, 0x95, 0x97)
-                and len(data) >= 6
-                and data[1] == 0x70):
+        if (
+            not is_tx
+            and data[0] in (0x93, 0x95, 0x97)
+            and len(data) >= 6
+            and data[1] == 0x70
+        ):
             # bytes [2:6] = UID0..UID3; skip cascade byte 0x88 for multi-level UIDs
             if not (data[0] == 0x93 and data[2] == 0x88):
-                uid_hex = ''.join(f'{b:02X}' for b in data[2:6])
+                uid_hex = "".join(f"{b:02X}" for b in data[2:6])
 
         # Fallback: extract UID from anticollision response (card→reader, 40 bits).
         # This fires when no SELECT frame is present (common in authtrace captures
         # where hf14a_auth_trace_run synthesises the anticollision exchange).
-        if (is_tx
-                and szBits == 40
-                and len(data) == 5
-                and uid_hex is None):
+        if is_tx and szBits == 40 and len(data) == 5 and uid_hex is None:
             # 5 bytes = UID[0..3] + BCC; verify BCC
             bcc = data[0] ^ data[1] ^ data[2] ^ data[3]
             if bcc == data[4]:
-                uid_hex = ''.join(f'{b:02X}' for b in data[0:4])
+                uid_hex = "".join(f"{b:02X}" for b in data[0:4])
 
         # AUTH command: reader→card, 0x60 (KeyA) or 0x61 (KeyB)
         if not is_tx and data[0] in (0x60, 0x61) and len(data) >= 2:
-            key_type = 'A' if data[0] == 0x60 else 'B'
+            key_type = "A" if data[0] == 0x60 else "B"
             block = data[1]
 
             # frame i+1: card→reader, exactly 4 bytes = nt (tag nonce)
@@ -2253,7 +2413,7 @@ def _extract_sniff_nonces(frames):
             _, d1, tx1 = frames[i + 1]
             if not tx1 or len(d1) != 4:
                 continue
-            nt_hex = ''.join(f'{b:02X}' for b in d1)
+            nt_hex = "".join(f"{b:02X}" for b in d1)
 
             # frame i+2: reader→card, exactly 8 bytes = {nr} || {ar}
             if i + 2 >= len(frames):
@@ -2261,25 +2421,27 @@ def _extract_sniff_nonces(frames):
             _, d2, tx2 = frames[i + 2]
             if tx2 or len(d2) != 8:
                 continue
-            nr_hex = ''.join(f'{b:02X}' for b in d2[:4])
-            ar_hex = ''.join(f'{b:02X}' for b in d2[4:])
+            nr_hex = "".join(f"{b:02X}" for b in d2[:4])
+            ar_hex = "".join(f"{b:02X}" for b in d2[4:])
 
             # frame i+3: card→reader, exactly 4 bytes = {at} (tag answer), optional
             at_hex = None
             if i + 3 < len(frames):
                 _, d3, tx3 = frames[i + 3]
                 if tx3 and len(d3) == 4:
-                    at_hex = ''.join(f'{b:02X}' for b in d3)
+                    at_hex = "".join(f"{b:02X}" for b in d3)
 
-            nonces.append({
-                'uid':      uid_hex or '00000000',
-                'block':    block,
-                'key_type': key_type,
-                'nt':       nt_hex,
-                'nr':       nr_hex,
-                'ar':       ar_hex,
-                'at':       at_hex,
-            })
+            nonces.append(
+                {
+                    "uid": uid_hex or "00000000",
+                    "block": block,
+                    "key_type": key_type,
+                    "nt": nt_hex,
+                    "nr": nr_hex,
+                    "ar": ar_hex,
+                    "at": at_hex,
+                }
+            )
 
     return nonces
 
@@ -2290,7 +2452,7 @@ def _print_14a_sniff_summary(frames):
     uid_cl2 = None
     uid_cl3 = None
     aids = []
-    auth_blocks = []   # (key_type, block)
+    auth_blocks = []  # (key_type, block)
     auth_seen = False
     arqc_seen = False
     tc_seen = False
@@ -2300,7 +2462,7 @@ def _print_14a_sniff_summary(frames):
     amount = None
 
     for szBits, data, is_tx in frames:
-        if not data or is_tx:   # protocol decode uses reader→card frames only
+        if not data or is_tx:  # protocol decode uses reader→card frames only
             continue
         b0 = data[0]
 
@@ -2327,50 +2489,50 @@ def _print_14a_sniff_summary(frames):
         # NVB=e1 (225) is unusual — may be tag response captured by NFCT
 
         # RATS
-        if b0 == 0xe0:
+        if b0 == 0xE0:
             rats_seen = True
 
         # SELECT AID
-        if b0 == 0x00 and len(data) > 5 and data[1] == 0xa4:
-            aid = bytes(data[5:5+data[4]])
+        if b0 == 0x00 and len(data) > 5 and data[1] == 0xA4:
+            aid = bytes(data[5 : 5 + data[4]])
             name = _known_aid(aid)
             entry = aid.hex().upper()
             if name:
-                entry += f'  ({name})'
+                entry += f"  ({name})"
             if entry not in aids:
                 aids.append(entry)
 
         # MIFARE Classic auth
         if b0 in (0x60, 0x61) and len(data) > 1:
             auth_seen = True
-            key_type = 'KeyA' if b0 == 0x60 else 'KeyB'
+            key_type = "KeyA" if b0 == 0x60 else "KeyB"
             block = data[1]
             if (key_type, block) not in auth_blocks:
                 auth_blocks.append((key_type, block))
 
         # GENERATE AC — check AC type
-        if b0 == 0x80 and len(data) > 2 and data[1] == 0xae:
-            if (data[2] & 0xc0) == 0x80:
+        if b0 == 0x80 and len(data) > 2 and data[1] == 0xAE:
+            if (data[2] & 0xC0) == 0x80:
                 arqc_seen = True
-            if (data[2] & 0xc0) == 0x40:
+            if (data[2] & 0xC0) == 0x40:
                 tc_seen = True
 
         # GET DATA — ATC
-        if b0 == 0x80 and len(data) > 2 and data[1] == 0xca:
+        if b0 == 0x80 and len(data) > 2 and data[1] == 0xCA:
             tag = (data[2] << 8) | data[3]
-            atc_tag = _known_bertag(tag) or f'{data[2]:02x}{data[3]:02x}'
+            atc_tag = _known_bertag(tag) or f"{data[2]:02x}{data[3]:02x}"
 
         # GPO — extract amount if PDOL present
-        if b0 == 0x80 and len(data) > 4 and data[1] == 0xa8:
+        if b0 == 0x80 and len(data) > 4 and data[1] == 0xA8:
             # Amount is usually first 6 bytes of PDOL data at offset 4+
             if len(data) >= 11:
                 amt_bytes = data[5:11]
-                amt = int.from_bytes(amt_bytes, 'big')
+                amt = int.from_bytes(amt_bytes, "big")
                 if amt > 0:
                     amount = amt
 
         # HALT / DESELECT
-        if b0 == 0x50 or b0 == 0xc2:
+        if b0 == 0x50 or b0 == 0xC2:
             halted = True
 
     # Build UID from cascade levels
@@ -2389,8 +2551,8 @@ def _print_14a_sniff_summary(frames):
 
     print(f" {'─'*55}")
     if uid_bytes:
-        uid_str = ' '.join(f'{b:02X}' for b in uid_bytes)
-        cascade = f'  ({len(uid_bytes)}-byte UID)' if uid_bytes else ''
+        uid_str = " ".join(f"{b:02X}" for b in uid_bytes)
+        cascade = f"  ({len(uid_bytes)}-byte UID)" if uid_bytes else ""
         print(f" {CC}UID      :{C0} {CG}{uid_str}{cascade}{C0}")
     if rats_seen:
         print(f" {CC}Protocol :{C0} ISO14443-4 (RATS seen)")
@@ -2402,7 +2564,9 @@ def _print_14a_sniff_summary(frames):
         print(f" {CC}Amount   :{C0} {CG}{major}.{minor:02d}{C0}  (raw={amount})")
     if auth_blocks:
         for key_type, block in auth_blocks:
-            print(f" {CC}Auth     :{C0} {CR}MIFARE Classic {key_type} block={block}{C0}")
+            print(
+                f" {CC}Auth     :{C0} {CR}MIFARE Classic {key_type} block={block}{C0}"
+            )
     elif auth_seen:
         print(f" {CC}Auth     :{C0} {CR}MIFARE Classic auth detected{C0}")
     if arqc_seen:
@@ -2414,15 +2578,18 @@ def _print_14a_sniff_summary(frames):
     if halted:
         print(f" {CC}End      :{C0} HALT / DESELECT")
     if not uid_bytes and not aids and not auth_seen and not rats_seen:
-        print(f" {CC}Note     :{C0} anti-collision incomplete — no SELECT seen (reader could not complete exchange)")
+        print(
+            f" {CC}Note     :{C0} anti-collision incomplete — no SELECT seen (reader could not complete exchange)"
+        )
 
     # ── Nonce cracking ─────────────────────────────────────────────────────
     nonces = _extract_sniff_nonces(frames)
     if nonces:
         from collections import defaultdict
+
         groups = defaultdict(list)
         for n in nonces:
-            groups[(n['uid'], n['block'], n['key_type'])].append(n)
+            groups[(n["uid"], n["block"], n["key_type"])].append(n)
 
         print()
         print(f" {'-'*55}")
@@ -2432,28 +2599,35 @@ def _print_14a_sniff_summary(frames):
         for (uid, block, kt), ns in groups.items():
             print(f"   Block {block} Key {kt}  uid={uid}")
             for idx, n in enumerate(ns):
-                print(f"     [{idx}] nt={n['nt']}  nr={n['nr']}  ar={n['ar']} at={n['at']}")
+                print(
+                    f"     [{idx}] nt={n['nt']}  nr={n['nr']}  ar={n['ar']} at={n['at']}"
+                )
 
             import itertools
+
             # Case A: any completed auth carries the tag answer {at} (the 4-byte
             # card->reader frame right after {nr}{ar}). mfkey64 is deterministic
             # given the *same* auth's {at} — never the next auth's nt.
             found_at = False
             for n in ns:
-                if n.get('at'):
+                if n.get("at"):
                     found_at = True
                     cmd64 = f"mfkey64 {uid} {n['nt']} {n['nr']} {n['ar']} {n['at']}"
                     print(f"     {CC}mfkey64:{C0} {cmd64}")
-                    key = _run_mfkey64(uid, n['nt'], n['nr'], n['ar'], n['at'])
+                    key = _run_mfkey64(uid, n["nt"], n["nr"], n["ar"], n["at"])
                     if key not in (_TOOL_MISSING, _TOOL_BLOCKED, _TOOL_NO_KEY):
                         print(f"     {CG}Key: [{key.upper()}]{C0}")
                     elif key == _TOOL_MISSING:
-                        print(f"     {CY}mfkey64 binary not found in bin/ — "
-                              f"copy the command above and run it manually{C0}")
+                        print(
+                            f"     {CY}mfkey64 binary not found in bin/ — "
+                            f"copy the command above and run it manually{C0}"
+                        )
                     elif key == _TOOL_BLOCKED:
-                        print(f"     {CY}mfkey64 could not be executed "
-                              f"(antivirus / permissions) — "
-                              f"run the command above manually{C0}")
+                        print(
+                            f"     {CY}mfkey64 could not be executed "
+                            f"(antivirus / permissions) — "
+                            f"run the command above manually{C0}"
+                        )
                     else:
                         print(f"     {CR}mfkey64 found no key{C0}")
                     break
@@ -2465,46 +2639,67 @@ def _print_14a_sniff_summary(frames):
                     # shows up as the single candidate common to the pairs.
                     possible_keys = set()
                     for n0, n1 in itertools.combinations(ns, 2):
-                        cmd32 = (f"mfkey32v2 {uid} {n0['nt']} {n0['nr']} {n0['ar']}"
-                                 f" {n1['nt']} {n1['nr']} {n1['ar']}")
+                        cmd32 = (
+                            f"mfkey32v2 {uid} {n0['nt']} {n0['nr']} {n0['ar']}"
+                            f" {n1['nt']} {n1['nr']} {n1['ar']}"
+                        )
                         print(f"     {CC}mfkey32v2:{C0} {cmd32}")
                         key = _run_mfkey32v2_sniff(n0, n1)
                         if key not in (_TOOL_MISSING, _TOOL_BLOCKED, _TOOL_NO_KEY):
                             possible_keys.add(key.upper())
                         elif key == _TOOL_MISSING:
-                            print(f"     {CY}mfkey32v2 binary not found in bin/ — "
-                                  f"run the commands above manually{C0}")
+                            print(
+                                f"     {CY}mfkey32v2 binary not found in bin/ — "
+                                f"run the commands above manually{C0}"
+                            )
                         elif key == _TOOL_BLOCKED:
-                            print(f"     {CY}mfkey32v2 could not be executed "
-                                  f"(antivirus / permissions) — "
-                                  f"run the commands above manually{C0}")
+                            print(
+                                f"     {CY}mfkey32v2 could not be executed "
+                                f"(antivirus / permissions) — "
+                                f"run the commands above manually{C0}"
+                            )
                     if len(possible_keys) == 0:
-                        print(f"     {CR}mfkey32v2 found no key — "
-                              f"capture more nonce exchanges and retry{C0}")
+                        print(
+                            f"     {CR}mfkey32v2 found no key — "
+                            f"capture more nonce exchanges and retry{C0}"
+                        )
                     elif len(possible_keys) == 1:
                         print(f"     {CG}Key: [{next(iter(possible_keys))}]{C0}")
                     else:
-                        print(f"     {CG}Key candidates: [{', '.join(sorted(possible_keys))}]{C0}")
+                        print(
+                            f"     {CG}Key candidates: [{', '.join(sorted(possible_keys))}]{C0}"
+                        )
                 else:
                     # One clean nonce triple, no {at}: not yet crackable. Show the
                     # two correct ways to finish.
                     n = ns[0]
-                    print(f"     {CY}One clean nonce (nt/nr/ar) captured — not yet crackable.{C0}")
-                    print(f"     {CC}mfkey64  (add this auth's {{at}}):{C0} "
-                          f"mfkey64 {uid} {n['nt']} {n['nr']} {n['ar']} <at>")
-                    print(f"     {CC}mfkey32v2 (add a 2nd clean nonce):{C0} "
-                          f"mfkey32v2 {uid} {n['nt']} {n['nr']} {n['ar']} <nt2> <nr2> <ar2>")
+                    print(
+                        f"     {CY}One clean nonce (nt/nr/ar) captured — not yet crackable.{C0}"
+                    )
+                    print(
+                        f"     {CC}mfkey64  (add this auth's {{at}}):{C0} "
+                        f"mfkey64 {uid} {n['nt']} {n['nr']} {n['ar']} <at>"
+                    )
+                    print(
+                        f"     {CC}mfkey32v2 (add a 2nd clean nonce):{C0} "
+                        f"mfkey32v2 {uid} {n['nt']} {n['nr']} {n['ar']} <nt2> <nr2> <ar2>"
+                    )
 
     elif auth_seen:
         # Reader-side auth was captured but no clean nonce survived — the
         # card-side NT came back garbled. Say so, so it's clear the reader path
         # works and only the RC522 NT capture is the blocker.
-        n_auth = sum(1 for _szb, _d, _tx in frames
-                     if (not _tx) and _szb == 32 and len(_d) == 4 and _d[0] in (0x60, 0x61))
+        n_auth = sum(
+            1
+            for _szb, _d, _tx in frames
+            if (not _tx) and _szb == 32 and len(_d) == 4 and _d[0] in (0x60, 0x61)
+        )
         print()
         print(f" {'-'*55}")
-        print(f" {CC}Nonces   :{C0} {CY}{n_auth} AUTH captured, but every card nonce (NT) "
-              f"came back garbled{C0}")
+        print(
+            f" {CC}Nonces   :{C0} {CY}{n_auth} AUTH captured, but every card nonce (NT) "
+            f"came back garbled{C0}"
+        )
         print("   Reader side is clean (AUTH + NR||AR present); the RC522 is mangling")
         print("   the 4-byte NT. One clean 32-bit NT in the frame right after an AUTH")
         print("   is all that's needed to crack.")
@@ -2513,18 +2708,25 @@ def _print_14a_sniff_summary(frames):
 def _get_capture():
     """Return last capture buffer or print error."""
     import chameleon_cli_unit as _m
+
     if not _m._last_capture:
         return None
     return _m._last_capture
 
 
-@data.command('hexsamples')
+@data.command("hexsamples")
 class DataHexsamples(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Dump last LF sniff capture as hex bytes (PM3 style)'
-        parser.add_argument('-n', '--num', type=int, default=512, metavar='N',
-                            help='Number of bytes to display (default: 512)')
+        parser.description = "Dump last LF sniff capture as hex bytes (PM3 style)"
+        parser.add_argument(
+            "-n",
+            "--num",
+            type=int,
+            default=512,
+            metavar="N",
+            help="Number of bytes to display (default: 512)",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -2536,40 +2738,55 @@ class DataHexsamples(BaseCLIUnit):
         print(f" Buffer: {CG}{len(buf)}{C0} bytes total, showing {n}")
         print()
         for row in range(0, n, 16):
-            chunk = buf[row:row+16]
-        hex_part = ' '.join(f'{b:02x}' for b in chunk)
-        bar = ''
+            chunk = buf[row : row + 16]
+        hex_part = " ".join(f"{b:02x}" for b in chunk)
+        bar = ""
         for b in chunk:
             if b < 0x10:
-                bar += '_'
+                bar += "_"
             elif b < 0x40:
-                bar += '.'
+                bar += "."
             elif b < 0x80:
-                bar += '-'
-            elif b < 0xa0:
-                bar += '+'
-            elif b < 0xc0:
-                bar += 'o'
-            elif b < 0xe0:
-                bar += 'O'
+                bar += "-"
+            elif b < 0xA0:
+                bar += "+"
+            elif b < 0xC0:
+                bar += "o"
+            elif b < 0xE0:
+                bar += "O"
             else:
-                bar += '#'
+                bar += "#"
         print(f" {row // 16:02d} | {hex_part:<47s} | {bar}")
         print()
         print(" _ gap  . ringing  - low  + mid  o carrier  O high  # clipped")
 
 
-@data.command('plot')
+@data.command("plot")
 class DataPlot(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Graphical waveform plot of last LF sniff capture (PyQt5 or matplotlib)'
-        parser.add_argument('--start', type=int, default=0, metavar='N',
-                            help='Start sample (default: 0)')
-        parser.add_argument('--len', type=int, default=4000, metavar='N',
-                            help='Number of samples to plot (default: all)')
-        parser.add_argument('--ascii', action='store_true',
-                            help='Force ASCII plot even if GUI is available')
+        parser.description = (
+            "Graphical waveform plot of last LF sniff capture (PyQt5 or matplotlib)"
+        )
+        parser.add_argument(
+            "--start",
+            type=int,
+            default=0,
+            metavar="N",
+            help="Start sample (default: 0)",
+        )
+        parser.add_argument(
+            "--len",
+            type=int,
+            default=4000,
+            metavar="N",
+            help="Number of samples to plot (default: all)",
+        )
+        parser.add_argument(
+            "--ascii",
+            action="store_true",
+            help="Force ASCII plot even if GUI is available",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -2592,23 +2809,32 @@ class DataPlot(BaseCLIUnit):
         if not args.ascii:
             # Try PyQt5 first, then matplotlib
             try:
-                from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
+                from PyQt5.QtWidgets import (
+                    QApplication,
+                    QMainWindow,
+                    QVBoxLayout,
+                    QWidget,
+                )
                 from PyQt5.QtCore import Qt
                 import pyqtgraph as pg
+
                 _plot_pyqtgraph(xs, view, mean, threshold, start, end)
                 return
             except ImportError:
                 pass
             try:
                 import matplotlib
-                matplotlib.use('Qt5Agg')
+
+                matplotlib.use("Qt5Agg")
                 import matplotlib.pyplot as plt
+
                 _plot_matplotlib(xs, view, mean, threshold, start, end)
                 return
             except ImportError:
                 pass
             try:
                 import matplotlib.pyplot as plt
+
                 _plot_matplotlib(xs, view, mean, threshold, start, end)
                 return
             except ImportError:
@@ -2620,16 +2846,16 @@ class DataPlot(BaseCLIUnit):
         bsize = max(1, n // w)
         buckets = []
         for i in range(0, n, bsize):
-            chunk = view[i:i+bsize]
+            chunk = view[i : i + bsize]
             buckets.append(sum(chunk) // len(chunk))
         buckets = buckets[:w]
         mn, mx = min(view), max(view)
         print(f" Samples {start}–{end}  range 0x{mn:02x}–0x{mx:02x}  mean 0x{mean:02x}")
         print()
-        levels = [0xe0, 0xc0, 0xa0, 0x80, 0x60, 0x40, 0x20, 0x00]
-        labels = ['0xff', '0xc0', '0xa0', '0x80', '0x60', '0x40', '0x20', '0x00']
+        levels = [0xE0, 0xC0, 0xA0, 0x80, 0x60, 0x40, 0x20, 0x00]
+        labels = ["0xff", "0xc0", "0xa0", "0x80", "0x60", "0x40", "0x20", "0x00"]
         for thresh, lbl in zip(levels, labels):
-            row = ''.join('#' if v >= thresh else ' ' for v in buckets)
+            row = "".join("#" if v >= thresh else " " for v in buckets)
             print(f" {lbl} |{row}|")
         print(f"        +{'-'*len(buckets)}+")
 
@@ -2639,15 +2865,23 @@ def _plot_matplotlib(xs, ys, mean, threshold, start, end):
     import matplotlib.patches as mpatches
 
     fig, ax = plt.subplots(figsize=(14, 5))
-    fig.patch.set_facecolor('#1a1a2e')
-    ax.set_facecolor('#0d1117')
+    fig.patch.set_facecolor("#1a1a2e")
+    ax.set_facecolor("#0d1117")
 
     # Main waveform
-    ax.plot(xs, ys, color='#00e5ff', linewidth=0.8, label='LF field')
+    ax.plot(xs, ys, color="#00e5ff", linewidth=0.8, label="LF field")
 
     # Mean and gap threshold lines
-    ax.axhline(mean,      color='#ffb020', linewidth=0.8, linestyle='--', label=f'mean 0x{mean:02x}')
-    ax.axhline(threshold, color='#ff3d57', linewidth=0.8, linestyle=':',  label=f'gap threshold 0x{threshold:02x}')
+    ax.axhline(
+        mean, color="#ffb020", linewidth=0.8, linestyle="--", label=f"mean 0x{mean:02x}"
+    )
+    ax.axhline(
+        threshold,
+        color="#ff3d57",
+        linewidth=0.8,
+        linestyle=":",
+        label=f"gap threshold 0x{threshold:02x}",
+    )
 
     # Shade gap regions
     in_gap = False
@@ -2657,29 +2891,43 @@ def _plot_matplotlib(xs, ys, mean, threshold, start, end):
             in_gap = True
             gap_start = xs[i]
         elif in_gap and v >= threshold:
-            ax.axvspan(gap_start, xs[i], alpha=0.25, color='#ff3d57', linewidth=0)
+            ax.axvspan(gap_start, xs[i], alpha=0.25, color="#ff3d57", linewidth=0)
             in_gap = False
     if in_gap:
-        ax.axvspan(gap_start, xs[-1], alpha=0.25, color='#ff3d57', linewidth=0)
+        ax.axvspan(gap_start, xs[-1], alpha=0.25, color="#ff3d57", linewidth=0)
 
-    ax.set_xlabel('Time (µs)', color='#8899b4')
-    ax.set_ylabel('ADC value', color='#8899b4')
-    ax.set_title(f'LF Sniff — samples {start}–{end}  ({(end-start)*8}µs)',
-                 color='#dde8f5', fontsize=11)
+    ax.set_xlabel("Time (µs)", color="#8899b4")
+    ax.set_ylabel("ADC value", color="#8899b4")
+    ax.set_title(
+        f"LF Sniff — samples {start}–{end}  ({(end-start)*8}µs)",
+        color="#dde8f5",
+        fontsize=11,
+    )
     ax.set_ylim(0, 270)
     ax.set_xlim(xs[0], xs[-1])
-    ax.tick_params(colors='#8899b4')
+    ax.tick_params(colors="#8899b4")
     for spine in ax.spines.values():
-        spine.set_edgecolor('#21262d')
-    ax.legend(facecolor='#161b22', edgecolor='#30363d', labelcolor='#c9d1d9',
-              fontsize=8, loc='upper right')
-    ax.grid(True, color='#21262d', linewidth=0.5)
+        spine.set_edgecolor("#21262d")
+    ax.legend(
+        facecolor="#161b22",
+        edgecolor="#30363d",
+        labelcolor="#c9d1d9",
+        fontsize=8,
+        loc="upper right",
+    )
+    ax.grid(True, color="#21262d", linewidth=0.5)
 
-    gap_patch = mpatches.Patch(color='#ff3d57', alpha=0.4, label='field gap')
+    gap_patch = mpatches.Patch(color="#ff3d57", alpha=0.4, label="field gap")
     handles, labels = ax.get_legend_handles_labels()
-    ax.legend(handles + [gap_patch], labels + ['field gap'],
-              facecolor='#161b22', edgecolor='#30363d',
-              labelcolor='#c9d1d9', fontsize=8, loc='upper right')
+    ax.legend(
+        handles + [gap_patch],
+        labels + ["field gap"],
+        facecolor="#161b22",
+        edgecolor="#30363d",
+        labelcolor="#c9d1d9",
+        fontsize=8,
+        loc="upper right",
+    )
 
     plt.tight_layout()
     plt.show()
@@ -2692,35 +2940,40 @@ def _plot_pyqtgraph(xs, ys, mean, threshold, start, end):
     from PyQt5.QtGui import QFont
     import pyqtgraph as pg
 
-    pg.setConfigOption('background', '#0d1117')
-    pg.setConfigOption('foreground', '#8899b4')
+    pg.setConfigOption("background", "#0d1117")
+    pg.setConfigOption("foreground", "#8899b4")
 
     app = QApplication.instance() or QApplication(sys.argv)
 
-    win = pg.GraphicsLayoutWidget(title='ChameleonUltra — LF Sniff')
+    win = pg.GraphicsLayoutWidget(title="ChameleonUltra — LF Sniff")
     win.resize(1200, 400)
-    win.setWindowTitle(f'LF Sniff — samples {start}–{end}  ({(end-start)*8}µs)')
+    win.setWindowTitle(f"LF Sniff — samples {start}–{end}  ({(end-start)*8}µs)")
 
     plot = win.addPlot()
-    plot.setLabel('bottom', 'Time (µs)')
-    plot.setLabel('left', 'ADC value')
+    plot.setLabel("bottom", "Time (µs)")
+    plot.setLabel("left", "ADC value")
     plot.showGrid(x=True, y=True, alpha=0.2)
     plot.setYRange(0, 270)
 
     # Waveform
-    plot.plot(xs, ys, pen=pg.mkPen('#00e5ff', width=1))
+    plot.plot(xs, ys, pen=pg.mkPen("#00e5ff", width=1))
 
     # Mean line
-    plot.addLine(y=mean,      pen=pg.mkPen('#ffb020', width=1, style=pg.QtCore.Qt.DashLine))
+    plot.addLine(y=mean, pen=pg.mkPen("#ffb020", width=1, style=pg.QtCore.Qt.DashLine))
     # Gap threshold line
-    plot.addLine(y=threshold, pen=pg.mkPen('#ff3d57', width=1, style=pg.QtCore.Qt.DotLine))
+    plot.addLine(
+        y=threshold, pen=pg.mkPen("#ff3d57", width=1, style=pg.QtCore.Qt.DotLine)
+    )
 
     # Shade gaps
-    for i in range(len(ys)-1):
+    for i in range(len(ys) - 1):
         if ys[i] < threshold:
-            r = pg.LinearRegionItem([xs[i], xs[i+1]],
-                                    brush=pg.mkBrush(255, 61, 87, 40),
-                                    pen=pg.mkPen(None), movable=False)
+            r = pg.LinearRegionItem(
+                [xs[i], xs[i + 1]],
+                brush=pg.mkBrush(255, 61, 87, 40),
+                pen=pg.mkPen(None),
+                movable=False,
+            )
             plot.addItem(r)
 
     # Legend / info panel
@@ -2730,26 +2983,32 @@ def _plot_pyqtgraph(xs, ys, mean, threshold, start, end):
         '<span style="color:#ffb020;">- -</span> Mean&nbsp;&nbsp;'
         '<span style="color:#ff3d57;">···</span> Gap threshold (mean÷2)&nbsp;&nbsp;'
         '<span style="background:#ff3d57; opacity:0.3;">&nbsp;&nbsp;&nbsp;</span>'
-        ' Field gap (below threshold)&nbsp;&nbsp;'
+        " Field gap (below threshold)&nbsp;&nbsp;"
         '<span style="color:#8899b4;">Ringing = exponential rise on field restore</span>'
-        '</span>'
+        "</span>"
     )
-    legend = pg.LabelItem(legend_text, justify='left')
+    legend = pg.LabelItem(legend_text, justify="left")
     win.addItem(legend, row=1, col=0)
 
     win.show()
     app.exec_()
 
 
-@data.command('manrawdecode')
+@data.command("manrawdecode")
 class DataManrawdecode(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Manchester decode the last LF sniff capture'
-        parser.add_argument('--clock', type=int, default=64, metavar='N',
-                            help='Clock divisor in Tc (default: 64 = RF/64)')
-        parser.add_argument('--invert', action='store_true',
-                            help='Invert logic (high=0, low=1)')
+        parser.description = "Manchester decode the last LF sniff capture"
+        parser.add_argument(
+            "--clock",
+            type=int,
+            default=64,
+            metavar="N",
+            help="Clock divisor in Tc (default: 64 = RF/64)",
+        )
+        parser.add_argument(
+            "--invert", action="store_true", help="Invert logic (high=0, low=1)"
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -2795,7 +3054,7 @@ class DataManrawdecode(BaseCLIUnit):
             if half:
                 # need next run to complete bit
                 if i + 1 < len(runs):
-                    nval, ncnt = runs[i+1]
+                    nval, ncnt = runs[i + 1]
                     nhalf = abs(ncnt - half_clk) <= tol
                     if nhalf:
                         # two halves: transition val->nval
@@ -2815,8 +3074,8 @@ class DataManrawdecode(BaseCLIUnit):
             print(f" Mean threshold: 0x{threshold:02x}  Clock: RF/{args.clock}")
             return
 
-        bits_str = ''.join(str(b) for b in decoded_bits)
-        hex_str = hex(int(bits_str, 2))[2:] if decoded_bits else ''
+        bits_str = "".join(str(b) for b in decoded_bits)
+        hex_str = hex(int(bits_str, 2))[2:] if decoded_bits else ""
 
         print(f" Clock    : RF/{args.clock}  ({args.clock} Tc = {args.clock*8}µs/bit)")
         print(f" Threshold: 0x{threshold:02x}  Inverted: {args.invert}")
@@ -2830,11 +3089,11 @@ class DataManrawdecode(BaseCLIUnit):
             print(f" Hex: {CG}{hex_str[:64]}{C0}{'...' if len(hex_str) > 64 else ''}")
 
 
-@data.command('modulation')
+@data.command("modulation")
 class DataModulation(BaseCLIUnit):
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Detect clock rate and modulation type in last LF capture'
+        parser.description = "Detect clock rate and modulation type in last LF capture"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -2886,6 +3145,7 @@ class DataModulation(BaseCLIUnit):
 
         # Estimate clock: most common run length = half-period
         from collections import Counter
+
         run_counts = Counter(runs)
         most_common_run = run_counts.most_common(1)[0][0]
 
@@ -2895,7 +3155,7 @@ class DataModulation(BaseCLIUnit):
 
         rf_dividers = [8, 16, 32, 40, 50, 64, 100, 128]
         tc_us = 8  # 1 Tc = 8µs at 125kHz
-        best_div = min(rf_dividers, key=lambda d: abs(d*tc_us - full_period_us))
+        best_div = min(rf_dividers, key=lambda d: abs(d * tc_us - full_period_us))
 
         print(f" Half-period : ~{most_common_run} samples = {most_common_run*8}µs")
         print(f" Full period : ~{full_period_us}µs")
@@ -2914,8 +3174,7 @@ class DataModulation(BaseCLIUnit):
         # Check if second most common run is ~2x the most common
         tol = max(2, most_common_run // 3)
         top2 = run_counts.most_common(2)
-        is_manchester = (len(top2) >= 2 and
-                         abs(top2[1][0] - most_common_run * 2) <= tol)
+        is_manchester = len(top2) >= 2 and abs(top2[1][0] - most_common_run * 2) <= tol
 
         if len(long_runs) > len(runs) * 0.3:
             mod = "ASK / NRZ (long steady periods)"
@@ -2937,8 +3196,10 @@ class DataModulation(BaseCLIUnit):
         gaps = [i for i, b in enumerate(buf[200:]) if b < gap_threshold]
 
         if gaps:
-            print(f" RTF gaps   : {CG}{len(gaps)}{C0} samples below 0x{gap_threshold:02x}"
-                  f" ^`^t gap commands present")
+            print(
+                f" RTF gaps   : {CG}{len(gaps)}{C0} samples below 0x{gap_threshold:02x}"
+                f" ^`^t gap commands present"
+            )
         else:
             print(f" RTF gaps   : {CR}none ^`^t no gap commands detected{C0}")
 
@@ -2947,29 +3208,30 @@ class DataModulation(BaseCLIUnit):
 # EMV contactless payment card commands  (emv subgroup)
 # ============================================================================
 
+
 def _emv_decode_apdu(data: bytes) -> str:
     """Return a brief human-readable description of a command APDU."""
     if len(data) < 4:
-        return ''
+        return ""
     cla, ins, p1, p2 = data[0], data[1], data[2], data[3]
     lc = data[4] if len(data) > 4 else 0
-    body = data[5:5 + lc] if len(data) > 5 else b''
+    body = data[5 : 5 + lc] if len(data) > 5 else b""
     if cla == 0x00 and ins == 0xA4 and p1 == 0x04 and body:
         known = {
-            bytes.fromhex('325041592e5359532e4444463031'): 'PPSE (2PAY.SYS.DDF01)',
-            bytes.fromhex('a0000000031010'): 'Visa Credit/Debit',
-            bytes.fromhex('a0000000041010'): 'Mastercard Debit',
-            bytes.fromhex('a000000025010402'): 'Amex',
+            bytes.fromhex("325041592e5359532e4444463031"): "PPSE (2PAY.SYS.DDF01)",
+            bytes.fromhex("a0000000031010"): "Visa Credit/Debit",
+            bytes.fromhex("a0000000041010"): "Mastercard Debit",
+            bytes.fromhex("a000000025010402"): "Amex",
         }
-        return 'SELECT AID  ' + known.get(body.lower(), body.hex().upper())
+        return "SELECT AID  " + known.get(body.lower(), body.hex().upper())
     if cla == 0x80 and ins == 0xA8:
-        return 'GET PROCESSING OPTIONS (GPO)'
+        return "GET PROCESSING OPTIONS (GPO)"
     if cla == 0x00 and ins == 0xB2:
-        return f'READ RECORD  SFI={(p2 >> 3) & 0x1F}  rec={p1}'
-    return f'CLA={cla:02x} INS={ins:02x} P1={p1:02x} P2={p2:02x}'
+        return f"READ RECORD  SFI={(p2 >> 3) & 0x1F}  rec={p1}"
+    return f"CLA={cla:02x} INS={ins:02x} P1={p1:02x} P2={p2:02x}"
 
 
-@emv.command('scan')
+@emv.command("scan")
 class EMVScan(DeviceRequiredUnit):
     """
     Full EMV contactless card scan — equivalent to PM3 'emv scan -at'.
@@ -2987,16 +3249,30 @@ class EMVScan(DeviceRequiredUnit):
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'EMV contactless card scan (reader mode) — like PM3 emv scan -at'
-        parser.add_argument('-f', '--file', default='', metavar='<path>',
-                            help='Save results to JSON file (PM3-compatible format)')
-        parser.add_argument('-s', '--slot', type=int, default=None,
-                            metavar='<1-8>', help='Also load scanned card into this slot for emulation')
+        parser.description = (
+            "EMV contactless card scan (reader mode) — like PM3 emv scan -at"
+        )
+        parser.add_argument(
+            "-f",
+            "--file",
+            default="",
+            metavar="<path>",
+            help="Save results to JSON file (PM3-compatible format)",
+        )
+        parser.add_argument(
+            "-s",
+            "--slot",
+            type=int,
+            default=None,
+            metavar="<1-8>",
+            help="Also load scanned card into this slot for emulation",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         import time
         import json as jsonlib
+
         cmd = self.cmd
 
         # Ensure reader mode
@@ -3007,12 +3283,12 @@ class EMVScan(DeviceRequiredUnit):
         except Exception:
             time.sleep(0.3)
 
-        print(f' {CY}Scanning... (place card on antenna) [fw-canary:v5]{C0}')
+        print(f" {CY}Scanning... (place card on antenna) [fw-canary:v5]{C0}")
 
         # Single firmware call — full EMV sequence without USB round-trips
         resp = cmd.hf14a_4_emv_scan()
         if resp.status != Status.HF_TAG_OK or not resp.data:
-            print(f' {CR}No card found or scan failed (status={resp.status}){C0}')
+            print(f" {CR}No card found or scan failed (status={resp.status}){C0}")
             return
 
         # Parse packed response
@@ -3021,23 +3297,23 @@ class EMVScan(DeviceRequiredUnit):
 
         uid_len = d[off]
         off += 1
-        uid = d[off:off+uid_len]
+        uid = d[off : off + uid_len]
         off += uid_len
-        atqa = d[off:off+2]
+        atqa = d[off : off + 2]
         off += 2
         sak = d[off]
         off += 1
         ats_len = d[off]
         off += 1
-        ats = d[off:off+ats_len]
+        ats = d[off : off + ats_len]
         off += ats_len
 
-        uid_str = ' '.join(f'{b:02X}' for b in uid)
-        atqa_str = ' '.join(f'{b:02X}' for b in atqa)
-        ats_str = ' '.join(f'{b:02X}' for b in ats)
-        print(f' {CG}UID : {uid_str}{C0}')
-        print(f' {CG}ATQA: {atqa_str}  SAK: {sak:02X}{C0}')
-        print(f' {CG}ATS : {ats_str}{C0}')
+        uid_str = " ".join(f"{b:02X}" for b in uid)
+        atqa_str = " ".join(f"{b:02X}" for b in atqa)
+        ats_str = " ".join(f"{b:02X}" for b in ats)
+        print(f" {CG}UID : {uid_str}{C0}")
+        print(f" {CG}ATQA: {atqa_str}  SAK: {sak:02X}{C0}")
+        print(f" {CG}ATS : {ats_str}{C0}")
 
         num_apdus = d[off]
         off += 1
@@ -3045,24 +3321,28 @@ class EMVScan(DeviceRequiredUnit):
         for _ in range(num_apdus):
             cl = d[off]
             off += 1
-            c = d[off:off+cl]
+            c = d[off : off + cl]
             off += cl
-            rl = d[off] | (d[off+1] << 8)
+            rl = d[off] | (d[off + 1] << 8)
             off += 2
-            r = d[off:off+rl]
+            r = d[off : off + rl]
             off += rl
             pairs.append((c, r))
 
         if not pairs:
-            print(f' {CR}No APDU responses captured{C0}')
+            print(f" {CR}No APDU responses captured{C0}")
             return
         result = {}
-        result['File'] = {'Created': 'chameleon emv scan'}
-        result['Card'] = {'Contactless': {
-            'Communication': 'iso14443-4a',
-            'UID':  uid_str, 'ATQA': atqa_str,
-            'SAK':  f'{sak:02X}', 'ATS': ats_str,
-        }}
+        result["File"] = {"Created": "chameleon emv scan"}
+        result["Card"] = {
+            "Contactless": {
+                "Communication": "iso14443-4a",
+                "UID": uid_str,
+                "ATQA": atqa_str,
+                "SAK": f"{sak:02X}",
+                "ATS": ats_str,
+            }
+        }
 
         def tlv_to_dict(data):
             if not data:
@@ -3076,14 +3356,17 @@ class EMVScan(DeviceRequiredUnit):
             if data[i] & 0x80:
                 nb = data[i] & 0x7F
                 i += 1
-                vlen = int.from_bytes(data[i:i+nb], 'big')
+                vlen = int.from_bytes(data[i : i + nb], "big")
                 i += nb
             else:
                 vlen = data[i]
                 i += 1
-            val = data[i:i+vlen]
-            return {'tag': tag_hex, 'length': f'{vlen:02X}',
-                    'value': ' '.join(f'{b:02X}' for b in val)}
+            val = data[i : i + vlen]
+            return {
+                "tag": tag_hex,
+                "length": f"{vlen:02X}",
+                "value": " ".join(f"{b:02X}" for b in val),
+            }
 
         def find_tag(data, tag):
             results = []
@@ -3092,21 +3375,21 @@ class EMVScan(DeviceRequiredUnit):
                 tl = 2 if (data[i] & 0x1F) == 0x1F else 1
                 if i + tl > len(data):
                     break
-                cur = data[i:i+tl]
+                cur = data[i : i + tl]
                 i += tl
                 if i >= len(data):
                     break
                 if data[i] & 0x80:
                     nb = data[i] & 0x7F
                     i += 1
-                    vlen = int.from_bytes(data[i:i+nb], 'big')
+                    vlen = int.from_bytes(data[i : i + nb], "big")
                     i += nb
                 else:
                     vlen = data[i]
                     i += 1
-                val = data[i:i+vlen]
+                val = data[i : i + vlen]
                 i += vlen
-                if int.from_bytes(cur, 'big') == tag:
+                if int.from_bytes(cur, "big") == tag:
                     results.append(val)
                 elif cur[0] & 0x20:
                     results.extend(find_tag(val, tag))
@@ -3116,42 +3399,52 @@ class EMVScan(DeviceRequiredUnit):
         if pairs:
             ppse_cmd, ppse_resp = pairs[0]
             ppse_body = ppse_resp[:-2] if len(ppse_resp) >= 2 else ppse_resp
-            print(f'\n {CG}PPSE OK ({len(ppse_resp)}b){C0}')
-            result['PPSE'] = {
-                'AID': '32 50 41 59 2E 53 59 53 2E 44 44 46 30 31',
-                'FCITemplate': tlv_to_dict(ppse_body),
+            print(f"\n {CG}PPSE OK ({len(ppse_resp)}b){C0}")
+            result["PPSE"] = {
+                "AID": "32 50 41 59 2E 53 59 53 2E 44 44 46 30 31",
+                "FCITemplate": tlv_to_dict(ppse_body),
             }
 
         if len(pairs) >= 2:
             sel_cmd, sel_resp = pairs[1]
             sel_body = sel_resp[:-2] if len(sel_resp) >= 2 else sel_resp
-            aid_bytes = sel_cmd[5:-1] if len(sel_cmd) > 6 else b''
-            aid_str = ' '.join(f'{b:02X}' for b in aid_bytes)
-            print(f' {CG}SELECT AID OK ({len(sel_resp)}b){C0}')
-            result['Application'] = {'AID': aid_str,
-                                     'FCITemplate': tlv_to_dict(sel_body)}
+            aid_bytes = sel_cmd[5:-1] if len(sel_cmd) > 6 else b""
+            aid_str = " ".join(f"{b:02X}" for b in aid_bytes)
+            print(f" {CG}SELECT AID OK ({len(sel_resp)}b){C0}")
+            result["Application"] = {
+                "AID": aid_str,
+                "FCITemplate": tlv_to_dict(sel_body),
+            }
 
         if len(pairs) >= 3:
             gpo_cmd, gpo_resp = pairs[2]
             gpo_body = gpo_resp[:-2] if len(gpo_resp) >= 2 else gpo_resp
-            print(f' {CG}GPO OK ({len(gpo_resp)}b){C0}')
-            result['Application']['GPO'] = tlv_to_dict(gpo_body)
+            print(f" {CG}GPO OK ({len(gpo_resp)}b){C0}")
+            result["Application"]["GPO"] = tlv_to_dict(gpo_body)
             records = []
             for cb, rb in pairs[3:]:
                 sfi_n = (cb[3] >> 3) & 0x1F if len(cb) >= 4 else 0
                 rec_n = cb[2] if len(cb) >= 3 else 0
                 r_body = rb[:-2] if len(rb) >= 2 else rb
-                print(f' {CG}READ RECORD SFI={sfi_n} rec={rec_n} OK ({len(rb)}b){C0}')
-                records.append({'SFI': f'{sfi_n:02X}', 'RecordNum': f'{rec_n:02X}',
-                                'Offline': '01', 'Data': tlv_to_dict(r_body)})
-            result['Application']['Records'] = records
+                print(f" {CG}READ RECORD SFI={sfi_n} rec={rec_n} OK ({len(rb)}b){C0}")
+                records.append(
+                    {
+                        "SFI": f"{sfi_n:02X}",
+                        "RecordNum": f"{rec_n:02X}",
+                        "Offline": "01",
+                        "Data": tlv_to_dict(r_body),
+                    }
+                )
+            result["Application"]["Records"] = records
 
         # ---- Decode and display key card fields from EMV records --------
         def _pan_luhn(pan: str) -> bool:
             digits = [int(c) for c in pan if c.isdigit()]
             digits.reverse()
-            total = sum(d if i % 2 == 0 else (d * 2 - 9 if d * 2 > 9 else d * 2)
-                        for i, d in enumerate(digits))
+            total = sum(
+                d if i % 2 == 0 else (d * 2 - 9 if d * 2 > 9 else d * 2)
+                for i, d in enumerate(digits)
+            )
             return total % 10 == 0
 
         def _find_tag_all(data: bytes, *tags: int):
@@ -3164,24 +3457,28 @@ class EMVScan(DeviceRequiredUnit):
                 tl = 2 if (data[i] & 0x1F) == 0x1F else 1
                 if i + tl > len(data):
                     break
-                cur_tag = int.from_bytes(data[i:i+tl], 'big')
+                cur_tag = int.from_bytes(data[i : i + tl], "big")
                 i += tl
                 if i >= len(data):
                     break
                 if data[i] & 0x80:
                     nb = data[i] & 0x7F
                     i += 1
-                    vlen = int.from_bytes(data[i:i+nb], 'big')
+                    vlen = int.from_bytes(data[i : i + nb], "big")
                     i += nb
                 else:
                     vlen = data[i]
                     i += 1
-                val = data[i:i+vlen]
+                val = data[i : i + vlen]
                 i += vlen
                 if cur_tag in results:
                     results[cur_tag].append(val)
                 # recurse into constructed TLV
-                if data[i - vlen - (1 if vlen < 128 else 2)] & 0x20 if False else (data[i - vlen - 1] & 0x20 if vlen < 128 else False):
+                if (
+                    data[i - vlen - (1 if vlen < 128 else 2)] & 0x20
+                    if False
+                    else (data[i - vlen - 1] & 0x20 if vlen < 128 else False)
+                ):
                     sub = _find_tag_all(val, *tags)
                     for t in tags:
                         results[t].extend(sub[t])
@@ -3198,7 +3495,7 @@ class EMVScan(DeviceRequiredUnit):
                 tl = 2 if (b0 & 0x1F) == 0x1F else 1
                 if i + tl > len(data):
                     break
-                tag = int.from_bytes(data[i:i+tl], 'big')
+                tag = int.from_bytes(data[i : i + tl], "big")
                 i += tl
                 if i >= len(data):
                     break
@@ -3208,7 +3505,7 @@ class EMVScan(DeviceRequiredUnit):
                     i += 1
                     if i + nb > len(data):
                         break
-                    vlen = int.from_bytes(data[i:i+nb], 'big')
+                    vlen = int.from_bytes(data[i : i + nb], "big")
                     i += nb
                 else:
                     vlen = data[i]
@@ -3216,8 +3513,8 @@ class EMVScan(DeviceRequiredUnit):
                 # For truncated TLV: read whatever bytes are available and
                 # continue parsing — don't break, so we can find tags inside
                 # truncated constructed TLV (e.g. 6F/A5 larger than received data)
-                truncated = (i + vlen > len(data))
-                val = data[i:i+vlen] if not truncated else data[i:]
+                truncated = i + vlen > len(data)
+                val = data[i : i + vlen] if not truncated else data[i:]
                 i = (i + vlen) if not truncated else len(data)
                 if tag in found and not truncated:
                     found[tag].append(val)
@@ -3230,20 +3527,20 @@ class EMVScan(DeviceRequiredUnit):
         # Collect all response bodies for tag search.
         # tlv_to_dict stores the VALUE (content) of the outermost tag —
         # so rec['Data']['value'] is already the unwrapped inner bytes.
-        all_record_data = b''
-        for rec in result.get('Application', {}).get('Records', []):
-            raw_hex = rec.get('Data', {}).get('value', '')
+        all_record_data = b""
+        for rec in result.get("Application", {}).get("Records", []):
+            raw_hex = rec.get("Data", {}).get("value", "")
             try:
-                all_record_data += bytes.fromhex(raw_hex.replace(' ', ''))
+                all_record_data += bytes.fromhex(raw_hex.replace(" ", ""))
             except Exception:
                 pass
         # Also include GPO and SELECT AID FCI values for label/name tags
-        extra_data = b''
-        for key in ('GPO', 'FCITemplate'):
-            v = result.get('Application', {}).get(key, {})
+        extra_data = b""
+        for key in ("GPO", "FCITemplate"):
+            v = result.get("Application", {}).get(key, {})
             if isinstance(v, dict):
                 try:
-                    extra_data += bytes.fromhex(v.get('value', '').replace(' ', ''))
+                    extra_data += bytes.fromhex(v.get("value", "").replace(" ", ""))
                 except Exception:
                     pass
         all_search_data = all_record_data + extra_data
@@ -3261,17 +3558,17 @@ class EMVScan(DeviceRequiredUnit):
         tags[0x9F12] = app_tags[0x9F12]
         tags[0x50] = app_tags[0x50]
 
-        print('')
-        print(f' {CG}── Card Details ──────────────────────{C0}')
+        print("")
+        print(f" {CG}── Card Details ──────────────────────{C0}")
 
         # App label — show first unique label only
         seen_labels = set()
         for v in tags.get(0x50, []) + app_tags.get(0x50, []):
             try:
-                lbl = v.decode('ascii', errors='replace').strip()
+                lbl = v.decode("ascii", errors="replace").strip()
                 if lbl and lbl not in seen_labels:
                     seen_labels.add(lbl)
-                    print(f' {CG}App Label     :{C0} {CY}{lbl}{C0}')
+                    print(f" {CG}App Label     :{C0} {CY}{lbl}{C0}")
             except Exception:
                 pass
 
@@ -3279,63 +3576,65 @@ class EMVScan(DeviceRequiredUnit):
         pan_hex = None
         for v in tags.get(0x57, []):
             t2 = v.hex().upper()
-            sep = t2.find('D')
+            sep = t2.find("D")
             if sep > 0:
                 pan_hex = t2[:sep]
                 break
         if not pan_hex:
             for v in tags.get(0x5A, []):
                 raw = v.hex().upper()
-                pan_hex = raw.rstrip('F') if raw.endswith('F') else raw
+                pan_hex = raw.rstrip("F") if raw.endswith("F") else raw
                 break
         if pan_hex:
-            pan_fmt = ' '.join(pan_hex[i:i+4] for i in range(0, len(pan_hex), 4))
+            pan_fmt = " ".join(pan_hex[i : i + 4] for i in range(0, len(pan_hex), 4))
             luhn_ok = _pan_luhn(pan_hex)
-            luhn_str = f'{CG}✓{C0}' if luhn_ok else f'{CR}✗{C0}'
-            print(f' {CG}PAN           :{C0} {CY}{pan_fmt}{C0}  Luhn: {luhn_str}')
-            result.setdefault('Decoded', {})['PAN'] = pan_hex
+            luhn_str = f"{CG}✓{C0}" if luhn_ok else f"{CR}✗{C0}"
+            print(f" {CG}PAN           :{C0} {CY}{pan_fmt}{C0}  Luhn: {luhn_str}")
+            result.setdefault("Decoded", {})["PAN"] = pan_hex
         else:
-            print(f' {CR}PAN           : not found{C0}')
+            print(f" {CR}PAN           : not found{C0}")
 
         # Expiry — 5F24 is 3 bytes BCD: YYMMDD
         expiry_found = False
         for v in tags.get(0x5F24, []):
             if len(v) == 3:
                 exp = v.hex().upper()
-                exp_fmt = f'20{exp[0:2]}/{exp[2:4]}'
-                print(f' {CG}Expiry        :{C0} {CY}{exp_fmt}{C0}')
-                result.setdefault('Decoded', {})['Expiry'] = exp_fmt
+                exp_fmt = f"20{exp[0:2]}/{exp[2:4]}"
+                print(f" {CG}Expiry        :{C0} {CY}{exp_fmt}{C0}")
+                result.setdefault("Decoded", {})["Expiry"] = exp_fmt
                 expiry_found = True
         # Fallback: extract expiry from Track2 after D separator (YYMM)
         if not expiry_found and pan_hex:
             for v in tags.get(0x57, []):
                 t2 = v.hex().upper()
-                sep = t2.find('D')
+                sep = t2.find("D")
                 if sep > 0 and len(t2) >= sep + 5:
-                    yymm = t2[sep+1:sep+5]
+                    yymm = t2[sep + 1 : sep + 5]
                     if yymm.isdigit():
-                        exp_fmt = f'20{yymm[0:2]}/{yymm[2:4]}'
-                        print(f' {CG}Expiry        :{C0} {CY}{exp_fmt}{C0} (from Track2)')
-                        result.setdefault('Decoded', {})['Expiry'] = exp_fmt
+                        exp_fmt = f"20{yymm[0:2]}/{yymm[2:4]}"
+                        print(
+                            f" {CG}Expiry        :{C0} {CY}{exp_fmt}{C0} (from Track2)"
+                        )
+                        result.setdefault("Decoded", {})["Expiry"] = exp_fmt
                         expiry_found = True
                         break
         if not expiry_found:
-            print(f' {CR}Expiry        : not found{C0}')
+            print(f" {CR}Expiry        : not found{C0}")
 
         # Cardholder Name (tag 5F20: printable ASCII only)
         for v in tags[0x5F20]:
             try:
                 if v and all(0x20 <= b <= 0x7E for b in v):
-                    name = v.decode('ascii').strip()
+                    name = v.decode("ascii").strip()
                     if name:
-                        print(f' {CG}Cardholder    :{C0} {CY}{name}{C0}')
-                        result.setdefault('Decoded', {})['CardholderName'] = name
+                        print(f" {CG}Cardholder    :{C0} {CY}{name}{C0}")
+                        result.setdefault("Decoded", {})["CardholderName"] = name
             except Exception:
                 pass
 
         # Issuer Country Code (ISO 3166-1 numeric, BCD) -> add the country name
         for v in tags[0x5F28]:
-            country = v.hex().upper().lstrip('0') or '0'
+            country = v.hex().upper().lstrip("0") or "0"
             try:
                 # EMV 5F28 is pure ISO 3166-1 numeric. Use the ISO table only --
                 # not the FDX-B code namer, which labels 900+ as manufacturer/
@@ -3343,76 +3642,81 @@ class EMVScan(DeviceRequiredUnit):
                 name = ISO3166_NUMERIC.get(int(country))
             except ValueError:
                 name = None
-            shown = f'{country} ({name})' if name else country
-            print(f' {CG}Issuer Country:{C0} {CY}{shown}{C0}')
-            dec = result.setdefault('Decoded', {})
-            dec['IssuerCountry'] = country
+            shown = f"{country} ({name})" if name else country
+            print(f" {CG}Issuer Country:{C0} {CY}{shown}{C0}")
+            dec = result.setdefault("Decoded", {})
+            dec["IssuerCountry"] = country
             if name:
-                dec['IssuerCountryName'] = name
+                dec["IssuerCountryName"] = name
 
         # Application Preferred Name (9F12) — only if different from label
         for v in tags[0x9F12]:
             try:
-                name = v.decode('ascii', errors='replace').strip()
+                name = v.decode("ascii", errors="replace").strip()
                 if name and name not in seen_labels:
-                    print(f' {CG}App Name      :{C0} {CY}{name}{C0}')
+                    print(f" {CG}App Name      :{C0} {CY}{name}{C0}")
             except Exception:
                 pass
 
-        print(f' {CG}──────────────────────────────────────{C0}')
+        print(f" {CG}──────────────────────────────────────{C0}")
 
         json_str = jsonlib.dumps(result, indent=2)
         if args.file:
             try:
-                with open(args.file, 'w') as fp:
+                with open(args.file, "w") as fp:
                     fp.write(json_str)
-                print(f'\n {CG}Saved to {args.file}{C0}')
+                print(f"\n {CG}Saved to {args.file}{C0}")
             except Exception as e:
-                print(f' {CR}Save failed: {e}{C0}')
+                print(f" {CR}Save failed: {e}{C0}")
         else:
-            print(f'\n{json_str}')
+            print(f"\n{json_str}")
 
         if args.slot is not None and pairs:
             target_slot = SlotNumber(args.slot)
-            print(f'\n {CY}Loading into slot {target_slot}...{C0}')
+            print(f"\n {CY}Loading into slot {target_slot}...{C0}")
             try:
                 cmd.set_slot_tag_type(target_slot, TagSpecificType.HF14A_4)
                 cmd.set_slot_data_default(target_slot, TagSpecificType.HF14A_4)
                 cmd.set_slot_enable(target_slot, TagSenseType.HF, True)
-                cmd.hf14a_4_set_anti_coll(uid, atqa, sak, ats)  # atqa already in wire order
+                cmd.hf14a_4_set_anti_coll(
+                    uid, atqa, sak, ats
+                )  # atqa already in wire order
                 cmd.hf14a_4_clear_static_responses()
                 for c, r in pairs:
                     cmd.hf14a_4_add_static_response(c, r)  # use full cmd as match key
                 cmd.slot_data_config_save()
-                print(f' {CG}Slot {target_slot} ready. Run: hw slot change -s {args.slot} && hw mode -e{C0}')
+                print(
+                    f" {CG}Slot {target_slot} ready. Run: hw slot change -s {args.slot} && hw mode -e{C0}"
+                )
             except Exception as e:
-                print(f' {CR}Slot load failed: {e}{C0}')
+                print(f" {CR}Slot load failed: {e}{C0}")
 
 
-@emv.command('debug')
+@emv.command("debug")
 class EMVDebug(DeviceRequiredUnit):
     """Show T=CL emulation debug counters (I-blocks rx/tx, last PCB, last match)."""
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Show T=CL emulation debug counters'
+        parser.description = "Show T=CL emulation debug counters"
         return parser
 
     def on_exec(self, args: argparse.Namespace):
-        resp = self.cmd.device.send_cmd_sync(6010, b'')
+        resp = self.cmd.device.send_cmd_sync(6010, b"")
         if resp.status != Status.SUCCESS or not resp.data or len(resp.data) < 4:
-            print(f' {CR}Debug command failed{C0}')
+            print(f" {CR}Debug command failed{C0}")
             return
         d = resp.data
-        print(f' {CY}T=CL debug counters:{C0}')
-        print(f'   I-blocks received : {d[0]}')
-        print(f'   I-blocks sent     : {d[1]}')
+        print(f" {CY}T=CL debug counters:{C0}")
+        print(f"   I-blocks received : {d[0]}")
+        print(f"   I-blocks sent     : {d[1]}")
         print(
-            f'   Last rx PCB       : {d[2]:02x}  (blk_num={(d[2] & 0x01)}, chain={(d[2] >> 5) & 1}, cid={(d[2] >> 4) & 1})')
+            f"   Last rx PCB       : {d[2]:02x}  (blk_num={(d[2] & 0x01)}, chain={(d[2] >> 5) & 1}, cid={(d[2] >> 4) & 1})"
+        )
         print(f'   Last static match : {"yes" if d[3] else "no"}')
 
 
-@emv.command('load')
+@emv.command("load")
 class EMVLoad(DeviceRequiredUnit):
     """
     Load EMV card data into an HF14A_4 slot for emulation.
@@ -3430,19 +3734,43 @@ class EMVLoad(DeviceRequiredUnit):
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Load EMV APDU responses into HF14A_4 slot for autonomous emulation'
-        parser.add_argument('-f', '--file', default='', metavar='<path>',
-                            help='Load from PM3 emv scan JSON file')
-        parser.add_argument('-s', '--slot', type=int, default=None,
-                            metavar='<1-8>', help='Target slot when using --file (default: active)')
-        parser.add_argument('--clear', action='store_true',
-                            help='Clear all static responses from active slot')
-        parser.add_argument('--cmd', default='', metavar='<hex>',
-                            help='Command APDU prefix to match (hex)')
-        parser.add_argument('--resp', default='', metavar='<hex>',
-                            help='Response APDU to return (hex)')
-        parser.add_argument('--defaults', action='store_true',
-                            help='Load built-in Mastercard test responses')
+        parser.description = (
+            "Load EMV APDU responses into HF14A_4 slot for autonomous emulation"
+        )
+        parser.add_argument(
+            "-f",
+            "--file",
+            default="",
+            metavar="<path>",
+            help="Load from PM3 emv scan JSON file",
+        )
+        parser.add_argument(
+            "-s",
+            "--slot",
+            type=int,
+            default=None,
+            metavar="<1-8>",
+            help="Target slot when using --file (default: active)",
+        )
+        parser.add_argument(
+            "--clear",
+            action="store_true",
+            help="Clear all static responses from active slot",
+        )
+        parser.add_argument(
+            "--cmd",
+            default="",
+            metavar="<hex>",
+            help="Command APDU prefix to match (hex)",
+        )
+        parser.add_argument(
+            "--resp", default="", metavar="<hex>", help="Response APDU to return (hex)"
+        )
+        parser.add_argument(
+            "--defaults",
+            action="store_true",
+            help="Load built-in Mastercard test responses",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -3450,17 +3778,17 @@ class EMVLoad(DeviceRequiredUnit):
 
         if args.clear:
             cmd.hf14a_4_clear_static_responses()
-            print(f' {CG}Static responses cleared.{C0}')
+            print(f" {CG}Static responses cleared.{C0}")
             return
 
         if args.cmd and args.resp:
             try:
-                c = bytes.fromhex(args.cmd.replace(' ', ''))
-                r = bytes.fromhex(args.resp.replace(' ', ''))
+                c = bytes.fromhex(args.cmd.replace(" ", ""))
+                r = bytes.fromhex(args.resp.replace(" ", ""))
                 cmd.hf14a_4_add_static_response(c, r)
-                print(f' {CG}Added: {c.hex().upper()} → {r.hex().upper()}{C0}')
+                print(f" {CG}Added: {c.hex().upper()} → {r.hex().upper()}{C0}")
             except ValueError as e:
-                print(f' {CR}Invalid hex: {e}{C0}')
+                print(f" {CR}Invalid hex: {e}{C0}")
             return
 
         if args.defaults:
@@ -3475,34 +3803,44 @@ class EMVLoad(DeviceRequiredUnit):
             self._load_from_json(args.file, target_slot, cmd)
             return
 
-        print(f' {CY}Specify --file, --cmd/--resp, --clear, or --defaults{C0}')
+        print(f" {CY}Specify --file, --cmd/--resp, --clear, or --defaults{C0}")
 
     def _load_defaults(self, cmd):
         """Load built-in Mastercard test APDU responses."""
         cmd.hf14a_4_clear_static_responses()
         pairs = [
             # SELECT PPSE
-            (bytes.fromhex('00a404000e325041592e5359532e4444463031'),
-             bytes.fromhex('6f23840e325041592e5359532e4444463031'
-                           'a511bf0c0e610c4f07a000000004101087010190 00'.replace(' ', '')),
-             'SELECT PPSE'),
+            (
+                bytes.fromhex("00a404000e325041592e5359532e4444463031"),
+                bytes.fromhex(
+                    "6f23840e325041592e5359532e4444463031"
+                    "a511bf0c0e610c4f07a000000004101087010190 00".replace(" ", "")
+                ),
+                "SELECT PPSE",
+            ),
             # SELECT Mastercard Debit AID
-            (bytes.fromhex('00a4040007a0000000041010'),
-             bytes.fromhex('6f1d8407a0000000041010a512500a'
-                           '4d6173746572436172648701019f38009000'),
-             'SELECT Mastercard AID'),
+            (
+                bytes.fromhex("00a4040007a0000000041010"),
+                bytes.fromhex(
+                    "6f1d8407a0000000041010a512500a"
+                    "4d6173746572436172648701019f38009000"
+                ),
+                "SELECT Mastercard AID",
+            ),
             # GPO — decline gracefully
-            (bytes.fromhex('80a80000'),
-             bytes.fromhex('6985'),
-             'GPO (conditions not satisfied)'),
+            (
+                bytes.fromhex("80a80000"),
+                bytes.fromhex("6985"),
+                "GPO (conditions not satisfied)",
+            ),
         ]
         for c, r, name in pairs:
             resp = cmd.hf14a_4_add_static_response(c, r)
             if resp.status == Status.SUCCESS:
-                print(f' {CG}Loaded: {name}{C0}')
+                print(f" {CG}Loaded: {name}{C0}")
             else:
-                print(f' {CR}Failed: {name}{C0}')
-        print(f'\n {CY}Default responses loaded. Run: hw mode -e{C0}')
+                print(f" {CR}Failed: {name}{C0}")
+        print(f"\n {CY}Default responses loaded. Run: hw mode -e{C0}")
 
     def _tlv_encode_len(self, n: int) -> bytes:
         """Encode integer n as BER-TLV length (short or long form)."""
@@ -3517,33 +3855,34 @@ class EMVLoad(DeviceRequiredUnit):
         """Load card data from a PM3 emv scan JSON file."""
         import json as jsonlib
         import os
+
         if not os.path.exists(filepath):
-            print(f' {CR}File not found: {filepath}{C0}')
+            print(f" {CR}File not found: {filepath}{C0}")
             return
         try:
             with open(filepath) as f:
                 data = jsonlib.load(f)
         except Exception as e:
-            print(f' {CR}JSON parse error: {e}{C0}')
+            print(f" {CR}JSON parse error: {e}{C0}")
             return
 
         # Parse card info
         try:
-            card = data['Card']['Contactless']
-            uid = bytes.fromhex(card['UID'].replace(' ', ''))
-            atqa = bytes.fromhex(card['ATQA'].replace(' ', ''))
-            sak = int(card['SAK'], 16)
-            ats_raw = bytes.fromhex(card['ATS'].replace(' ', ''))
-            ats = ats_raw[:ats_raw[0]] if ats_raw else b''
+            card = data["Card"]["Contactless"]
+            uid = bytes.fromhex(card["UID"].replace(" ", ""))
+            atqa = bytes.fromhex(card["ATQA"].replace(" ", ""))
+            sak = int(card["SAK"], 16)
+            ats_raw = bytes.fromhex(card["ATS"].replace(" ", ""))
+            ats = ats_raw[: ats_raw[0]] if ats_raw else b""
         except Exception as e:
-            print(f' {CR}Card info parse error: {e}{C0}')
+            print(f" {CR}Card info parse error: {e}{C0}")
             return
 
-        uid_str = ' '.join(f'{b:02X}' for b in uid)
-        print(f' {CG}Card from JSON:{C0}')
-        print(f'   UID  : {CG}{uid_str}{C0}')
-        print(f'   ATQA : {CG}{atqa.hex().upper()}{C0}  SAK: {CG}{sak:02X}{C0}')
-        print(f'   ATS  : {CG}{ats.hex().upper()}{C0}')
+        uid_str = " ".join(f"{b:02X}" for b in uid)
+        print(f" {CG}Card from JSON:{C0}")
+        print(f"   UID  : {CG}{uid_str}{C0}")
+        print(f"   ATQA : {CG}{atqa.hex().upper()}{C0}  SAK: {CG}{sak:02X}{C0}")
+        print(f"   ATS  : {CG}{ats.hex().upper()}{C0}")
 
         static_pairs = []
 
@@ -3556,54 +3895,56 @@ class EMVLoad(DeviceRequiredUnit):
             return tag_b + len_b + val_b + bytes([0x90, 0x00])
 
         try:
-            v = data['PPSE']['FCITemplate']['value'].replace(' ', '')
-            l = data['PPSE']['FCITemplate']['length']
-            static_pairs.append((
-                bytes.fromhex('00a404000e325041592e5359532e4444463031'),
-                tlv_resp('6F', l, v),
-                'SELECT PPSE'))
+            v = data["PPSE"]["FCITemplate"]["value"].replace(" ", "")
+            l = data["PPSE"]["FCITemplate"]["length"]
+            static_pairs.append(
+                (
+                    bytes.fromhex("00a404000e325041592e5359532e4444463031"),
+                    tlv_resp("6F", l, v),
+                    "SELECT PPSE",
+                )
+            )
         except Exception as e:
-            print(f' {CR}PPSE: {e}{C0}')
+            print(f" {CR}PPSE: {e}{C0}")
 
         try:
-            v = data['Application']['FCITemplate']['value'].replace(' ', '')
-            l = data['Application']['FCITemplate']['length']
-            aid = data['Application']['AID'].replace(' ', '')
-            static_pairs.append((
-                bytes.fromhex('00a4040007' + aid),
-                tlv_resp('6F', l, v),
-                'SELECT AID'))
+            v = data["Application"]["FCITemplate"]["value"].replace(" ", "")
+            l = data["Application"]["FCITemplate"]["length"]
+            aid = data["Application"]["AID"].replace(" ", "")
+            static_pairs.append(
+                (bytes.fromhex("00a4040007" + aid), tlv_resp("6F", l, v), "SELECT AID")
+            )
         except Exception as e:
-            print(f' {CR}Application FCI: {e}{C0}')
+            print(f" {CR}Application FCI: {e}{C0}")
 
         try:
-            v = data['Application']['GPO']['value'].replace(' ', '')
-            l = data['Application']['GPO']['length']
-            tag = data['Application']['GPO'].get('tag', '77')
-            static_pairs.append((
-                bytes.fromhex('80a80000'),
-                tlv_resp(tag, l, v),
-                'GPO'))
+            v = data["Application"]["GPO"]["value"].replace(" ", "")
+            l = data["Application"]["GPO"]["length"]
+            tag = data["Application"]["GPO"].get("tag", "77")
+            static_pairs.append((bytes.fromhex("80a80000"), tlv_resp(tag, l, v), "GPO"))
         except Exception as e:
-            print(f' {CR}GPO: {e}{C0}')
+            print(f" {CR}GPO: {e}{C0}")
 
         try:
-            for rec in data['Application'].get('Records', []):
-                sfi_n = int(rec['SFI'], 16)
-                rec_n = int(rec['RecordNum'], 16)
-                v = rec['Data']['value'].replace(' ', '')
-                l = rec['Data']['length']
-                tag = rec['Data'].get('tag', '70')
+            for rec in data["Application"].get("Records", []):
+                sfi_n = int(rec["SFI"], 16)
+                rec_n = int(rec["RecordNum"], 16)
+                v = rec["Data"]["value"].replace(" ", "")
+                l = rec["Data"]["length"]
+                tag = rec["Data"].get("tag", "70")
                 p2 = (sfi_n << 3) | 4
-                static_pairs.append((
-                    bytes([0x00, 0xB2, rec_n, p2, 0x00]),
-                    tlv_resp(tag, l, v),
-                    f'READ RECORD SFI={sfi_n} rec={rec_n}'))
+                static_pairs.append(
+                    (
+                        bytes([0x00, 0xB2, rec_n, p2, 0x00]),
+                        tlv_resp(tag, l, v),
+                        f"READ RECORD SFI={sfi_n} rec={rec_n}",
+                    )
+                )
         except Exception as e:
-            print(f' {CR}Records: {e}{C0}')
+            print(f" {CR}Records: {e}{C0}")
 
         # Configure slot
-        print(f'\n {CY}Configuring slot {target_slot}...{C0}')
+        print(f"\n {CY}Configuring slot {target_slot}...{C0}")
         cmd.set_slot_tag_type(target_slot, TagSpecificType.HF14A_4)
         cmd.set_slot_data_default(target_slot, TagSpecificType.HF14A_4)
         cmd.set_slot_enable(target_slot, TagSenseType.HF, True)
@@ -3616,16 +3957,18 @@ class EMVLoad(DeviceRequiredUnit):
         for c, r, name in static_pairs:
             try:
                 cmd.hf14a_4_add_static_response(c, r)
-                print(f' {CG}+ {name} ({len(r)}b){C0}')
+                print(f" {CG}+ {name} ({len(r)}b){C0}")
             except Exception as e:
-                print(f' {CR}  Failed {name}: {e}{C0}')
+                print(f" {CR}  Failed {name}: {e}{C0}")
 
         cmd.slot_data_config_save()
-        print(f'\n {CG}Done! Slot {target_slot} ready with {len(static_pairs)} response(s).{C0}')
-        print(f' {C0}Next: hw slot change -s {target_slot} && hw mode -e{C0}')
+        print(
+            f"\n {CG}Done! Slot {target_slot} ready with {len(static_pairs)} response(s).{C0}"
+        )
+        print(f" {C0}Next: hw slot change -s {target_slot} && hw mode -e{C0}")
 
 
-@emv.command('apdu')
+@emv.command("apdu")
 class EMVApdu(DeviceRequiredUnit):
     """
     ISO14443-4 T=CL interactive APDU relay.
@@ -3642,19 +3985,27 @@ class EMVApdu(DeviceRequiredUnit):
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'ISO14443-4 T=CL interactive APDU relay (manual response mode)'
-        parser.add_argument('--timeout', type=int, default=15000, metavar='<ms>',
-                            help='Total relay timeout in ms (default: 15000)')
+        parser.description = (
+            "ISO14443-4 T=CL interactive APDU relay (manual response mode)"
+        )
+        parser.add_argument(
+            "--timeout",
+            type=int,
+            default=15000,
+            metavar="<ms>",
+            help="Total relay timeout in ms (default: 15000)",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
         import time
+
         cmd = self.cmd
         timeout_ms = max(1000, min(60000, args.timeout))
 
-        print(f' {CY}ISO14443-4 T=CL APDU relay started{C0}')
-        print(' Waiting for a reader to connect (SAK=20 slot required)...')
-        print(f' Type {CY}quit{C0} to exit, or enter hex response bytes when prompted.')
+        print(f" {CY}ISO14443-4 T=CL APDU relay started{C0}")
+        print(" Waiting for a reader to connect (SAK=20 slot required)...")
+        print(f" Type {CY}quit{C0} to exit, or enter hex response bytes when prompted.")
 
         exchange_count = 0
 
@@ -3665,55 +4016,55 @@ class EMVApdu(DeviceRequiredUnit):
                 try:
                     r = cmd.hf14a_4_apdu_recv()
                 except Exception as e:
-                    print(f' {CR}Error polling for APDU: {e}{C0}')
+                    print(f" {CR}Error polling for APDU: {e}{C0}")
                     resp = None
                     break
                 if r.status == Status.SUCCESS:
                     resp = r
                     break
                 elif r.status != Status.HF_TAG_NO:
-                    print(f' {CR}Firmware error: {r.status}{C0}')
+                    print(f" {CR}Firmware error: {r.status}{C0}")
                     resp = None
                     break
                 time.sleep(0.02)
 
             if resp is None:
-                print(f' {C0}No APDU received within timeout.{C0}')
+                print(f" {C0}No APDU received within timeout.{C0}")
                 break
 
             apdu = bytes(resp.data)
             desc = _emv_decode_apdu(apdu)
             exchange_count += 1
-            apdu_hex = ' '.join(f'{b:02x}' for b in apdu)
-            print(f'\n [{exchange_count}] {CY}APDU →→  {apdu_hex}{C0}')
+            apdu_hex = " ".join(f"{b:02x}" for b in apdu)
+            print(f"\n [{exchange_count}] {CY}APDU →→  {apdu_hex}{C0}")
             if desc:
-                print(f'       {C0}{desc}{C0}')
+                print(f"       {C0}{desc}{C0}")
 
             try:
-                user_input = input(f'     Response (hex) [{CG}90 00{C0}]: ').strip()
+                user_input = input(f"     Response (hex) [{CG}90 00{C0}]: ").strip()
             except (EOFError, KeyboardInterrupt):
                 break
 
-            if user_input.lower() == 'quit':
+            if user_input.lower() == "quit":
                 break
             if not user_input:
-                user_input = '9000'
+                user_input = "9000"
 
             try:
-                response_bytes = bytes.fromhex(user_input.replace(' ', ''))
+                response_bytes = bytes.fromhex(user_input.replace(" ", ""))
             except ValueError:
-                print(f' {CR}Invalid hex — sending 6F00 (error){C0}')
-                response_bytes = bytes.fromhex('6F00')
+                print(f" {CR}Invalid hex — sending 6F00 (error){C0}")
+                response_bytes = bytes.fromhex("6F00")
 
             try:
                 cmd.hf14a_4_apdu_send(response_bytes)
-                resp_hex = ' '.join(f'{b:02x}' for b in response_bytes)
-                print(f'       {CG}←← Response  {resp_hex}{C0}')
+                resp_hex = " ".join(f"{b:02x}" for b in response_bytes)
+                print(f"       {CG}←← Response  {resp_hex}{C0}")
             except Exception as e:
-                print(f' {CR}Error sending response: {e}{C0}')
+                print(f" {CR}Error sending response: {e}{C0}")
                 break
 
-        print(f'\n {C0}Relay ended. {exchange_count} APDU exchange(s) completed.{C0}')
+        print(f"\n {C0}Relay ended. {exchange_count} APDU exchange(s) completed.{C0}")
 
 
 # ---------------------------------------------------------------------------
@@ -3756,7 +4107,7 @@ def parse_authtrace_frames(trace: bytes):
         off += 2
         if off + sz_bytes > len(trace):
             break
-        raw = trace[off:off + sz_bytes]
+        raw = trace[off : off + sz_bytes]
         data, sz_bits = _strip_parity(raw, sz_bits)
         frames.append((sz_bits, bytes(data), is_tx))
         off += sz_bytes
@@ -3774,15 +4125,17 @@ def parse_authtrace_buffer(raw: bytes):
         off += 4
         if off + trace_len > len(raw):
             break
-        trace_bytes = raw[off:off + trace_len]
+        trace_bytes = raw[off : off + trace_len]
         off += trace_len
-        sessions.append({
-            "session_num": session_num,
-            "status_code": status,
-            "status_name": AUTHTRACE_STATUS_NAMES.get(status, f"0x{status:02x}"),
-            "trace_len":   trace_len,
-            "frames":      parse_authtrace_frames(trace_bytes),
-        })
+        sessions.append(
+            {
+                "session_num": session_num,
+                "status_code": status,
+                "status_name": AUTHTRACE_STATUS_NAMES.get(status, f"0x{status:02x}"),
+                "trace_len": trace_len,
+                "frames": parse_authtrace_frames(trace_bytes),
+            }
+        )
     return sessions
 
 
@@ -3815,24 +4168,25 @@ def authtrace_pretty_dump(sessions):
             f"{len(frames)} frames  "
             f"({rx_count} reader\u2192card  {tx_count} card\u2192reader) ==={C0}"
         )
-        out.append(
-            f"  {'#':>3}  {'dir':<3}  {'bits':>4}  {'hex data':<42}  decoded"
-        )
-        out.append(
-            f"  {'---':>3}  {'---':<3}  {'----':>4}  {'-'*42}  {'-'*35}"
-        )
+        out.append(f"  {'#':>3}  {'dir':<3}  {'bits':>4}  {'hex data':<42}  decoded")
+        out.append(f"  {'---':>3}  {'---':<3}  {'----':>4}  {'-'*42}  {'-'*35}")
         expect_nt = False
         expect_nr_ar = False
         expect_at = False
         last_keytype = None
         last_block = None
         for n, (sz_bits, data, is_tx) in enumerate(frames):
-            hex_str = ' '.join(f'{b:02x}' for b in data)
+            hex_str = " ".join(f"{b:02x}" for b in data)
             decoded_ctx = None
             col_ctx = None
 
-            if not is_tx and sz_bits == 32 and len(data) == 4 and data[0] in (0x60, 0x61):
-                last_keytype = 'A' if data[0] == 0x60 else 'B'
+            if (
+                not is_tx
+                and sz_bits == 32
+                and len(data) == 4
+                and data[0] in (0x60, 0x61)
+            ):
+                last_keytype = "A" if data[0] == 0x60 else "B"
                 last_block = data[1]
                 expect_nt = True
                 expect_nr_ar = False
@@ -3861,7 +4215,7 @@ def authtrace_pretty_dump(sessions):
             else:
                 decoded, col = decoded_ctx, col_ctx
 
-            dir_str = f'{CG}<<<{C0}' if is_tx else f'{CY}>>>{C0}'
+            dir_str = f"{CG}<<<{C0}" if is_tx else f"{CY}>>>{C0}"
             out.append(
                 f"  {CY}{n+1:>3}{C0}  {dir_str}  {sz_bits:>4}  "
                 f"{hex_str:<42}  {col}{decoded}{C0}"
@@ -3873,7 +4227,7 @@ def authtrace_pretty_dump(sessions):
             out.append(f"\n  {CG}Auth nonces captured:{C0}")
             pairs_by_key = {}
             for nc in nonces:
-                k = (nc['uid'], nc['block'], nc['key_type'])
+                k = (nc["uid"], nc["block"], nc["key_type"])
                 pairs_by_key.setdefault(k, []).append(nc)
             for (uid, block, kt), pair_list in pairs_by_key.items():
                 out.append(
@@ -3907,21 +4261,22 @@ def parse_relay_result_buffer(raw: bytes) -> list:
       [16..]   trace frames (AuthTrace wire format: u16 hdr + raw bytes)
     """
     import struct
+
     HEADER = 16
-    STATUS = {0: 'OK', 1: 'TIMEOUT', 2: 'DISCONNECT'}
+    STATUS = {0: "OK", 1: "TIMEOUT", 2: "DISCONNECT"}
     sessions = []
     off = 0
     idx = 0
     while off + HEADER <= len(raw):
-        h = raw[off:off + HEADER]
+        h = raw[off : off + HEADER]
         role = h[0]
         status = h[1]
         uid_len = h[2]
-        uid = raw[off+3:off+3+min(uid_len, 4)].hex().upper() if uid_len else '-'
-        atqa = raw[off+7:off+9].hex().upper()
-        sak = f'{h[9]:02X}'
-        frame_count = struct.unpack_from('<H', h, 10)[0]
-        trace_len = struct.unpack_from('<H', h, 12)[0]
+        uid = raw[off + 3 : off + 3 + min(uid_len, 4)].hex().upper() if uid_len else "-"
+        atqa = raw[off + 7 : off + 9].hex().upper()
+        sak = f"{h[9]:02X}"
+        frame_count = struct.unpack_from("<H", h, 10)[0]
+        trace_len = struct.unpack_from("<H", h, 12)[0]
         protocol = h[14]  # 0=HF, 1=LF
 
         trace_off = off + HEADER
@@ -3932,20 +4287,22 @@ def parse_relay_result_buffer(raw: bytes) -> list:
         trace_bytes = raw[trace_off:trace_end]
         frames = parse_relay_frames(trace_bytes)
 
-        sessions.append({
-            'session_num':  idx,
-            'role':         'CARD' if role == 0 else 'READER',
-            'protocol':     'LF' if protocol == 1 else 'HF',
-            'uid_len':      uid_len,
-            'uid':          uid,
-            'atqa':         atqa if protocol == 0 else '-',
-            'sak':          sak if protocol == 0 else '-',
-            'frame_count':  frame_count,
-            'trace_len':    trace_len,
-            'status':       status,
-            'status_name':  STATUS.get(status, f'UNKNOWN({status})'),
-            'frames':       frames,
-        })
+        sessions.append(
+            {
+                "session_num": idx,
+                "role": "CARD" if role == 0 else "READER",
+                "protocol": "LF" if protocol == 1 else "HF",
+                "uid_len": uid_len,
+                "uid": uid,
+                "atqa": atqa if protocol == 0 else "-",
+                "sak": sak if protocol == 0 else "-",
+                "frame_count": frame_count,
+                "trace_len": trace_len,
+                "status": status,
+                "status_name": STATUS.get(status, f"UNKNOWN({status})"),
+                "frames": frames,
+            }
+        )
         off = trace_end
         idx += 1
     return sessions
@@ -3963,15 +4320,17 @@ def parse_relay_frames(trace: bytes) -> list:
         off += 2
         if off + byte_cnt > len(trace):
             break
-        raw = trace[off:off + byte_cnt]
+        raw = trace[off : off + byte_cnt]
         decoded, col = _decode_14a_frame_col(raw, bits)
-        frames.append({
-            'dir':     'tag→reader' if tag_to_rd else 'reader→tag',
-            'bits':    bits,
-            'hex':     raw.hex().upper(),
-            'decoded': decoded,
-            'col':     col,
-        })
+        frames.append(
+            {
+                "dir": "tag→reader" if tag_to_rd else "reader→tag",
+                "bits": bits,
+                "hex": raw.hex().upper(),
+                "decoded": decoded,
+                "col": col,
+            }
+        )
         off += byte_cnt
     return frames
 
@@ -3979,37 +4338,46 @@ def parse_relay_frames(trace: bytes) -> list:
 def relay_result_summary(sessions) -> str:
     """Human-readable session table for --dump."""
     if not sessions:
-        return color_string((CY, '  (no sessions)'))
+        return color_string((CY, "  (no sessions)"))
     lines = []
     for s in sessions:
-        role_col = CG if s['role'] == 'CARD' else CC
-        st_col = CG if s['status'] == 0 else CY
+        role_col = CG if s["role"] == "CARD" else CC
+        st_col = CG if s["status"] == 0 else CY
         lines.append(
             f"  {CY}#{s['session_num']}{C0}  "
             f"{role_col}{s['role']:<6}{C0}  "
             f"{CC}{s.get('protocol', 'HF')}{C0}  "
             f"UID={s['uid']}  "
-            + (f"ATQA={s['atqa']} SAK={s['sak']}  " if s.get('protocol', 'HF') == 'HF' else "")
+            + (
+                f"ATQA={s['atqa']} SAK={s['sak']}  "
+                if s.get("protocol", "HF") == "HF"
+                else ""
+            )
             + f"frames={s['frame_count']}  "
             f"{st_col}{s['status_name']}{C0}"
         )
-        frames = s.get('frames', [])
+        frames = s.get("frames", [])
         if frames:
             lines.append(f"    {'#':>3}  {'dir':<12} {'bits':>4}  {'hex':<44}  decoded")
-            lines.append(f"    {'---':>3}  {'---':<12} {'----':>4}  {'---':<44}  -------")
+            lines.append(
+                f"    {'---':>3}  {'---':<12} {'----':>4}  {'---':<44}  -------"
+            )
             for i, f in enumerate(frames):
-                arrow = f"{CG}←{C0}" if f['dir'] == 'tag→reader' else f"{CC}→{C0}"
-                decoded_str = color_string((f['col'], f['decoded'])) if f.get('decoded') else ''
+                arrow = f"{CG}←{C0}" if f["dir"] == "tag→reader" else f"{CC}→{C0}"
+                decoded_str = (
+                    color_string((f["col"], f["decoded"])) if f.get("decoded") else ""
+                )
                 lines.append(
                     f"    {i+1:>3}  {arrow} {f['dir']:<11} {f['bits']:>4}  "
                     f"{f['hex']:<44}  {decoded_str}"
                 )
-    return '\n'.join(lines)
+    return "\n".join(lines)
+
 
 # --- Commands ----------------------------------------------------------------
 
 
-@standalone.command('status')
+@standalone.command("status")
 class StandaloneStatus(DeviceRequiredUnit):
     """
     Show the current standalone state, mode, and flags.
@@ -4020,7 +4388,7 @@ class StandaloneStatus(DeviceRequiredUnit):
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Show standalone subsystem state'
+        parser.description = "Show standalone subsystem state"
         return parser
 
     def on_exec(self, args):
@@ -4028,72 +4396,110 @@ class StandaloneStatus(DeviceRequiredUnit):
         state_col = CG if state != StandaloneState.DISARMED else CY
         print(f" state: {color_string((state_col, state.name))}")
         print(f"  mode: {color_string((CC, mode.name))}")
-        flag_str = ", ".join(f.name for f in StandaloneFlag
-                             if f != StandaloneFlag.NONE and (flags & f)) \
-                   or "(none)"
+        flag_str = (
+            ", ".join(
+                f.name
+                for f in StandaloneFlag
+                if f != StandaloneFlag.NONE and (flags & f)
+            )
+            or "(none)"
+        )
         print(f" flags: {flag_str}")
         if fds is not None:
-            used = fds['words_used']
-            pages = fds['pages_available']
-            dirty = fds['dirty_records']
-            valid = fds['valid_records']
+            used = fds["words_used"]
+            pages = fds["pages_available"]
+            dirty = fds["dirty_records"]
+            valid = fds["valid_records"]
             gc_hint = f"  {CY}(GC recommended){C0}" if dirty > 4 else ""
-            print(f" flash: {used} words used  {pages} pages free  "
-                  f"valid={valid} dirty={dirty}{gc_hint}")
+            print(
+                f" flash: {used} words used  {pages} pages free  "
+                f"valid={valid} dirty={dirty}{gc_hint}"
+            )
         if mode == StandaloneMode.RELAY:
             try:
                 d = self.cmd.relay_get_diag()
                 if not d:
                     pass
                 else:
-                    reports = d['adv_reports']
-                    hits = d['relay_hits']
-                    state = d.get('ble_state', 0)
-                    role = d.get('ble_role', 0)
-                    state_names = {0: 'IDLE', 1: 'STARTING', 2: 'CONNECTING',
-                                   3: 'DISCOVERING', 4: 'NEGOTIATING', 5: 'READY',
-                                   6: 'ACTIVE', 7: 'ERROR'}
-                    role_names = {0: 'RELAY_CARD (faces reader)',
-                                  1: 'RELAY_READER (faces real card)'}
-                    sub = d.get('sub_state', 0)
-                    card_found = d.get('card_found', 0)
-                    identity_rx = d.get('identity_rx', 0)
-                    uid_len = d.get('uid_len', 0)
-                    uid_bytes = d.get('uid', [])
-                    uid_str = ''.join(f'{b:02X}' for b in uid_bytes[:uid_len]) if uid_len else '-'
-                    sub_names = {0: 'INIT', 1: 'LINKING', 2: 'CARD_AWAIT_IDENTITY',
-                                 3: 'CARD_READY', 4: 'CARD_AWAIT_RESPONSE', 5: 'READER_SCAN',
-                                 6: 'READER_READY', 7: 'READER_RELAY', 8: 'ERROR'}
-                    state_str = state_names.get(state, f'UNKNOWN({state})')
-                    role_str = role_names.get(role, f'UNKNOWN({role})')
-                    sub_str = sub_names.get(sub, f'UNKNOWN({sub})')
+                    reports = d["adv_reports"]
+                    hits = d["relay_hits"]
+                    state = d.get("ble_state", 0)
+                    role = d.get("ble_role", 0)
+                    state_names = {
+                        0: "IDLE",
+                        1: "STARTING",
+                        2: "CONNECTING",
+                        3: "DISCOVERING",
+                        4: "NEGOTIATING",
+                        5: "READY",
+                        6: "ACTIVE",
+                        7: "ERROR",
+                    }
+                    role_names = {
+                        0: "RELAY_CARD (faces reader)",
+                        1: "RELAY_READER (faces real card)",
+                    }
+                    sub = d.get("sub_state", 0)
+                    card_found = d.get("card_found", 0)
+                    identity_rx = d.get("identity_rx", 0)
+                    uid_len = d.get("uid_len", 0)
+                    uid_bytes = d.get("uid", [])
+                    uid_str = (
+                        "".join(f"{b:02X}" for b in uid_bytes[:uid_len])
+                        if uid_len
+                        else "-"
+                    )
+                    sub_names = {
+                        0: "INIT",
+                        1: "LINKING",
+                        2: "CARD_AWAIT_IDENTITY",
+                        3: "CARD_READY",
+                        4: "CARD_AWAIT_RESPONSE",
+                        5: "READER_SCAN",
+                        6: "READER_READY",
+                        7: "READER_RELAY",
+                        8: "ERROR",
+                    }
+                    state_str = state_names.get(state, f"UNKNOWN({state})")
+                    role_str = role_names.get(role, f"UNKNOWN({role})")
+                    sub_str = sub_names.get(sub, f"UNKNOWN({sub})")
                     print(f"   ble: {reports} scan reports  {hits} relay hits")
-                    print(f"        state={CG if state == 5 else CY}{state_str}{C0}  "
-                          f"role={CC}{role_str}{C0}")
+                    print(
+                        f"        state={CG if state == 5 else CY}{state_str}{C0}  "
+                        f"role={CC}{role_str}{C0}"
+                    )
                     print(f"        sub={CG if sub in (3, 6) else CY}{sub_str}{C0}")
-                    relay_armed = (state != StandaloneState.DISARMED)
+                    relay_armed = state != StandaloneState.DISARMED
                     if relay_armed and reports == 0:
                         print(f"        {CR}WARNING: scanning not working{C0}")
                     elif relay_armed and hits == 0:
                         print(f"        {CY}no relay HELLO seen yet{C0}")
                     elif relay_armed and state < 5:
-                        print(f"        {CY}HELLO seen but not connected — check both CUs armed{C0}")
+                        print(
+                            f"        {CY}HELLO seen but not connected — check both CUs armed{C0}"
+                        )
                     else:
-                        if role == 0:   # RELAY_CARD
+                        if role == 0:  # RELAY_CARD
                             if identity_rx:
-                                print(f"        {CG}card identity received  UID={uid_str}{C0}")
+                                print(
+                                    f"        {CG}card identity received  UID={uid_str}{C0}"
+                                )
                             else:
-                                print(f"        {CY}waiting for card identity from RELAY_READER{C0}")
-                        else:           # RELAY_READER
+                                print(
+                                    f"        {CY}waiting for card identity from RELAY_READER{C0}"
+                                )
+                        else:  # RELAY_READER
                             if card_found:
                                 print(f"        {CG}real card found  UID={uid_str}{C0}")
                             else:
-                                print(f"        {CY}scanning for real card — place card near CU{C0}")
+                                print(
+                                    f"        {CY}scanning for real card — place card near CU{C0}"
+                                )
             except Exception:
                 pass
 
 
-@standalone.command('set-mode')
+@standalone.command("set-mode")
 class StandaloneSetMode(DeviceRequiredUnit):
     """
     Select the active standalone mode.
@@ -4107,15 +4513,20 @@ class StandaloneSetMode(DeviceRequiredUnit):
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Set standalone mode'
-        parser.add_argument('mode', help='mode name (authtrace, emul-trace, relay, slot-cycle, '
-                                         'autoclone, read-replay, dict-check, '
-                                         'hf14a-tap-sniff, disabled)')
-        parser.add_argument('--opt-in', action='store_true',
-                            help='set HOST_OPTED_IN flag (required for '
-                                 'autoclone and read-replay)')
-        parser.add_argument('--quiet-buzzer', action='store_true')
-        parser.add_argument('--quiet-led',    action='store_true')
+        parser.description = "Set standalone mode"
+        parser.add_argument(
+            "mode",
+            help="mode name (authtrace, emul-trace, relay, slot-cycle, "
+            "autoclone, read-replay, dict-check, "
+            "hf14a-tap-sniff, disabled)",
+        )
+        parser.add_argument(
+            "--opt-in",
+            action="store_true",
+            help="set HOST_OPTED_IN flag (required for " "autoclone and read-replay)",
+        )
+        parser.add_argument("--quiet-buzzer", action="store_true")
+        parser.add_argument("--quiet-led", action="store_true")
         return parser
 
     def on_exec(self, args):
@@ -4136,23 +4547,35 @@ class StandaloneSetMode(DeviceRequiredUnit):
         result = self.cmd.standalone_set_mode(mode, flags)
         if not isinstance(result, tuple):
             if result.status == Status.NOT_IMPLEMENTED:
-                print(color_string((CR,
-                                    f"refused: mode '{mode.name}' is not available on this device/firmware build")))
+                print(
+                    color_string(
+                        (
+                            CR,
+                            f"refused: mode '{mode.name}' is not available on this device/firmware build",
+                        )
+                    )
+                )
             elif result.status == Status.PAR_ERR:
-                print(color_string((CR,
-                                    f"refused: mode '{mode.name}' requires --opt-in")))
+                print(
+                    color_string((CR, f"refused: mode '{mode.name}' requires --opt-in"))
+                )
             else:
-                print(color_string((CR,
-                                    f"set-mode failed: status={result.status}")))
+                print(color_string((CR, f"set-mode failed: status={result.status}")))
             return
 
         state, mode_now, flags_now = result
-        print(color_string((CG,
-                            f"ok: state={state.name} mode={mode_now.name} "
-                            f"flags={int(flags_now):#04x}")))
+        print(
+            color_string(
+                (
+                    CG,
+                    f"ok: state={state.name} mode={mode_now.name} "
+                    f"flags={int(flags_now):#04x}",
+                )
+            )
+        )
 
 
-@standalone.command('trigger')
+@standalone.command("trigger")
 class StandaloneTrigger(DeviceRequiredUnit):
     """
     Fire the active mode's primary action (equivalent to pressing both
@@ -4164,7 +4587,7 @@ class StandaloneTrigger(DeviceRequiredUnit):
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Trigger active standalone mode'
+        parser.description = "Trigger active standalone mode"
         return parser
 
     def on_exec(self, args):
@@ -4181,7 +4604,7 @@ class StandaloneTrigger(DeviceRequiredUnit):
             print(color_string((CR, f"trigger failed: status={resp.status}")))
 
 
-@standalone.command('disarm')
+@standalone.command("disarm")
 class StandaloneDisarm(DeviceRequiredUnit):
     """
     Disarm the active standalone mode via USB, triggering on_exit.
@@ -4192,7 +4615,7 @@ class StandaloneDisarm(DeviceRequiredUnit):
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Disarm standalone mode and save results'
+        parser.description = "Disarm standalone mode and save results"
         return parser
 
     def on_exec(self, args):
@@ -4201,23 +4624,36 @@ class StandaloneDisarm(DeviceRequiredUnit):
             if resp.status == Status.SUCCESS:
                 print(color_string((CG, "disarmed — results saving")))
             else:
-                print(color_string((CY, f"already disarmed or error: status={resp.status}")))
+                print(
+                    color_string(
+                        (CY, f"already disarmed or error: status={resp.status}")
+                    )
+                )
         except Exception as e:
             # The disarm may have been accepted but the ack came back slow — a
             # mode's on_exit can do a multi-second blocking FDS save. Confirm the
             # actual device state before reporting failure.
             try:
                 from chameleon_enum import StandaloneState
+
                 if self.cmd.standalone_get_mode()[0] == StandaloneState.DISARMED:
-                    print(color_string((CG, "disarmed (ack was slow — confirmed via state)")))
+                    print(
+                        color_string(
+                            (CG, "disarmed (ack was slow — confirmed via state)")
+                        )
+                    )
                     return
             except Exception:
                 pass
             print(color_string((CR, f"disarm failed: {e}")))
-            print(color_string((CY, "Use the both-button chord on the device to disarm manually.")))
+            print(
+                color_string(
+                    (CY, "Use the both-button chord on the device to disarm manually.")
+                )
+            )
 
 
-@standalone.command('get-result')
+@standalone.command("get-result")
 class StandaloneGetResult(DeviceRequiredUnit):
     """
     Pull the active mode's result buffer.
@@ -4230,18 +4666,30 @@ class StandaloneGetResult(DeviceRequiredUnit):
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Read standalone result buffer'
-        parser.add_argument('-f', '--file', default=None, metavar='<path>',
-                            help='write output to file instead of stdout')
+        parser.description = "Read standalone result buffer"
+        parser.add_argument(
+            "-f",
+            "--file",
+            default=None,
+            metavar="<path>",
+            help="write output to file instead of stdout",
+        )
         group = parser.add_mutually_exclusive_group()
-        group.add_argument('--raw',  action='store_true',
-                           help='dump raw bytes (no parsing)')
-        group.add_argument('--json', action='store_true',
-                           help='emit parsed sessions as JSON')
-        group.add_argument('--dump', action='store_true',
-                           help='dump every frame in each session')
-        group.add_argument('--pm3', default=None, metavar='<prefix>',
-                           help='write each session as a Proxmark3 .trace (<prefix>-NN.trace)')
+        group.add_argument(
+            "--raw", action="store_true", help="dump raw bytes (no parsing)"
+        )
+        group.add_argument(
+            "--json", action="store_true", help="emit parsed sessions as JSON"
+        )
+        group.add_argument(
+            "--dump", action="store_true", help="dump every frame in each session"
+        )
+        group.add_argument(
+            "--pm3",
+            default=None,
+            metavar="<prefix>",
+            help="write each session as a Proxmark3 .trace (<prefix>-NN.trace)",
+        )
         return parser
 
     def on_exec(self, args):
@@ -4256,15 +4704,24 @@ class StandaloneGetResult(DeviceRequiredUnit):
 
         if args.pm3:
             if mode != StandaloneMode.HF14A_TAP_SNIFF:
-                print(color_string((CY, f"--pm3 applies to hf14a_tap_sniff (mode={mode.name})")))
+                print(
+                    color_string(
+                        (CY, f"--pm3 applies to hf14a_tap_sniff (mode={mode.name})")
+                    )
+                )
                 return
             import pm3_trace
+
             written = pm3_trace.export_tap_sniff_sessions_to_pm3(raw, args.pm3)
             if not written:
                 print(color_string((CY, "no sessions to export")))
             else:
                 for fn, nframes, status in written:
-                    print(color_string((CG, f"  {fn}  ({nframes} frame(s), status 0x{status:02x})")))
+                    print(
+                        color_string(
+                            (CG, f"  {fn}  ({nframes} frame(s), status 0x{status:02x})")
+                        )
+                    )
             return
 
         if args.raw or (args.file and not (args.json or args.dump)):
@@ -4272,16 +4729,32 @@ class StandaloneGetResult(DeviceRequiredUnit):
                 Path(args.file).write_bytes(raw)
                 print(color_string((CG, f"{len(raw)} bytes -> {args.file}")))
             else:
-                print(color_string((CY,
-                                    f"{len(raw)} raw bytes (use -f to save, or --json/--dump "
-                                    f"to format)")))
+                print(
+                    color_string(
+                        (
+                            CY,
+                            f"{len(raw)} raw bytes (use -f to save, or --json/--dump "
+                            f"to format)",
+                        )
+                    )
+                )
             return
 
-        if mode not in (StandaloneMode.AUTHTRACE, StandaloneMode.EMUL_TRACE,
-                        StandaloneMode.RELAY, StandaloneMode.HF14A_TAP_SNIFF):
-            print(color_string((CY,
-                                f"got {len(raw)} bytes; mode={mode.name} has no parser. "
-                                f"use --raw -f <path> to dump.")))
+        if mode not in (
+            StandaloneMode.AUTHTRACE,
+            StandaloneMode.EMUL_TRACE,
+            StandaloneMode.RELAY,
+            StandaloneMode.HF14A_TAP_SNIFF,
+        ):
+            print(
+                color_string(
+                    (
+                        CY,
+                        f"got {len(raw)} bytes; mode={mode.name} has no parser. "
+                        f"use --raw -f <path> to dump.",
+                    )
+                )
+            )
             return
 
         if mode == StandaloneMode.RELAY:
@@ -4289,15 +4762,17 @@ class StandaloneGetResult(DeviceRequiredUnit):
             print(color_string((CG, f"{len(sessions)} relay session(s)")))
             if args.json:
                 import json as _json
+
                 # Strip display-only fields (col, decoded) from JSON output
 
                 def _clean(s):
                     c = dict(s)
-                    c['frames'] = [
-                        {k: v for k, v in f.items() if k not in ('col', 'decoded')}
-                        for f in c.get('frames', [])
+                    c["frames"] = [
+                        {k: v for k, v in f.items() if k not in ("col", "decoded")}
+                        for f in c.get("frames", [])
                     ]
                     return c
+
                 out = _json.dumps([_clean(s) for s in sessions], indent=2)
                 if args.file:
                     Path(args.file).write_text(out)
@@ -4309,22 +4784,24 @@ class StandaloneGetResult(DeviceRequiredUnit):
             return
 
         sessions = parse_authtrace_buffer(raw)
-        mode_label = mode.name.lower().replace('_', '-')
+        mode_label = mode.name.lower().replace("_", "-")
         print(color_string((CG, f"{len(sessions)} {mode_label} session(s)")))
 
         if args.json:
             # Convert frames tuples to JSON-serializable dicts
             json_sessions = []
             for s in sessions:
-                json_sessions.append({
-                    "session_num": s["session_num"],
-                    "status_name": s["status_name"],
-                    "status_code": s["status_code"],
-                    "frames": [
-                        {"bits": bits, "data": data.hex(), "is_tx": is_tx}
-                        for bits, data, is_tx in s["frames"]
-                    ],
-                })
+                json_sessions.append(
+                    {
+                        "session_num": s["session_num"],
+                        "status_name": s["status_name"],
+                        "status_code": s["status_code"],
+                        "frames": [
+                            {"bits": bits, "data": data.hex(), "is_tx": is_tx}
+                            for bits, data, is_tx in s["frames"]
+                        ],
+                    }
+                )
             out = jsonlib.dumps(json_sessions, indent=2)
             if args.file:
                 Path(args.file).write_text(out)
@@ -4346,7 +4823,7 @@ class StandaloneGetResult(DeviceRequiredUnit):
         print(authtrace_summarise(sessions))
 
 
-@standalone.command('ls')
+@standalone.command("ls")
 class StandaloneLs(DeviceRequiredUnit):
     """
     List stored result data for all standalone modes.
@@ -4358,20 +4835,20 @@ class StandaloneLs(DeviceRequiredUnit):
     """
 
     MODE_NAMES = {
-        0: 'disabled',
-        1: 'autoclone',
-        2: 'read_replay',
-        3: 'authtrace',
-        4: 'slot_cycle',
-        5: 'dict_check',
-        6: 'emul_trace',
-        7: 'relay',
-        8: 'hf14a_tap_sniff',
+        0: "disabled",
+        1: "autoclone",
+        2: "read_replay",
+        3: "authtrace",
+        4: "slot_cycle",
+        5: "dict_check",
+        6: "emul_trace",
+        7: "relay",
+        8: "hf14a_tap_sniff",
     }
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'List stored standalone result data'
+        parser.description = "List stored standalone result data"
         return parser
 
     def on_exec(self, args):
@@ -4396,13 +4873,13 @@ class StandaloneLs(DeviceRequiredUnit):
             print(f"  {CG}{name:<14}{C0}  {sz:>7}B  {est:>14}")
 
 
-@standalone.command('clear-result')
+@standalone.command("clear-result")
 class StandaloneClearResult(DeviceRequiredUnit):
     """Discard the active mode's result buffer."""
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Clear standalone result buffer'
+        parser.description = "Clear standalone result buffer"
         return parser
 
     def on_exec(self, args):
@@ -4413,7 +4890,7 @@ class StandaloneClearResult(DeviceRequiredUnit):
             print(color_string((CR, f"clear failed: status={resp.status}")))
 
 
-@standalone.command('config')
+@standalone.command("config")
 class StandaloneConfig(DeviceRequiredUnit):
     """
     View or set the per-mode config blob.
@@ -4443,19 +4920,30 @@ class StandaloneConfig(DeviceRequiredUnit):
 
     def args_parser(self) -> ArgumentParserNoExit:
         parser = ArgumentParserNoExit()
-        parser.description = 'Read or write mode-specific config'
-        parser.add_argument('mode', help='target mode name')
-        parser.add_argument('--block',    type=int, default=None,
-                            help='[authtrace] target block (0-255)')
-        parser.add_argument('--key-type', choices=['A', 'B'], default=None,
-                            help='[authtrace] MIFARE key type')
-        parser.add_argument('--key',      default=None,
-                            help='[authtrace] 12-hex-char sector key '
-                                 '(e.g. FFFFFFFFFFFF)')
-        parser.add_argument('--timeout',  type=int, default=None,
-                            help='[authtrace] tag-poll timeout in ms (100-30000); '
-                                 '[hf14a-tap-sniff] capture duration in ms (100-30000); '
-                                 '[relay] WTX ms (500-10000)')
+        parser.description = "Read or write mode-specific config"
+        parser.add_argument("mode", help="target mode name")
+        parser.add_argument(
+            "--block", type=int, default=None, help="[authtrace] target block (0-255)"
+        )
+        parser.add_argument(
+            "--key-type",
+            choices=["A", "B"],
+            default=None,
+            help="[authtrace] MIFARE key type",
+        )
+        parser.add_argument(
+            "--key",
+            default=None,
+            help="[authtrace] 12-hex-char sector key " "(e.g. FFFFFFFFFFFF)",
+        )
+        parser.add_argument(
+            "--timeout",
+            type=int,
+            default=None,
+            help="[authtrace] tag-poll timeout in ms (100-30000); "
+            "[hf14a-tap-sniff] capture duration in ms (100-30000); "
+            "[relay] WTX ms (500-10000)",
+        )
         return parser
 
     def on_exec(self, args):
@@ -4465,29 +4953,35 @@ class StandaloneConfig(DeviceRequiredUnit):
             print(color_string((CR, str(e))))
             return
 
-        any_setter = any(v is not None for v in
-                         (args.block, args.key_type, args.key, args.timeout))
+        any_setter = any(
+            v is not None for v in (args.block, args.key_type, args.key, args.timeout)
+        )
 
         if mode == StandaloneMode.RELAY:
             if any(v is not None for v in (args.block, args.key_type, args.key)):
-                print(color_string((CR,
-                                    "relay config does not use --block/--key-type/--key")))
+                print(
+                    color_string(
+                        (CR, "relay config does not use --block/--key-type/--key")
+                    )
+                )
                 return
             if args.timeout is not None:
                 # --timeout reused as WTX ms for relay mode
                 wtx_ms = int(args.timeout)
                 if wtx_ms < 500 or wtx_ms > 10000:
-                    print(color_string((CR,
-                                        "relay --wtx must be 500-10000 ms")))
+                    print(color_string((CR, "relay --wtx must be 500-10000 ms")))
                     return
-                cfg_hex = '{:02X}{:02X}{:02X}{:02X}'.format(
-                    wtx_ms & 0xFF, (wtx_ms >> 8) & 0xFF,
-                    (wtx_ms >> 16) & 0xFF, (wtx_ms >> 24) & 0xFF)
+                cfg_hex = "{:02X}{:02X}{:02X}{:02X}".format(
+                    wtx_ms & 0xFF,
+                    (wtx_ms >> 8) & 0xFF,
+                    (wtx_ms >> 16) & 0xFF,
+                    (wtx_ms >> 24) & 0xFF,
+                )
                 resp = self.cmd.standalone_set_config(
-                    StandaloneMode.RELAY.value, cfg_hex)
+                    StandaloneMode.RELAY.value, cfg_hex
+                )
                 if resp.status == Status.SUCCESS:
-                    print(color_string((CG,
-                                        f"relay WTX set to {wtx_ms} ms")))
+                    print(color_string((CG, f"relay WTX set to {wtx_ms} ms")))
                 return
             # No setter args — read and display current config
             raw = self.cmd.standalone_get_config(StandaloneMode.RELAY.value)
@@ -4496,50 +4990,73 @@ class StandaloneConfig(DeviceRequiredUnit):
             else:
                 wtx_ms = 2000  # firmware default
             print(color_string((CG, "relay config:")))
-            print(f"  wtx  {wtx_ms} ms  (time to request from reader via WTX "
-                  f"while BLE round-trip completes)"
-                  + (color_string((CY, "  [default]")) if not raw or len(raw) < 4 else ""))
+            print(
+                f"  wtx  {wtx_ms} ms  (time to request from reader via WTX "
+                f"while BLE round-trip completes)"
+                + (color_string((CY, "  [default]")) if not raw or len(raw) < 4 else "")
+            )
             print("  link auto-pair nearest available CU in relay mode")
-            print("  role lower MAC = RELAY_CARD (reader side), "
-                  f"higher MAC = RELAY_READER (card side)")
-            print(color_string((CY, "Ultra only. Arm both units with both-button chord.")))
+            print(
+                "  role lower MAC = RELAY_CARD (reader side), "
+                f"higher MAC = RELAY_READER (card side)"
+            )
+            print(
+                color_string((CY, "Ultra only. Arm both units with both-button chord."))
+            )
             return
 
         if mode == StandaloneMode.EMUL_TRACE:
-            print(color_string((CY,
-                                "emul_trace has no config — it uses the active emulation slot as-is.\n"
-                                "Set up your slot normally, then arm the mode.")))
+            print(
+                color_string(
+                    (
+                        CY,
+                        "emul_trace has no config — it uses the active emulation slot as-is.\n"
+                        "Set up your slot normally, then arm the mode.",
+                    )
+                )
+            )
             return
 
         if mode == StandaloneMode.HF14A_TAP_SNIFF:
             if any(v is not None for v in (args.block, args.key_type, args.key)):
-                print(color_string((CR,
-                                    "hf14a-tap-sniff config does not use --block/--key-type/--key")))
+                print(
+                    color_string(
+                        (
+                            CR,
+                            "hf14a-tap-sniff config does not use --block/--key-type/--key",
+                        )
+                    )
+                )
                 return
             if args.timeout is not None:
                 timeout_ms = int(args.timeout)
                 if not (100 <= timeout_ms <= 30000):
                     print(color_string((CR, "timeout must be 100..30000 ms")))
                     return
-                cfg = struct.pack('<BBH', 1, 0, timeout_ms) + b'\x00' * 4
+                cfg = struct.pack("<BBH", 1, 0, timeout_ms) + b"\x00" * 4
                 resp = self.cmd.standalone_set_config(mode, cfg)
                 if resp.status == Status.SUCCESS:
-                    print(color_string((CG,
-                                        f"hf14a-tap-sniff timeout set to {timeout_ms} ms")))
+                    print(
+                        color_string(
+                            (CG, f"hf14a-tap-sniff timeout set to {timeout_ms} ms")
+                        )
+                    )
                 else:
-                    print(color_string((CR,
-                                        f"set-config failed: status={resp.status}")))
+                    print(
+                        color_string((CR, f"set-config failed: status={resp.status}"))
+                    )
                 return
             # No setter args — read and display current config
             blob = self.cmd.standalone_get_config(mode)
             if blob and len(blob) >= 4:
-                ver, _r0, timeout_ms = struct.unpack('<BBH', blob[:4])
+                ver, _r0, timeout_ms = struct.unpack("<BBH", blob[:4])
                 print(color_string((CG, "hf14a-tap-sniff config:")))
                 print(f"  version:  {ver}")
                 print(f"  timeout:  {timeout_ms} ms")
             else:
-                print(color_string((CY,
-                                    "no persisted config — default timeout 5000 ms")))
+                print(
+                    color_string((CY, "no persisted config — default timeout 5000 ms"))
+                )
             return
 
         if not any_setter:
@@ -4548,10 +5065,9 @@ class StandaloneConfig(DeviceRequiredUnit):
                 print(color_string((CY, f"no persisted config for {mode.name}")))
                 return
             if mode == StandaloneMode.AUTHTRACE and len(blob) >= 16:
-                ver, typ, block, _r0, timeout = struct.unpack(
-                    '<BBBBH', blob[:6])
+                ver, typ, block, _r0, timeout = struct.unpack("<BBBBH", blob[:6])
                 key = blob[6:12].hex()
-                kname = {0x60: 'A', 0x61: 'B'}.get(typ, f'?(0x{typ:02x})')
+                kname = {0x60: "A", 0x61: "B"}.get(typ, f"?(0x{typ:02x})")
                 print(f"  version:  {ver}")
                 print(f"  type:     {kname} (0x{typ:02x})")
                 print(f"  block:    {block}")
@@ -4562,9 +5078,15 @@ class StandaloneConfig(DeviceRequiredUnit):
             return
 
         if mode != StandaloneMode.AUTHTRACE:
-            print(color_string((CR,
-                                f"config writes only implemented for authtrace; "
-                                f"raw set-config required for {mode.name}")))
+            print(
+                color_string(
+                    (
+                        CR,
+                        f"config writes only implemented for authtrace; "
+                        f"raw set-config required for {mode.name}",
+                    )
+                )
+            )
             return
 
         existing = self.cmd.standalone_get_config(mode)
@@ -4576,14 +5098,14 @@ class StandaloneConfig(DeviceRequiredUnit):
             key = bytes(existing[6:12])
         else:
             ver, typ, block, timeout = 1, 0x60, 4, 3000
-            key = b'\xff' * 6
+            key = b"\xff" * 6
 
         if args.block is not None:
             block = args.block
         if args.timeout is not None:
             timeout = args.timeout
         if args.key_type is not None:
-            typ = 0x60 if args.key_type == 'A' else 0x61
+            typ = 0x60 if args.key_type == "A" else 0x61
         if args.key is not None:
             try:
                 key = bytes.fromhex(args.key)
@@ -4591,8 +5113,7 @@ class StandaloneConfig(DeviceRequiredUnit):
                 print(color_string((CR, "key must be hex")))
                 return
             if len(key) != 6:
-                print(color_string((CR,
-                                    f"key must be 6 bytes; got {len(key)}")))
+                print(color_string((CR, f"key must be 6 bytes; got {len(key)}")))
                 return
 
         if not (100 <= timeout <= 30000):
@@ -4602,19 +5123,23 @@ class StandaloneConfig(DeviceRequiredUnit):
             print(color_string((CR, "block must be 0..255")))
             return
 
-        cfg = struct.pack('<BBBBH', ver, typ, block, 0, timeout) \
-            + key + b'\x00' * 4
+        cfg = struct.pack("<BBBBH", ver, typ, block, 0, timeout) + key + b"\x00" * 4
         assert len(cfg) == 16
 
         resp = self.cmd.standalone_set_config(mode, cfg)
         if resp.status == Status.SUCCESS:
-            kname = {0x60: 'A', 0x61: 'B'}[typ]
-            print(color_string((CG,
-                                f"ok: type={kname} block={block} timeout={timeout}ms "
-                                f"key={key.hex()}")))
+            kname = {0x60: "A", 0x61: "B"}[typ]
+            print(
+                color_string(
+                    (
+                        CG,
+                        f"ok: type={kname} block={block} timeout={timeout}ms "
+                        f"key={key.hex()}",
+                    )
+                )
+            )
         else:
-            print(color_string((CR,
-                                f"set-config failed: status={resp.status}")))
+            print(color_string((CR, f"set-config failed: status={resp.status}")))
 
 
 @hf_seos.command("eview")
@@ -4631,9 +5156,7 @@ class HFSeosEView(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
         tag_type = TagSpecificType(slot_info[selected_slot]["hf"])
 
         if tag_type != TagSpecificType.SEOS:
-            raise Exception(
-                "Card in current slot is not SEOS"
-            )
+            raise Exception("Card in current slot is not SEOS")
         data = self.cmd.seos_read_emu_data()
 
         print("[=]        Data:", data["data"].hex().upper())
@@ -4649,14 +5172,37 @@ class HFSeosELoad(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
         parser.description = "Load data into emulator memory"
         self.add_slot_args(parser)
         self.add_hf14a_anticoll_args(parser)
-        parser.add_argument("-d", "--data", type=str, default=None, metavar="<hex>",
-                            help="Data to present to reader (2-255 bytes). Must be valid BER-TLV.")
-        parser.add_argument("-o", "--oid", type=str, default=None, metavar="<hex>",
-                            help="Target OID (1-32 bytes).")
-        parser.add_argument("-t", "--tag", type=str, default=None, metavar="<hex>",
-                            help="Tag of presented data (1-2 bytes).")
-        parser.add_argument("--diversifier", type=str, default=None, metavar="<hex>",
-                            help="Simulated card diversifier (1-16 bytes).")
+        parser.add_argument(
+            "-d",
+            "--data",
+            type=str,
+            default=None,
+            metavar="<hex>",
+            help="Data to present to reader (2-255 bytes). Must be valid BER-TLV.",
+        )
+        parser.add_argument(
+            "-o",
+            "--oid",
+            type=str,
+            default=None,
+            metavar="<hex>",
+            help="Target OID (1-32 bytes).",
+        )
+        parser.add_argument(
+            "-t",
+            "--tag",
+            type=str,
+            default=None,
+            metavar="<hex>",
+            help="Tag of presented data (1-2 bytes).",
+        )
+        parser.add_argument(
+            "--diversifier",
+            type=str,
+            default=None,
+            metavar="<hex>",
+            help="Simulated card diversifier (1-16 bytes).",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -4665,16 +5211,12 @@ class HFSeosELoad(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
         tag_type = TagSpecificType(slot_info[selected_slot]["hf"])
 
         if tag_type != TagSpecificType.SEOS:
-            raise Exception(
-                "Card in current slot is not SEOS"
-            )
+            raise Exception("Card in current slot is not SEOS")
 
         # Handle ISO14443-A anticollision changes
         anti_coll_data = self.cmd.hf14a_get_anti_coll_data()
         if anti_coll_data is None or len(anti_coll_data) == 0:
-            print(
-                f"{color_string((CR, 'Slot does not contain any HF 14A config'))}"
-            )
+            print(f"{color_string((CR, 'Slot does not contain any HF 14A config'))}")
             return
         uid = anti_coll_data["uid"]
         atqa = anti_coll_data["atqa"]
@@ -4686,11 +5228,11 @@ class HFSeosELoad(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
         )
 
         if (
-            args.data is None and
-            args.oid is None and
-            args.tag is None and
-            args.diversifier is None and
-            change_requested is False
+            args.data is None
+            and args.oid is None
+            and args.tag is None
+            and args.diversifier is None
+            and change_requested is False
         ):
             print(color_string((CR, "Error: No changes were requested.")))
 
@@ -4700,14 +5242,20 @@ class HFSeosELoad(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
         data = bytes.fromhex(args.data) if args.data else seos_data["data"]
         oid = bytes.fromhex(args.oid) if args.oid else seos_data["oid"]
         tag = bytes.fromhex(args.tag) if args.tag else seos_data["tag"]
-        diversifier = bytes.fromhex(args.diversifier) if args.diversifier else seos_data["diversifier"]
+        diversifier = (
+            bytes.fromhex(args.diversifier)
+            if args.diversifier
+            else seos_data["diversifier"]
+        )
 
         # These are not currently configurable
         hash_alg = seos_data["hash_alg"]
         encr_alg = seos_data["encr_alg"]
 
         if len(data) < 2 or len(data) > 255:
-            print(color_string((CR, "Error: invalid data length. Accepts 2-255 bytes.")))
+            print(
+                color_string((CR, "Error: invalid data length. Accepts 2-255 bytes."))
+            )
             return
         if len(oid) < 1 or len(oid) > 32:
             print(color_string((CR, "Error: invalid OID length. Accepts 1-32 bytes.")))
@@ -4716,7 +5264,11 @@ class HFSeosELoad(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
             print(color_string((CR, "Error: invalid tag length. Accepts 1-2 bytes.")))
             return
         if len(diversifier) < 1 or len(diversifier) > 16:
-            print(color_string((CR, "Error: invalid diversifier length. Accepts 1-16 bytes.")))
+            print(
+                color_string(
+                    (CR, "Error: invalid diversifier length. Accepts 1-16 bytes.")
+                )
+            )
             return
 
         self.cmd.seos_write_emu_data(
@@ -4725,7 +5277,7 @@ class HFSeosELoad(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
             tag=tag,
             diversifier=diversifier,
             hash_alg=hash_alg,
-            encr_alg=encr_alg
+            encr_alg=encr_alg,
         )
 
 
@@ -4735,12 +5287,30 @@ class HFSeosKeys(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
         parser = ArgumentParserNoExit()
         parser.description = "Load data into emulator memory"
         self.add_slot_args(parser)
-        parser.add_argument("-a", "--auth", type=str, metavar="<hex>", required=True,
-                            help="Auth key (16 bytes)")
-        parser.add_argument("-e", "--privenc", type=str, metavar="<hex>", required=True,
-                            help="PrivEnc key (16 bytes)")
-        parser.add_argument("-m", "--privmac", type=str, metavar="<hex>", required=True,
-                            help="PrivMac key (16 bytes)")
+        parser.add_argument(
+            "-a",
+            "--auth",
+            type=str,
+            metavar="<hex>",
+            required=True,
+            help="Auth key (16 bytes)",
+        )
+        parser.add_argument(
+            "-e",
+            "--privenc",
+            type=str,
+            metavar="<hex>",
+            required=True,
+            help="PrivEnc key (16 bytes)",
+        )
+        parser.add_argument(
+            "-m",
+            "--privmac",
+            type=str,
+            metavar="<hex>",
+            required=True,
+            help="PrivMac key (16 bytes)",
+        )
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -4749,9 +5319,7 @@ class HFSeosKeys(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
         tag_type = TagSpecificType(slot_info[selected_slot]["hf"])
 
         if tag_type != TagSpecificType.SEOS:
-            raise Exception(
-                "Card in current slot is not SEOS"
-            )
+            raise Exception("Card in current slot is not SEOS")
 
         # Parse args
         auth = bytes.fromhex(args.auth)
@@ -4759,20 +5327,27 @@ class HFSeosKeys(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
         privmac = bytes.fromhex(args.privmac)
 
         if len(auth) != 16:
-            print(color_string((CR, "Error: invalid auth key length. Accepts 16 bytes.")))
+            print(
+                color_string((CR, "Error: invalid auth key length. Accepts 16 bytes."))
+            )
             return
         if len(privenc) != 16:
-            print(color_string((CR, "Error: invalid PrivEnc key length. Accepts 16 bytes.")))
+            print(
+                color_string(
+                    (CR, "Error: invalid PrivEnc key length. Accepts 16 bytes.")
+                )
+            )
             return
         if len(privmac) != 16:
-            print(color_string((CR, "Error: invalid PrivMac key length. Accepts 16 bytes.")))
+            print(
+                color_string(
+                    (CR, "Error: invalid PrivMac key length. Accepts 16 bytes.")
+                )
+            )
             return
 
-        self.cmd.seos_write_emu_keys(
-            auth=auth,
-            privenc=privenc,
-            privmac=privmac
-        )
+        self.cmd.seos_write_emu_keys(auth=auth, privenc=privenc, privmac=privmac)
         print(f"\n {CR}No keys found{C0}")
+
 
 # ---- Indala LF (read + T55xx clone) : ported from RRG #402 (kevihiiin); emulation (econfig) omitted ----

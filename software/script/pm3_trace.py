@@ -69,7 +69,7 @@ def parse_14a_sniff_buf(buf: bytes):
         szBytes = (szBits + 7) // 8
         if i + szBytes > n:
             break
-        raw = buf[i:i + szBytes]
+        raw = buf[i : i + szBytes]
         i += szBytes
 
         parity_bits = []
@@ -97,8 +97,8 @@ def parse_14a_sniff_buf(buf: bytes):
 
 
 # --- Frames -> Proxmark3 .trace blob ---------------------------------------
-_CYCLES_PER_BIT = 128     # ~13.56 MHz / 106 kbps
-_SYNTH_GAP = 256          # synthetic inter-frame spacing (carrier cycles)
+_CYCLES_PER_BIT = 128  # ~13.56 MHz / 106 kbps
+_SYNTH_GAP = 256  # synthetic inter-frame spacing (carrier cycles)
 
 
 def frames_to_pm3_trace(frames) -> bytes:
@@ -117,7 +117,7 @@ def frames_to_pm3_trace(frames) -> bytes:
                 p = parity_bits[j] & 1
             else:
                 p = odd_parity_byte(data[j])
-            pbytes[j >> 3] |= (p & 1) << (7 - (j & 7))    # MSB-first (cmdtrace.c:669)
+            pbytes[j >> 3] |= (p & 1) << (7 - (j & 7))  # MSB-first (cmdtrace.c:669)
 
         meta = (data_len & 0x7FFF) | ((1 if is_tx else 0) << 15)
         out += struct.pack("<IHH", ts & 0xFFFFFFFF, duration, meta)
@@ -144,7 +144,7 @@ def iter_tap_sniff_sessions(result_buf: bytes):
         status = result_buf[off + 1]
         tlen = result_buf[off + 2] | (result_buf[off + 3] << 8)
         off += 4
-        trace = result_buf[off:off + tlen]
+        trace = result_buf[off : off + tlen]
         off += tlen
         yield num, status, trace
 
@@ -170,16 +170,30 @@ def export_tap_sniff_sessions_to_pm3(result_buf: bytes, prefix: str = "sniff-ses
 # --- CLI: convert a dumped buffer without the full client ------------------
 def _main(argv=None):
     ap = argparse.ArgumentParser(
-        description="Convert a ChameleonUltra HF-14A sniff dump to Proxmark3 .trace")
-    ap.add_argument("infile", help="binary dump: a single sniff record stream, "
-                                   "or (with --sessions) a standalone result buffer")
-    ap.add_argument("-o", "--out", default=None,
-                    help="output .trace file (single-stream mode; default infile+'.trace')")
-    ap.add_argument("--sessions", action="store_true",
-                    help="treat infile as a standalone tap-sniff result buffer "
-                         "and write one .trace per session")
-    ap.add_argument("--prefix", default="sniff-session",
-                    help="output filename prefix in --sessions mode")
+        description="Convert a ChameleonUltra HF-14A sniff dump to Proxmark3 .trace"
+    )
+    ap.add_argument(
+        "infile",
+        help="binary dump: a single sniff record stream, "
+        "or (with --sessions) a standalone result buffer",
+    )
+    ap.add_argument(
+        "-o",
+        "--out",
+        default=None,
+        help="output .trace file (single-stream mode; default infile+'.trace')",
+    )
+    ap.add_argument(
+        "--sessions",
+        action="store_true",
+        help="treat infile as a standalone tap-sniff result buffer "
+        "and write one .trace per session",
+    )
+    ap.add_argument(
+        "--prefix",
+        default="sniff-session",
+        help="output filename prefix in --sessions mode",
+    )
     args = ap.parse_args(argv)
 
     with open(args.infile, "rb") as f:

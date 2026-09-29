@@ -10,7 +10,7 @@ import os
 import sys
 import unittest
 
-sys.path.append('..')
+sys.path.append("..")
 
 from chameleon_dfc import (  # noqa: E402
     OWNER_PICC,
@@ -25,7 +25,7 @@ from chameleon_dfc import (  # noqa: E402
 
 def build_basic() -> DfcCredential:
     cred = DfcCredential()
-    cred.uid = bytes.fromhex('04223344556677')
+    cred.uid = bytes.fromhex("04223344556677")
     cred.generation = 1
     cred.storage = 4096
     cred.uid_provenance = 1
@@ -34,11 +34,11 @@ def build_basic() -> DfcCredential:
     cred.picc_auth_command = 0x0A
     cred.picc_keys = [DfcKey(bytes(16), 0)]
     cred.picc_random_id = True
-    cred.picc_ats = bytes.fromhex('067577810280')
+    cred.picc_ats = bytes.fromhex("067577810280")
     cred.picc_sak = 0x20
 
     app = DfcApplication()
-    app.aid = bytes.fromhex('000001')
+    app.aid = bytes.fromhex("000001")
     app.key_settings_2 = 0x81
     app.auth_command = 0xAA
     app.key_len = 16
@@ -57,13 +57,13 @@ class TestDfcDer(unittest.TestCase):
         self.assertEqual(from_text.to_wire(), encoded)
         self.assertEqual(from_der.to_wire(), encoded)
 
-    @unittest.skip('the compact EV1 CLI model does not decode extended v4 features')
+    @unittest.skip("the compact EV1 CLI model does not decode extended v4 features")
     def test_canonical_reject_corpus(self):
-        self.fail('enable when extended v4 decoding is supported')
+        self.fail("enable when extended v4 decoding is supported")
 
     def test_four_byte_uid_round_trip(self):
         cred = build_basic()
-        cred.uid = bytes.fromhex('1337C0DE')
+        cred.uid = bytes.fromhex("1337C0DE")
 
         blob = cred.to_wire()
         back = DfcCredential.from_wire(blob)
@@ -73,18 +73,43 @@ class TestDfcDer(unittest.TestCase):
 
     def test_round_trip(self):
         cred = build_basic()
-        cred.files.append(DfcFile(
-            app_index=0, number=0x01, type=0x00, access_rights=0xEEEE,
-            declared_size=32, data=bytes.fromhex('12345678'),
-            contents_complete=False))
-        cred.files.append(DfcFile(
-            app_index=0, number=0x03, type=0x02, comm_settings=0x03,
-            access_rights=0x00EE, value_lower_limit=-100, value_upper_limit=1000,
-            value=42, limited_credit=0x03))
-        cred.files.append(DfcFile(
-            app_index=0, number=0x04, type=0x03, access_rights=0xE000,
-            record_size=4, max_records=5, record_count=2, contents_complete=True,
-            records=[bytes.fromhex('01020304'), bytes.fromhex('05060708')]))
+        cred.files.append(
+            DfcFile(
+                app_index=0,
+                number=0x01,
+                type=0x00,
+                access_rights=0xEEEE,
+                declared_size=32,
+                data=bytes.fromhex("12345678"),
+                contents_complete=False,
+            )
+        )
+        cred.files.append(
+            DfcFile(
+                app_index=0,
+                number=0x03,
+                type=0x02,
+                comm_settings=0x03,
+                access_rights=0x00EE,
+                value_lower_limit=-100,
+                value_upper_limit=1000,
+                value=42,
+                limited_credit=0x03,
+            )
+        )
+        cred.files.append(
+            DfcFile(
+                app_index=0,
+                number=0x04,
+                type=0x03,
+                access_rights=0xE000,
+                record_size=4,
+                max_records=5,
+                record_count=2,
+                contents_complete=True,
+                records=[bytes.fromhex("01020304"), bytes.fromhex("05060708")],
+            )
+        )
 
         blob = cred.to_wire()
         self.assertEqual(blob[0], 0x60)
@@ -100,7 +125,7 @@ class TestDfcDer(unittest.TestCase):
         self.assertEqual(len(back.apps), 1)
         self.assertEqual(len(back.files), 3)
         self.assertEqual(back.files[0].declared_size, 32)
-        self.assertEqual(back.files[0].data, bytes.fromhex('12345678'))
+        self.assertEqual(back.files[0].data, bytes.fromhex("12345678"))
         self.assertFalse(back.files[0].contents_complete)
         self.assertEqual(back.files[1].value, 42)
         self.assertEqual(back.files[2].records, cred.files[2].records)
@@ -111,14 +136,21 @@ class TestDfcDer(unittest.TestCase):
 
     def test_picc_level_file(self):
         cred = build_basic()
-        cred.files.append(DfcFile(
-            app_index=OWNER_PICC, number=0x00, type=0x00, access_rights=0xEEEE,
-            declared_size=16, data=bytes.fromhex('DEADBEEF')))
+        cred.files.append(
+            DfcFile(
+                app_index=OWNER_PICC,
+                number=0x00,
+                type=0x00,
+                access_rights=0xEEEE,
+                declared_size=16,
+                data=bytes.fromhex("DEADBEEF"),
+            )
+        )
         blob = cred.to_wire()
         back = DfcCredential.from_wire(blob)
         self.assertEqual(len(back.files), 1)
         self.assertEqual(back.files[0].app_index, OWNER_PICC)
-        self.assertEqual(back.files[0].data, bytes.fromhex('DEADBEEF'))
+        self.assertEqual(back.files[0].data, bytes.fromhex("DEADBEEF"))
 
     def test_default_false_is_omitted(self):
         loud = build_basic().to_wire()
@@ -130,16 +162,16 @@ class TestDfcDer(unittest.TestCase):
         good = build_basic().to_wire()
         # Wrong outer tag.
         with self.assertRaises(DfcError):
-            DfcCredential.from_wire(b'\x30' + good[1:])
+            DfcCredential.from_wire(b"\x30" + good[1:])
         # Truncated.
         with self.assertRaises(DfcError):
             DfcCredential.from_wire(good[:-1])
         # Trailing octet after a complete value.
         with self.assertRaises(DfcError):
-            DfcCredential.from_wire(good + b'\x00')
+            DfcCredential.from_wire(good + b"\x00")
         # A later version is refused on its version.
         v5 = bytearray(good)
-        i = v5.index(b'\x80\x01\x04')
+        i = v5.index(b"\x80\x01\x04")
         v5[i + 2] = 5
         with self.assertRaises(DfcError):
             DfcCredential.from_wire(bytes(v5))
@@ -163,11 +195,11 @@ class TestDfcDer(unittest.TestCase):
     def test_dotnet_exported_credential_loads(self):
         # A credential exported by another implementation, which records no PICC
         # key material at all. It is well formed and must load.
-        path = os.path.join(os.path.dirname(__file__), 'fixtures', 'no-picc-keys.dfc')
-        with open(path, 'r', encoding='utf-8') as fh:
+        path = os.path.join(os.path.dirname(__file__), "fixtures", "no-picc-keys.dfc")
+        with open(path, "r", encoding="utf-8") as fh:
             cred = DfcCredential.parse_text(fh.read())
         self.assertEqual(cred.picc_keys, [])
-        self.assertTrue(cred.to_wire().startswith(b'\x60'))
+        self.assertTrue(cred.to_wire().startswith(b"\x60"))
 
     def test_model_validation(self):
         # The compact CLI model does not create transaction-MAC contents.
@@ -178,31 +210,49 @@ class TestDfcDer(unittest.TestCase):
 
         # Complete with contents shorter than the declared size.
         short = build_basic()
-        short.files.append(DfcFile(
-            app_index=0, number=0x01, type=0x00, declared_size=32,
-            data=bytes.fromhex('1234'), contents_complete=True))
+        short.files.append(
+            DfcFile(
+                app_index=0,
+                number=0x01,
+                type=0x00,
+                declared_size=32,
+                data=bytes.fromhex("1234"),
+                contents_complete=True,
+            )
+        )
         with self.assertRaises(DfcError):
             short.to_wire()
 
         # Value outside its own limits.
         bad_value = build_basic()
-        bad_value.files.append(DfcFile(
-            app_index=0, number=0x03, type=0x02, value_upper_limit=100, value=500))
+        bad_value.files.append(
+            DfcFile(
+                app_index=0, number=0x03, type=0x02, value_upper_limit=100, value=500
+            )
+        )
         with self.assertRaises(DfcError):
             bad_value.to_wire()
 
         # A reserved ISO file ID.
         reserved = build_basic()
-        reserved.files.append(DfcFile(
-            app_index=0, number=0x01, type=0x00, declared_size=8,
-            has_iso_file_id=True, iso_file_id=0x3F00))
+        reserved.files.append(
+            DfcFile(
+                app_index=0,
+                number=0x01,
+                type=0x00,
+                declared_size=8,
+                has_iso_file_id=True,
+                iso_file_id=0x3F00,
+            )
+        )
         with self.assertRaises(DfcError):
             reserved.to_wire()
 
         # A cyclic record file needs capacity for two records.
         cyclic = build_basic()
-        cyclic.files.append(DfcFile(
-            app_index=0, number=0x06, type=0x04, record_size=2, max_records=1))
+        cyclic.files.append(
+            DfcFile(app_index=0, number=0x06, type=0x04, record_size=2, max_records=1)
+        )
         with self.assertRaises(DfcError):
             cyclic.to_wire()
 
@@ -214,7 +264,7 @@ class TestDfcDer(unittest.TestCase):
 
     def test_extended_generation_is_recognised_but_not_emulated(self):
         encoded = build_basic().to_wire()
-        encoded = encoded.replace(b'\x80\x01\x01', b'\x80\x01\x02', 1)
+        encoded = encoded.replace(b"\x80\x01\x01", b"\x80\x01\x02", 1)
         with self.assertRaises(DfcError) as caught:
             DfcCredential.from_wire(encoded)
         self.assertEqual(caught.exception.error_class, DfcErrorClass.UNSUPPORTED)
@@ -272,11 +322,11 @@ File Entry 00 Data: 12 34 56 78
 
     def test_v4_text_compiles_and_round_trips(self):
         cred = DfcCredential.parse_text(self.V4)
-        self.assertEqual(cred.uid, bytes.fromhex('04223344556677'))
+        self.assertEqual(cred.uid, bytes.fromhex("04223344556677"))
         self.assertEqual(cred.uid_provenance, 0)
         self.assertEqual(len(cred.picc_keys), 1)
         self.assertEqual(cred.files[0].declared_size, 32)
-        self.assertEqual(cred.files[0].data, bytes.fromhex('12345678'))
+        self.assertEqual(cred.files[0].data, bytes.fromhex("12345678"))
         self.assertFalse(cred.files[0].contents_complete)
         blob = cred.to_wire()
         self.assertEqual(DfcCredential.from_wire(blob).to_wire(), blob)
@@ -287,18 +337,18 @@ File Entry 00 Data: 12 34 56 78
         # so it is refused rather than guessed at.
         with self.assertRaises(DfcError) as caught:
             DfcCredential.parse_text(self.LEGACY)
-        self.assertIn('DESFire credential file', str(caught.exception))
+        self.assertIn("DESFire credential file", str(caught.exception))
 
     def test_wrong_version_is_refused(self):
-        text = self.V4.replace('Version: 4', 'Version: 5')
+        text = self.V4.replace("Version: 4", "Version: 5")
         with self.assertRaises(DfcError) as caught:
             DfcCredential.parse_text(text)
-        self.assertIn('expected 4', str(caught.exception))
+        self.assertIn("expected 4", str(caught.exception))
 
     def test_extended_text_field_is_recognised_but_not_emulated(self):
         text = self.V4.replace(
-            'PICC File Count: 0',
-            'PICC EV2 Card Capabilities: 00 00 00 00 00 00\nPICC File Count: 0',
+            "PICC File Count: 0",
+            "PICC EV2 Card Capabilities: 00 00 00 00 00 00\nPICC File Count: 0",
         )
         with self.assertRaises(DfcError) as caught:
             DfcCredential.parse_text(text)
@@ -306,9 +356,9 @@ File Entry 00 Data: 12 34 56 78
 
     def test_extended_application_field_is_recognised_but_not_emulated(self):
         text = self.V4.replace(
-            'Application 00 File Count: 1',
-            'Application 00 Capability Data: 00 00 00 00 00 00\n'
-            'Application 00 File Count: 1',
+            "Application 00 File Count: 1",
+            "Application 00 Capability Data: 00 00 00 00 00 00\n"
+            "Application 00 File Count: 1",
         )
         with self.assertRaises(DfcError) as caught:
             DfcCredential.parse_text(text)

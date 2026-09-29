@@ -5,21 +5,22 @@ Walks the CLITree in chameleon_cli_unit.py, renders every group and command with
 its real argparse options (flags, help, choices, required, defaults). Run from
 software/script/:  python3 gen_command_md.py > ../docs/command.md
 """
+
 import argparse
 import re
 import io
 import chameleon_cli_unit as U
 from chameleon_utils import CLITree
 
-ANSI = re.compile(r'\x1b\[[0-9;]*m')
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def clean(s):
-    return ANSI.sub('', s).strip() if s else s
+    return ANSI.sub("", s).strip() if s else s
 
 
 def anchor(fullname):
-    return fullname.replace(' ', '-').replace('_', '_')
+    return fullname.replace(" ", "-").replace("_", "_")
 
 
 def render_opts(parser, out):
@@ -28,7 +29,7 @@ def render_opts(parser, out):
         if isinstance(a, argparse._HelpAction):
             continue
         flags = ", ".join(f"`{o}`" for o in a.option_strings) or f"`{a.dest}`"
-        if flags in seen:      # de-dup accidental double-adds
+        if flags in seen:  # de-dup accidental double-adds
             continue
         seen.add(flags)
         bits = []
@@ -40,7 +41,9 @@ def render_opts(parser, out):
             meta.append("choices: " + ", ".join(str(c) for c in a.choices))
         if a.required:
             meta.append("required")
-        if a.default not in (None, False) and not isinstance(a, argparse._StoreTrueAction):
+        if a.default not in (None, False) and not isinstance(
+            a, argparse._StoreTrueAction
+        ):
             meta.append(f"default: {a.default}")
         line = flags
         if h:
@@ -100,33 +103,50 @@ def main():
                 g += gg
                 c += cc
         return g, c
+
     ngroups, ncmds = count(U.root)
 
     body = io.StringIO()
     walk(U.root, 1, body, toc)
 
     print("# Phreakbyte CLI Command Reference\n")
-    print("Complete reference for the Phreakbyte edition ChameleonUltra client "
-          "(`chameleon_cli_main.py`), auto-generated from the live CLI parser: "
-          f"{ngroups} command groups, {ncmds} commands.\n")
-    print("Notation: `<...>` are values you supply. Each option lists its flags, "
-          "help, allowed `choices`, whether it is `required`, and its `default`. "
-          "Run any command with `-h` in the client for the same information live.\n")
+    print(
+        "Complete reference for the Phreakbyte edition ChameleonUltra client "
+        "(`chameleon_cli_main.py`), auto-generated from the live CLI parser: "
+        f"{ngroups} command groups, {ncmds} commands.\n"
+    )
+    print(
+        "Notation: `<...>` are values you supply. Each option lists its flags, "
+        "help, allowed `choices`, whether it is `required`, and its `default`. "
+        "Run any command with `-h` in the client for the same information live.\n"
+    )
     # File formats section — the genuinely useful addition
     print("## File formats\n")
-    print("Several commands read and write **Proxmark3-compatible** files, sniffed "
-          "by content so the extension is a convenience, not a requirement:\n")
+    print(
+        "Several commands read and write **Proxmark3-compatible** files, sniffed "
+        "by content so the extension is a convenience, not a requirement:\n"
+    )
     print("| Card | Command | Reads | Writes |")
     print("|------|---------|-------|--------|")
-    print("| MIFARE Classic | `hf mf eload` / `hf mf esave` | `.bin`, `.eml`, PM3 `mfc v2` `.json` | `.bin`, `.eml`, PM3 `mfc v2` `.json` |")
-    print("| DESFire | `hf des eload` / `hf des edump` / `hf des parse` | `.dfc`, `.dfcb`, PM3 `mfdes v1` `.json` | `.dfcb`, PM3 `mfdes v1` `.json` |")
-    print("| EMV | `emv scan` / `emv load` | PM3 `emv scan` `.json` | PM3 `emv scan` `.json` |")
+    print(
+        "| MIFARE Classic | `hf mf eload` / `hf mf esave` | `.bin`, `.eml`, PM3 `mfc v2` `.json` | `.bin`, `.eml`, PM3 `mfc v2` `.json` |"
+    )
+    print(
+        "| DESFire | `hf des eload` / `hf des edump` / `hf des parse` | `.dfc`, `.dfcb`, PM3 `mfdes v1` `.json` | `.dfcb`, PM3 `mfdes v1` `.json` |"
+    )
+    print(
+        "| EMV | `emv scan` / `emv load` | PM3 `emv scan` `.json` | PM3 `emv scan` `.json` |"
+    )
     print("| Keys | `hf mf fchk` | `.dic`, `.key` | `.dic`, `.key` |")
-    print("| Traces | `hf 14a sniff -o` / `standalone get-result --pm3` | — | PM3 `.trace` |\n")
-    print("Round-trips are validated against Proxmark3's own tooling: a `hf des edump -f x.json` "
-          "file loads in `hf mfdes view`, and a `hf mfdes dump` file loads via `hf des eload`. "
-          "Absent DESFire keys/files are preserved honestly (version-only keys carry no key bytes; "
-          "unread files carry no data), per PM3's `mfdes v1` spec.\n")
+    print(
+        "| Traces | `hf 14a sniff -o` / `standalone get-result --pm3` | — | PM3 `.trace` |\n"
+    )
+    print(
+        "Round-trips are validated against Proxmark3's own tooling: a `hf des edump -f x.json` "
+        "file loads in `hf mfdes view`, and a `hf mfdes dump` file loads via `hf des eload`. "
+        "Absent DESFire keys/files are preserved honestly (version-only keys carry no key bytes; "
+        "unread files carry no data), per PM3's `mfdes v1` spec.\n"
+    )
     print(body.getvalue())
 
 

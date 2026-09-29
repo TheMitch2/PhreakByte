@@ -21,13 +21,13 @@ Usage:
     ./make_recovery_header.py ultra-dfu-full.zip \\
         firmware/application/src/embedded_bootloader.h
 """
+
 import os
 import sys
 import json
 import zlib
 import struct
 import zipfile
-
 
 BL_REGION_START = 0x000F3000
 BL_REGION_END = 0x000FE000
@@ -84,7 +84,7 @@ def main():
         )
         sys.exit(1)
 
-    bl_bytes = sd_bl[sd_size:sd_size + bl_size]
+    bl_bytes = sd_bl[sd_size : sd_size + bl_size]
 
     # Sanity-check the vector table head.
     sp, reset, *_ = struct.unpack_from("<II", bl_bytes, 0)
@@ -120,10 +120,12 @@ def main():
         f.write("#include <stdint.h>\n\n")
         f.write(f"#define EMBEDDED_BOOTLOADER_BIN_SIZE  {len(bl_bytes)}u\n")
         f.write(f"#define EMBEDDED_BOOTLOADER_BIN_CRC32 0x{crc:08X}u\n\n")
-        f.write("static const uint8_t EMBEDDED_BOOTLOADER_BIN[EMBEDDED_BOOTLOADER_BIN_SIZE]\n")
+        f.write(
+            "static const uint8_t EMBEDDED_BOOTLOADER_BIN[EMBEDDED_BOOTLOADER_BIN_SIZE]\n"
+        )
         f.write("    __attribute__((aligned(4))) = {\n")
         for i in range(0, len(bl_bytes), 16):
-            chunk = bl_bytes[i:i + 16]
+            chunk = bl_bytes[i : i + 16]
             hex_bytes = ", ".join(f"0x{b:02x}" for b in chunk)
             f.write(f"    {hex_bytes},\n")
         f.write("};\n\n")

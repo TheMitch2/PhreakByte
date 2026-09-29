@@ -112,8 +112,12 @@ AUTH_MODE_CODES = {0x0A: 0, 0x1A: 1, 0xAA: 2}
 # EV2First 0x08, EV2NonFirst 0x10, ISO7816 0x20.
 DFC_VERSION_V6 = 6
 AUTH_CMD_BITS = {
-    "D40": 0x01, "ISO": 0x02, "AES": 0x04,
-    "EV2First": 0x08, "EV2NonFirst": 0x10, "ISO7816": 0x20,
+    "D40": 0x01,
+    "ISO": 0x02,
+    "AES": 0x04,
+    "EV2First": 0x08,
+    "EV2NonFirst": 0x10,
+    "ISO7816": 0x20,
 }
 AUTH_CMD_ORDER = ["D40", "ISO", "AES", "EV2First", "EV2NonFirst", "ISO7816"]
 # native command byte <-> canonical v6 name (for the preferred command tag)
@@ -142,8 +146,12 @@ def native_cmd_to_mask(native_cmd: int) -> int:
         return AUTH_CMD_BITS["AES"]
     if name == "AES":
         # AES key type: AES native + EV2 secure messaging + ISO7816
-        return (AUTH_CMD_BITS["AES"] | AUTH_CMD_BITS["EV2First"]
-                | AUTH_CMD_BITS["EV2NonFirst"] | AUTH_CMD_BITS["ISO7816"])
+        return (
+            AUTH_CMD_BITS["AES"]
+            | AUTH_CMD_BITS["EV2First"]
+            | AUTH_CMD_BITS["EV2NonFirst"]
+            | AUTH_CMD_BITS["ISO7816"]
+        )
     if name == "ISO":
         return AUTH_CMD_BITS["ISO"] | AUTH_CMD_BITS["ISO7816"]
     return AUTH_CMD_BITS["D40"]
@@ -204,9 +212,9 @@ class DfcApplication:
     key_settings_1: int = 0x0F
     key_settings_2: int = 0x01
     auth_command: int = 0x0A
-    auth_mask: int = 0             # v6: supported-command mask (0 = derive from native)
-    preferred_cmd: str = ""        # v6: preferred command name
-    sm_disable: int = -1           # v6: app SM-disable octet, -1 = absent
+    auth_mask: int = 0  # v6: supported-command mask (0 = derive from native)
+    preferred_cmd: str = ""  # v6: preferred command name
+    sm_disable: int = -1  # v6: app SM-disable octet, -1 = absent
     key_len: int = 16
     keys: list[DfcKey] = field(default_factory=list)
 
@@ -241,15 +249,15 @@ class DfcCredential:
     uid: bytes = b""
     generation: int = 1
     storage: int = DEFAULT_CARD_STORAGE
-    hardware_version: bytes = b""   # v5: 7-byte GetVersion HW frame override
-    software_version: bytes = b""   # v5: 7-byte GetVersion SW frame override
+    hardware_version: bytes = b""  # v5: 7-byte GetVersion HW frame override
+    software_version: bytes = b""  # v5: 7-byte GetVersion SW frame override
     uid_provenance: int = 2
     picc_key_settings_1: int = 0x0F
     picc_key_settings_2: int = 0x01
     picc_auth_command: int = 0x0A
-    picc_auth_mask: int = 0        # v6: supported-command mask (0 = derive from native)
+    picc_auth_mask: int = 0  # v6: supported-command mask (0 = derive from native)
     picc_preferred_cmd: str = ""  # v6: preferred command name, "" = none
-    cred_version: int = 4          # decoded/target wire version (4/5/6)
+    cred_version: int = 4  # decoded/target wire version (4/5/6)
     picc_keys: list[DfcKey] = field(default_factory=list)
     picc_random_id: bool = False
     picc_format_disabled: bool = False
@@ -349,7 +357,9 @@ class DfcCredential:
                 f"comm {f.comm_settings:02X} access {f.access_rights:04X}"
             )
             if f.type == FILE_TYPE_VALUE:
-                desc += f" value {f.value} [{f.value_lower_limit}..{f.value_upper_limit}]"
+                desc += (
+                    f" value {f.value} [{f.value_lower_limit}..{f.value_upper_limit}]"
+                )
             elif f.type in (FILE_TYPE_LINEAR, FILE_TYPE_CYCLIC):
                 desc += (
                     f" records {f.record_count}/{f.max_records} of {f.record_size}B"
@@ -470,24 +480,39 @@ def _encode_app(cred: DfcCredential, index: int, app: DfcApplication) -> bytes:
     body += (
         _tlv(0x83, bytes([app.key_settings_1]))
         + _tlv(0x84, bytes([app.key_settings_2]))
-        + _int(0x85, (app.auth_mask or native_cmd_to_mask(app.auth_command))
-               if _target_v6(cred) else AUTH_MODE_CODES.get(app.auth_command, 0))
+        + _int(
+            0x85,
+            (
+                (app.auth_mask or native_cmd_to_mask(app.auth_command))
+                if _target_v6(cred)
+                else AUTH_MODE_CODES.get(app.auth_command, 0)
+            ),
+        )
         + _encode_keys(0xA6, app.keys, app.key_len)
         + _encode_files(0xA7, cred, index)
         # v6 APP_SM_DISABLE=P(11)=0x8B, APP_PREFERRED_AUTH=P(12)=0x8C,
         # both declared AFTER keys(6)/files(7)/key_sets(8)/delegated(10).
-        + (_tlv(0x8B, bytes([app.sm_disable]))
-           if (_target_v6(cred) and app.sm_disable >= 0) else b"")
-        + (_int(0x8C, AUTH_CMD_BITS[app.preferred_cmd])
-           if (_target_v6(cred) and app.preferred_cmd) else b"")
+        + (
+            _tlv(0x8B, bytes([app.sm_disable]))
+            if (_target_v6(cred) and app.sm_disable >= 0)
+            else b""
+        )
+        + (
+            _int(0x8C, AUTH_CMD_BITS[app.preferred_cmd])
+            if (_target_v6(cred) and app.preferred_cmd)
+            else b""
+        )
     )
     return _tlv(0x30, body)
 
 
 def _target_v6(cred) -> bool:
-    return (cred.cred_version == 6 or cred.picc_auth_mask or cred.picc_preferred_cmd
-            or any(a.auth_mask or a.preferred_cmd or a.sm_disable >= 0
-                   for a in cred.apps))
+    return (
+        cred.cred_version == 6
+        or cred.picc_auth_mask
+        or cred.picc_preferred_cmd
+        or any(a.auth_mask or a.preferred_cmd or a.sm_disable >= 0 for a in cred.apps)
+    )
 
 
 def der_encode(cred: DfcCredential) -> bytes:
@@ -507,9 +532,14 @@ def der_encode(cred: DfcCredential) -> bytes:
     picc = (
         _tlv(0x80, bytes([cred.picc_key_settings_1]))
         + _tlv(0x81, bytes([cred.picc_key_settings_2]))
-        + _int(0x82, (cred.picc_auth_mask or native_cmd_to_mask(cred.picc_auth_command))
-               if _target_v6(cred)
-               else AUTH_MODE_CODES.get(cred.picc_auth_command, 0))
+        + _int(
+            0x82,
+            (
+                (cred.picc_auth_mask or native_cmd_to_mask(cred.picc_auth_command))
+                if _target_v6(cred)
+                else AUTH_MODE_CODES.get(cred.picc_auth_command, 0)
+            ),
+        )
     )
     # DEFAULT FALSE: omit rather than emit an explicit false.
     if cred.picc_random_id:
@@ -530,12 +560,14 @@ def der_encode(cred: DfcCredential) -> bytes:
     if _target_v6(cred) and cred.picc_preferred_cmd:
         picc += _int(0x8F, AUTH_CMD_BITS[cred.picc_preferred_cmd])
 
-    apps = b"".join(
-        _encode_app(cred, i, app) for i, app in enumerate(cred.apps)
-    )
+    apps = b"".join(_encode_app(cred, i, app) for i, app in enumerate(cred.apps))
 
-    _v6 = (cred.cred_version == 6 or cred.picc_auth_mask or cred.picc_preferred_cmd
-           or any(a.auth_mask or a.preferred_cmd or a.sm_disable >= 0 for a in cred.apps))
+    _v6 = (
+        cred.cred_version == 6
+        or cred.picc_auth_mask
+        or cred.picc_preferred_cmd
+        or any(a.auth_mask or a.preferred_cmd or a.sm_disable >= 0 for a in cred.apps)
+    )
     if _v6:
         ver = DFC_VERSION_V6
     elif cred.hardware_version or cred.software_version:
@@ -545,12 +577,17 @@ def der_encode(cred: DfcCredential) -> bytes:
     body = _int(0x80, ver) + _tlv(0xA1, card) + _tlv(0xA2, picc) + _tlv(0xA3, apps)
     out = _tlv(0x60, body)
     if len(out) > DER_MAX_SIZE:
-        raise DfcError(f"credential encodes to {len(out)} bytes, the limit is {DER_MAX_SIZE}")
+        raise DfcError(
+            f"credential encodes to {len(out)} bytes, the limit is {DER_MAX_SIZE}"
+        )
     return out
 
 
 def _validate(cred: DfcCredential) -> None:
-    for _n, _v in (("hardware", cred.hardware_version), ("software", cred.software_version)):
+    for _n, _v in (
+        ("hardware", cred.hardware_version),
+        ("software", cred.software_version),
+    ):
         if _v and len(_v) != 7:
             raise DfcError(f"Card {_n} version must be 7 bytes, got {len(_v)}")
     if len(cred.uid) not in UID_LENGTHS:
@@ -629,16 +666,22 @@ def _validate(cred: DfcCredential) -> None:
                 )
         elif f.type in (FILE_TYPE_LINEAR, FILE_TYPE_CYCLIC):
             if not 1 <= f.record_size <= U24_MAX:
-                raise DfcError(f"file {f.number:02X} record size {f.record_size} out of range")
+                raise DfcError(
+                    f"file {f.number:02X} record size {f.record_size} out of range"
+                )
             if not 1 <= f.max_records <= U24_MAX:
-                raise DfcError(f"file {f.number:02X} max records {f.max_records} out of range")
+                raise DfcError(
+                    f"file {f.number:02X} max records {f.max_records} out of range"
+                )
             if f.record_count > f.max_records:
                 raise DfcError(
                     f"file {f.number:02X} holds {f.record_count} records but its "
                     f"capacity is {f.max_records}"
                 )
             if f.type == FILE_TYPE_CYCLIC and f.max_records < 2:
-                raise DfcError(f"cyclic file {f.number:02X} needs capacity for two records")
+                raise DfcError(
+                    f"cyclic file {f.number:02X} needs capacity for two records"
+                )
             if any(len(r) != f.record_size for r in f.records):
                 raise DfcError(f"file {f.number:02X} has a record of the wrong length")
             if len(f.records) > f.record_count:
@@ -675,13 +718,13 @@ def _read_tlv(blob: bytes, pos: int) -> tuple[int, bytes, int]:
             raise DfcError("indefinite or over-long length")
         if pos + 2 + count > len(blob):
             raise DfcError("truncated length")
-        n = int.from_bytes(blob[pos + 2: pos + 2 + count], "big")
+        n = int.from_bytes(blob[pos + 2 : pos + 2 + count], "big")
         hdr = 2 + count
         if n < 128 or (count == 2 and n < 256):
             raise DfcError("non-minimal length")
     if pos + hdr + n > len(blob):
         raise DfcError("truncated value")
-    return tag, blob[pos + hdr: pos + hdr + n], pos + hdr + n
+    return tag, blob[pos + hdr : pos + hdr + n], pos + hdr + n
 
 
 def _split(body: bytes) -> list[tuple[int, bytes]]:
@@ -770,9 +813,7 @@ def _read_keys(body: bytes, key_len: int) -> list[DfcKey]:
         slot = _read_uint(_req(got, 0x80), 13)
         if slot != len(keys):
             raise DfcError(f"key slot {slot} out of ascending contiguous order")
-        keys.append(
-            DfcKey(_read_octets(_req(got, 0x81), key_len), _req(got, 0x82)[0])
-        )
+        keys.append(DfcKey(_read_octets(_req(got, 0x81), key_len), _req(got, 0x82)[0]))
         if len(_req(got, 0x82)) != 1:
             raise DfcError("key version must be one octet")
     # An empty list is well formed: the slot then carries the factory default
@@ -829,7 +870,9 @@ def _read_file(body: bytes, owner: int) -> DfcFile:
                 raise DfcError("known contents longer than the declared size")
             f.data = c[0x81]
         if f.contents_complete and len(f.data) != f.declared_size:
-            raise DfcError("contents marked complete but shorter than the declared size")
+            raise DfcError(
+                "contents marked complete but shorter than the declared size"
+            )
     elif expected == 0xA6:
         c = _fields(got[0xA6], (0x80, 0x81, 0x82, 0x83))
         f.value_lower_limit = _read_int(_req(c, 0x80))
@@ -916,8 +959,24 @@ def der_decode(blob: bytes, cls=DfcCredential) -> "DfcCredential":
 
     picc = _fields(
         _req(got, 0xA2),
-        (0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x8B,
-         0xA9, 0xAA, 0x8F, 0xAC, 0xAD, 0xAE),
+        (
+            0x80,
+            0x81,
+            0x82,
+            0x83,
+            0x84,
+            0x85,
+            0x86,
+            0x87,
+            0x88,
+            0x8B,
+            0xA9,
+            0xAA,
+            0x8F,
+            0xAC,
+            0xAD,
+            0xAE,
+        ),
     )
     if any(tag in picc for tag in (0x8B, 0xAC, 0xAD, 0xAE)):
         raise DfcError(
@@ -931,7 +990,7 @@ def der_decode(blob: bytes, cls=DfcCredential) -> "DfcCredential":
         cred.cred_version = 6
         cred.picc_auth_mask = _read_uint(_req(picc, 0x82), 0x3F)
         names = auth_mask_to_names(cred.picc_auth_mask)
-        if 0x8F in picc:                              # preferred command (v6)
+        if 0x8F in picc:  # preferred command (v6)
             pref_bit = _read_uint(picc[0x8F], 0x3F)
             pref = auth_mask_to_names(pref_bit)
             if len(pref) != 1 or not (pref_bit & cred.picc_auth_mask):
@@ -940,7 +999,8 @@ def der_decode(blob: bytes, cls=DfcCredential) -> "DfcCredential":
         # native command the emulator will actually use: preferred if native,
         # else the first native-capable enabled command
         pick = cred.picc_preferred_cmd or next(
-            (n for n in ("AES", "ISO", "D40") if n in names), "AES")
+            (n for n in ("AES", "ISO", "D40") if n in names), "AES"
+        )
         cred.picc_auth_command = AUTH_CMD_TO_NATIVE.get(pick, 0xAA)
     else:
         cred.cred_version = version
@@ -963,8 +1023,22 @@ def der_decode(blob: bytes, cls=DfcCredential) -> "DfcCredential":
         if tag != 0x30:
             raise DfcError(f"tag 0x{tag:02X} where an application was expected")
         app_fields = _fields(
-            value, (0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x89,
-                    0xA6, 0xA7, 0x8B, 0x8C, 0xA8, 0xAA)
+            value,
+            (
+                0x80,
+                0x81,
+                0x82,
+                0x83,
+                0x84,
+                0x85,
+                0x89,
+                0xA6,
+                0xA7,
+                0x8B,
+                0x8C,
+                0xA8,
+                0xAA,
+            ),
         )
         if any(tag in app_fields for tag in (0xA8, 0x89, 0xAA)):
             raise DfcError(
@@ -988,19 +1062,22 @@ def der_decode(blob: bytes, cls=DfcCredential) -> "DfcCredential":
         if version == DFC_VERSION_V6:
             app.auth_mask = _read_uint(_req(app_fields, 0x85), 0x3F)
             names = auth_mask_to_names(app.auth_mask)
-            if 0x8C in app_fields:                    # app preferred command (v6)
+            if 0x8C in app_fields:  # app preferred command (v6)
                 pref_bit = _read_uint(app_fields[0x8C], 0x3F)
                 pref = auth_mask_to_names(pref_bit)
                 if len(pref) != 1 or not (pref_bit & app.auth_mask):
                     raise DfcError("application preferred auth command invalid")
                 app.preferred_cmd = pref[0]
-            if 0x8B in app_fields:                    # app SM-disable octet (v6)
+            if 0x8B in app_fields:  # app SM-disable octet (v6)
                 app.sm_disable = _read_octets(app_fields[0x8B], 1)[0]
             pick = app.preferred_cmd or next(
-                (n for n in ("AES", "ISO", "D40") if n in names), "AES")
+                (n for n in ("AES", "ISO", "D40") if n in names), "AES"
+            )
             app.auth_command = AUTH_CMD_TO_NATIVE.get(pick, 0xAA)
         else:
-            app.auth_command = AUTH_COMMANDS_BY_CODE[_read_uint(_req(app_fields, 0x85), 2)]
+            app.auth_command = AUTH_COMMANDS_BY_CODE[
+                _read_uint(_req(app_fields, 0x85), 2)
+            ]
         app.key_len = key_length_for_ks2(app.key_settings_2)
         app.keys = _read_keys(_req(app_fields, 0xA6), app.key_len)
 
@@ -1037,7 +1114,7 @@ def _scan_fields(text: str) -> dict[str, str]:
         if sep < 0:
             raise DfcError(f"text line has no key separator: {line!r}")
         key = line[:sep]
-        value = line[sep + 1:]
+        value = line[sep + 1 :]
         if key != key.rstrip() or not value.startswith(" "):
             raise DfcError(f"text line is not canonical: {line!r}")
         value = value[1:]
@@ -1126,9 +1203,11 @@ _FILE_TEXT_PATTERN = re.compile(
 
 def _validate_text_keys(fields: dict[str, str]) -> None:
     for key in fields:
-        if (key in _UNSUPPORTED_STATIC_TEXT_KEYS or
-                _UNSUPPORTED_APPLICATION_TEXT_PATTERN.fullmatch(key) or
-                _UNSUPPORTED_FILE_TEXT_PATTERN.fullmatch(key)):
+        if (
+            key in _UNSUPPORTED_STATIC_TEXT_KEYS
+            or _UNSUPPORTED_APPLICATION_TEXT_PATTERN.fullmatch(key)
+            or _UNSUPPORTED_FILE_TEXT_PATTERN.fullmatch(key)
+        ):
             raise DfcError(
                 f"{key!r} is represented by DFC v4 but is not emulated by this firmware",
                 DfcErrorClass.UNSUPPORTED,
@@ -1144,9 +1223,12 @@ def _validate_text_keys(fields: dict[str, str]) -> None:
         raise DfcError(f"unrecognised text key {key!r}")
 
     for key, value in fields.items():
-        if re.fullmatch(
-            r"(?:PICC |Application [0-9A-F]{2} )File [0-9A-F]{2} Type", key
-        ) and value == "Transaction MAC":
+        if (
+            re.fullmatch(
+                r"(?:PICC |Application [0-9A-F]{2} )File [0-9A-F]{2} Type", key
+            )
+            and value == "Transaction MAC"
+        ):
             raise DfcError(
                 "transaction-MAC files are represented by DFC v4 but are not emulated",
                 DfcErrorClass.UNSUPPORTED,
@@ -1245,8 +1327,11 @@ def _native_from_mask(mask: int, preferred: str) -> int:
     """Native command byte the emulator uses: preferred if native, else first
     native-capable enabled command."""
     names = auth_mask_to_names(mask)
-    pick = preferred if preferred in ("D40", "ISO", "AES") else next(
-        (n for n in ("AES", "ISO", "D40") if n in names), "AES")
+    pick = (
+        preferred
+        if preferred in ("D40", "ISO", "AES")
+        else next((n for n in ("AES", "ISO", "D40") if n in names), "AES")
+    )
     return AUTH_CMD_TO_NATIVE.get(pick, 0xAA)
 
 
@@ -1259,7 +1344,9 @@ def _parse_uid(fields: dict[str, str]) -> bytes:
     return uid
 
 
-def _parse_key_list(fields: dict[str, str], prefix: str, count: int, key_len: int) -> list[DfcKey]:
+def _parse_key_list(
+    fields: dict[str, str], prefix: str, count: int, key_len: int
+) -> list[DfcKey]:
     keys = []
     for k in range(count):
         raw = fields.get(f"{prefix}Key {k:02X}", "")
@@ -1269,7 +1356,9 @@ def _parse_key_list(fields: dict[str, str], prefix: str, count: int, key_len: in
                 f"{prefix}Key {k:02X} is {len(value)} bytes, expected {key_len}"
             )
         version = _parse_octet(
-            fields.get(f"{prefix}Key {k:02X} Version", "00"), f"{prefix}Key {k:02X} Version")
+            fields.get(f"{prefix}Key {k:02X} Version", "00"),
+            f"{prefix}Key {k:02X} Version",
+        )
         keys.append(DfcKey(value or bytes(key_len), version))
     return keys
 
@@ -1284,7 +1373,8 @@ def _parse_v4(cls, fields: dict[str, str]) -> "DfcCredential":
         raise DfcError(f"unknown Card Generation {generation!r}")
     cred.generation = GENERATIONS[generation]
     cred.storage = _parse_decimal(
-        fields.get("Card Storage", str(DEFAULT_CARD_STORAGE)), "Card Storage")
+        fields.get("Card Storage", str(DEFAULT_CARD_STORAGE)), "Card Storage"
+    )
     cred.hardware_version = _parse_hex(fields.get("Card Hardware Version", ""))
     cred.software_version = _parse_hex(fields.get("Card Software Version", ""))
     cred.uid = _parse_uid(fields)
@@ -1294,17 +1384,24 @@ def _parse_v4(cls, fields: dict[str, str]) -> "DfcCredential":
     cred.uid_provenance = PROVENANCES[provenance]
 
     cred.picc_key_settings_1 = _parse_octet(
-        _need(fields, "PICC Key Settings 1"), "PICC Key Settings 1")
+        _need(fields, "PICC Key Settings 1"), "PICC Key Settings 1"
+    )
     cred.picc_key_settings_2 = _parse_octet(
-        _need(fields, "PICC Key Settings 2"), "PICC Key Settings 2")
+        _need(fields, "PICC Key Settings 2"), "PICC Key Settings 2"
+    )
     if "PICC Authentication Commands" in fields:
-        cred.picc_auth_mask = _parse_auth_commands(fields["PICC Authentication Commands"])
+        cred.picc_auth_mask = _parse_auth_commands(
+            fields["PICC Authentication Commands"]
+        )
         cred.picc_preferred_cmd = _parse_preferred(
-            fields.get("PICC Preferred Authentication Command"), cred.picc_auth_mask,
-            "PICC")
+            fields.get("PICC Preferred Authentication Command"),
+            cred.picc_auth_mask,
+            "PICC",
+        )
         cred.cred_version = 6
         cred.picc_auth_command = _native_from_mask(
-            cred.picc_auth_mask, cred.picc_preferred_cmd)
+            cred.picc_auth_mask, cred.picc_preferred_cmd
+        )
     else:
         cred.picc_auth_command = _auth_mode(
             fields.get("PICC Authentication Mode"), cred.picc_key_settings_2
@@ -1331,9 +1428,13 @@ def _parse_v4(cls, fields: dict[str, str]) -> "DfcCredential":
             raise DfcError(f"PICC ATQA must be 2 bytes, got {len(atqa)}")
         cred.picc_atqa = atqa
     if "PICC SM Disable" in fields:
-        cred.picc_sm_disable = _parse_octet(fields["PICC SM Disable"], "PICC SM Disable")
+        cred.picc_sm_disable = _parse_octet(
+            fields["PICC SM Disable"], "PICC SM Disable"
+        )
 
-    picc_file_count = _parse_decimal(fields.get("PICC File Count", "0"), "PICC File Count")
+    picc_file_count = _parse_decimal(
+        fields.get("PICC File Count", "0"), "PICC File Count"
+    )
     for i in range(picc_file_count):
         cred.files.append(_parse_file_v3(fields, f"PICC File {i:02X} ", OWNER_PICC))
 
@@ -1356,17 +1457,24 @@ def _parse_v4(cls, fields: dict[str, str]) -> "DfcCredential":
             if not 1 <= len(app.iso_aid) <= 16:
                 raise DfcError(f"{prefix}DF Name must be 1 to 16 bytes")
         app.key_settings_1 = _parse_octet(
-            _need(fields, f"{prefix}Key Settings 1"), f"{prefix}Key Settings 1")
+            _need(fields, f"{prefix}Key Settings 1"), f"{prefix}Key Settings 1"
+        )
         app.key_settings_2 = _parse_octet(
-            _need(fields, f"{prefix}Key Settings 2"), f"{prefix}Key Settings 2")
+            _need(fields, f"{prefix}Key Settings 2"), f"{prefix}Key Settings 2"
+        )
         if f"{prefix}Authentication Commands" in fields:
-            app.auth_mask = _parse_auth_commands(fields[f"{prefix}Authentication Commands"])
+            app.auth_mask = _parse_auth_commands(
+                fields[f"{prefix}Authentication Commands"]
+            )
             app.preferred_cmd = _parse_preferred(
                 fields.get(f"{prefix}Preferred Authentication Command"),
-                app.auth_mask, prefix.strip())
+                app.auth_mask,
+                prefix.strip(),
+            )
             if f"{prefix}SM Disable" in fields:
                 app.sm_disable = _parse_octet(
-                    fields[f"{prefix}SM Disable"], f"{prefix}SM Disable")
+                    fields[f"{prefix}SM Disable"], f"{prefix}SM Disable"
+                )
             cred.cred_version = 6
             app.auth_command = _native_from_mask(app.auth_mask, app.preferred_cmd)
         else:
@@ -1374,14 +1482,17 @@ def _parse_v4(cls, fields: dict[str, str]) -> "DfcCredential":
                 fields.get(f"{prefix}Authentication Mode"), app.key_settings_2
             )
         app.key_len = key_length_for_ks2(app.key_settings_2)
-        key_count = _parse_decimal(_need(fields, f"{prefix}Key Count"), f"{prefix}Key Count")
+        key_count = _parse_decimal(
+            _need(fields, f"{prefix}Key Count"), f"{prefix}Key Count"
+        )
         if key_count > MAX_KEYS:
             raise DfcError(f"{prefix}Key Count exceeds {MAX_KEYS}")
         app.keys = _parse_key_list(fields, prefix, key_count, app.key_len)
         cred.apps.append(app)
 
         file_count = _parse_decimal(
-            _need(fields, f"{prefix}File Count"), f"{prefix}File Count")
+            _need(fields, f"{prefix}File Count"), f"{prefix}File Count"
+        )
         for j in range(file_count):
             app_files.append(_parse_file_v3(fields, f"{prefix}File {j:02X} ", i))
 
@@ -1406,7 +1517,8 @@ def _parse_file_v3(fields: dict[str, str], prefix: str, owner: int) -> DfcFile:
     f.type = FILE_TYPES[type_name]
     f.comm_settings = _parse_octet(
         _need(fields, f"{prefix}Communication Settings"),
-        f"{prefix}Communication Settings")
+        f"{prefix}Communication Settings",
+    )
     access = _parse_hex(_need(fields, f"{prefix}Access Rights"))
     if len(access) != 2:
         raise DfcError(f"{prefix}Access Rights must be 2 bytes")
@@ -1419,26 +1531,40 @@ def _parse_file_v3(fields: dict[str, str], prefix: str, owner: int) -> DfcFile:
         f.iso_file_id = int.from_bytes(fid, "big")
 
     if f.type in (FILE_TYPE_STANDARD, FILE_TYPE_BACKUP):
-        f.declared_size = _parse_decimal(_need(fields, f"{prefix}Size"), f"{prefix}Size")
+        f.declared_size = _parse_decimal(
+            _need(fields, f"{prefix}Size"), f"{prefix}Size"
+        )
         f.data = _parse_hex(fields.get(f"{prefix}Data", ""))
         f.contents_complete = _parse_bool(
             _need(fields, f"{prefix}Data Complete"), f"{prefix}Data Complete"
         )
     elif f.type == FILE_TYPE_VALUE:
         f.value_lower_limit = _parse_decimal(
-            _need(fields, f"{prefix}Value Lower Limit"), f"{prefix}Value Lower Limit", True)
+            _need(fields, f"{prefix}Value Lower Limit"),
+            f"{prefix}Value Lower Limit",
+            True,
+        )
         f.value_upper_limit = _parse_decimal(
-            _need(fields, f"{prefix}Value Upper Limit"), f"{prefix}Value Upper Limit", True)
-        f.value = _parse_decimal(_need(fields, f"{prefix}Value"), f"{prefix}Value", True)
+            _need(fields, f"{prefix}Value Upper Limit"),
+            f"{prefix}Value Upper Limit",
+            True,
+        )
+        f.value = _parse_decimal(
+            _need(fields, f"{prefix}Value"), f"{prefix}Value", True
+        )
         f.limited_credit = _parse_octet(
-            _need(fields, f"{prefix}Limited Credit"), f"{prefix}Limited Credit")
+            _need(fields, f"{prefix}Limited Credit"), f"{prefix}Limited Credit"
+        )
     else:
         f.record_size = _parse_decimal(
-            _need(fields, f"{prefix}Record Size"), f"{prefix}Record Size")
+            _need(fields, f"{prefix}Record Size"), f"{prefix}Record Size"
+        )
         f.max_records = _parse_decimal(
-            _need(fields, f"{prefix}Max Records"), f"{prefix}Max Records")
+            _need(fields, f"{prefix}Max Records"), f"{prefix}Max Records"
+        )
         f.record_count = _parse_decimal(
-            _need(fields, f"{prefix}Record Count"), f"{prefix}Record Count")
+            _need(fields, f"{prefix}Record Count"), f"{prefix}Record Count"
+        )
         f.contents_complete = _parse_bool(
             _need(fields, f"{prefix}Record Complete"), f"{prefix}Record Complete"
         )

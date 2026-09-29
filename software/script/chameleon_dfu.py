@@ -26,8 +26,8 @@ class DfuOp:
     CALC_CHECKSUM = 0x03
     EXECUTE = 0x04
     SELECT_OBJECT = 0x06
-    GET_SERIAL_MTU = 0x07   # serial transport only
-    WRITE_OBJECT = 0x08     # serial transport only (BLE writes the packet char)
+    GET_SERIAL_MTU = 0x07  # serial transport only
+    WRITE_OBJECT = 0x08  # serial transport only (BLE writes the packet char)
     RESPONSE = 0x60
 
 
@@ -45,8 +45,8 @@ DFU_RESULT = {
     0x0B: "extended error",
 }
 
-OBJ_TYPE_COMMAND = 0x01   # init packet (.dat)
-OBJ_TYPE_DATA = 0x02      # firmware image (.bin)
+OBJ_TYPE_COMMAND = 0x01  # init packet (.dat)
+OBJ_TYPE_DATA = 0x02  # firmware image (.bin)
 
 # Nordic USB DFU (serial) VID/PID for the Chameleon bootloader.
 DFU_VID = 0x1915
@@ -55,7 +55,7 @@ DFU_PID = 0x521F
 # Nordic Secure DFU BLE service + characteristics.
 DFU_SERVICE_UUID = "0000fe59-0000-1000-8000-00805f9b34fb"
 DFU_CONTROL_UUID = "8ec90001-f315-4f60-9fb8-838830daea50"  # commands + notify
-DFU_PACKET_UUID = "8ec90002-f315-4f60-9fb8-838830daea50"   # object data
+DFU_PACKET_UUID = "8ec90002-f315-4f60-9fb8-838830daea50"  # object data
 
 
 class DFUError(Exception):
@@ -72,7 +72,8 @@ def check_response(resp: bytes, opcode: int) -> bytes:
         raise DFUError(f"malformed DFU response: {resp.hex()}")
     if resp[1] != opcode:
         raise DFUTransferError(
-            f"unexpected DFU response opcode 0x{resp[1]:02x} (sent 0x{opcode:02x})")
+            f"unexpected DFU response opcode 0x{resp[1]:02x} (sent 0x{opcode:02x})"
+        )
     result = resp[2]
     if result == 0x01:
         return resp[3:]
@@ -156,6 +157,7 @@ class SerialTransport(Transport):
 
     def __init__(self, port: str, timeout: float = 20.0):
         import serial
+
         self.timeout = timeout
         self._chunk = None
         self.serial = serial.Serial(port=port, baudrate=115200, timeout=timeout)
@@ -211,9 +213,14 @@ class BleTransport(Transport):
     only), so a small per-write delay paces the write-without-response stream.
     """
 
-    def __init__(self, address: str = None, name: str = None,
-                 scan_timeout: float = 30.0, timeout: float = 20.0,
-                 chunk_delay: float = 0.005):
+    def __init__(
+        self,
+        address: str = None,
+        name: str = None,
+        scan_timeout: float = 30.0,
+        timeout: float = 20.0,
+        chunk_delay: float = 0.005,
+    ):
         try:
             import bleak  # noqa: F401
         except ImportError:
@@ -244,17 +251,23 @@ class BleTransport(Transport):
             dev = None
             if address:
                 dev = await BleakScanner.find_device_by_address(
-                    address, timeout=scan_timeout)
+                    address, timeout=scan_timeout
+                )
             else:
+
                 def _match(d, adv):
                     if name and (d.name or "") != name:
                         return False
                     uuids = [u.lower() for u in (adv.service_uuids or [])]
                     return DFU_SERVICE_UUID.lower() in uuids or "fe59" in uuids
+
                 dev = await BleakScanner.find_device_by_filter(
-                    _match, timeout=scan_timeout)
+                    _match, timeout=scan_timeout
+                )
             if dev is None:
-                raise DFUError("no BLE device advertising the DFU service (0xFE59) found")
+                raise DFUError(
+                    "no BLE device advertising the DFU service (0xFE59) found"
+                )
             client = BleakClient(dev)
             await client.connect()
 
@@ -275,9 +288,11 @@ class BleTransport(Transport):
             while not self._notif_q.empty():
                 self._notif_q.get_nowait()
             await self._client.write_gatt_char(
-                DFU_CONTROL_UUID, bytes((opcode,)) + data, response=True)
+                DFU_CONTROL_UUID, bytes((opcode,)) + data, response=True
+            )
             resp = await self._asyncio.wait_for(self._notif_q.get(), self.timeout)
             return check_response(resp, opcode)
+
         return self._run(_do())
 
     def write_data(self, chunk: bytes) -> None:
@@ -285,6 +300,7 @@ class BleTransport(Transport):
             await self._client.write_gatt_char(DFU_PACKET_UUID, chunk, response=False)
             if self.chunk_delay:
                 await self._asyncio.sleep(self.chunk_delay)
+
         self._run(_do())
 
     def data_chunk_size(self) -> int:
@@ -319,7 +335,9 @@ class SecureDFU:
         return max_size, offset, crc
 
     def create_object(self, obj_type: int, size: int):
-        self.t.command(DfuOp.CREATE_OBJECT, bytes((obj_type,)) + struct.pack("<I", size))
+        self.t.command(
+            DfuOp.CREATE_OBJECT, bytes((obj_type,)) + struct.pack("<I", size)
+        )
 
     def calculate_checksum(self):
         resp = self.t.command(DfuOp.CALC_CHECKSUM)
@@ -332,20 +350,24 @@ class SecureDFU:
     def _stream(self, chunk: bytes, crc: int, offset: int) -> int:
         step = self.t.data_chunk_size()
         for i in range(0, len(chunk), step):
-            part = chunk[i:i + step]
+            part = chunk[i : i + step]
             self.t.write_data(part)
             offset += len(part)
             crc = zlib.crc32(part, crc) & 0xFFFFFFFF
         recv_offset, recv_crc = self.calculate_checksum()
         if recv_offset != offset:
-            raise DFUTransferError(f"offset mismatch: expected {offset}, got {recv_offset}")
+            raise DFUTransferError(
+                f"offset mismatch: expected {offset}, got {recv_offset}"
+            )
         if recv_crc != crc:
             raise DFUTransferError(
-                f"CRC mismatch: expected 0x{crc:08x}, got 0x{recv_crc:08x}")
+                f"CRC mismatch: expected 0x{crc:08x}, got 0x{recv_crc:08x}"
+            )
         return crc
 
-    def flash_object(self, obj_type: int, data: bytes, progress=None,
-                     tolerate_reset: bool = False):
+    def flash_object(
+        self, obj_type: int, data: bytes, progress=None, tolerate_reset: bool = False
+    ):
         max_size, _, _ = self.select_object(obj_type)
         if max_size == 0:
             max_size = len(data) or 1
@@ -353,7 +375,7 @@ class SecureDFU:
         crc = 0
         sent = 0
         for idx, offset in enumerate(offsets):
-            window = data[offset:offset + max_size]
+            window = data[offset : offset + max_size]
             is_final = tolerate_reset and idx == len(offsets) - 1
             crc_backup = crc
             for _ in range(self.retries):
@@ -398,22 +420,27 @@ class SecureDFU:
             raise DFUError(
                 f"package has multiple images ({kinds}); the device resets after the "
                 "softdevice/bootloader stage, so flash each stage as its own package "
-                "with a reconnect in between (e.g. the SD+BL zip, then the app zip)")
+                "with a reconnect in between (e.g. the SD+BL zip, then the app zip)"
+            )
         img = images[0]
         dat, bin_ = img.get("dat"), img.get("bin")
         if not dat or not bin_:
-            raise DFUError(f"empty init packet or firmware for image '{img.get('type')}'")
+            raise DFUError(
+                f"empty init packet or firmware for image '{img.get('type')}'"
+            )
         self.set_prn(0)
         self.t.prepare()
-        self.flash_object(OBJ_TYPE_COMMAND, dat)                     # init packet
-        self.flash_object(OBJ_TYPE_DATA, bin_, progress,
-                          tolerate_reset=True)                       # firmware (device resets)
+        self.flash_object(OBJ_TYPE_COMMAND, dat)  # init packet
+        self.flash_object(
+            OBJ_TYPE_DATA, bin_, progress, tolerate_reset=True
+        )  # firmware (device resets)
 
 
 # --- serial device discovery -------------------------------------------------
 def find_dfu_port():
     """Return the serial device path of a Chameleon in DFU mode, or None."""
     import serial.tools.list_ports as list_ports
+
     for p in list_ports.comports():
         if p.vid == DFU_VID and p.pid == DFU_PID:
             return p.device
@@ -437,10 +464,15 @@ def serial_transport(port: str, timeout: float = 20.0) -> SerialTransport:
     return SerialTransport(port, timeout=timeout)
 
 
-def ble_transport(address: str = None, name: str = None,
-                  scan_timeout: float = 30.0, timeout: float = 20.0) -> BleTransport:
-    return BleTransport(address=address, name=name,
-                        scan_timeout=scan_timeout, timeout=timeout)
+def ble_transport(
+    address: str = None,
+    name: str = None,
+    scan_timeout: float = 30.0,
+    timeout: float = 20.0,
+) -> BleTransport:
+    return BleTransport(
+        address=address, name=name, scan_timeout=scan_timeout, timeout=timeout
+    )
 
 
 # --- package handling --------------------------------------------------------
@@ -464,8 +496,10 @@ def unpack_dfu_zip(path: str):
         images = []
         if "manifest.json" in names:
             manifest = json.loads(zf.read("manifest.json")).get("manifest", {})
-            keys = sorted(manifest.keys(),
-                          key=lambda k: _IMAGE_ORDER.index(k) if k in _IMAGE_ORDER else 99)
+            keys = sorted(
+                manifest.keys(),
+                key=lambda k: _IMAGE_ORDER.index(k) if k in _IMAGE_ORDER else 99,
+            )
             for k in keys:
                 entry = manifest[k]
                 if not isinstance(entry, dict):
@@ -474,17 +508,22 @@ def unpack_dfu_zip(path: str):
                 bin_name = entry.get("bin_file")
                 if not dat_name or not bin_name:
                     continue
-                images.append({"type": k,
-                               "dat": zf.read(dat_name),
-                               "bin": zf.read(bin_name)})
+                images.append(
+                    {"type": k, "dat": zf.read(dat_name), "bin": zf.read(bin_name)}
+                )
         if not images and {"application.dat", "application.bin"} <= names:
             # legacy package with no manifest
-            images.append({"type": "application",
-                           "dat": zf.read("application.dat"),
-                           "bin": zf.read("application.bin")})
+            images.append(
+                {
+                    "type": "application",
+                    "dat": zf.read("application.dat"),
+                    "bin": zf.read("application.bin"),
+                }
+            )
         if not images:
             raise DFUError(
-                "no DFU images found (need manifest.json or application.dat/.bin)")
+                "no DFU images found (need manifest.json or application.dat/.bin)"
+            )
         return images
 
 

@@ -38,8 +38,8 @@ from cli_core import (
     ndef,
 )
 
-
 # --- MFU auth-args base (moved from cli_core) ---
+
 
 class MFUAuthArgsUnit(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -94,6 +94,7 @@ class MFUAuthArgsUnit(ReaderRequiredUnit):
 
 
 # --- MFU helpers + command classes ---
+
 
 def detect_mfu_page_count(cmd):
     """
@@ -450,7 +451,7 @@ class HFMFUNDEFREAD(MFUAuthArgsUnit):
             default=None,
             metavar="<dec>",
             help="Number of pages to read before giving up (default: read until "
-                 "an empty response or a Terminator TLV is found).",
+            "an empty response or a Terminator TLV is found).",
         )
         parser.add_argument(
             "-f",
@@ -498,7 +499,10 @@ class HFMFUNDEFREAD(MFUAuthArgsUnit):
             else:
                 print(
                     color_string(
-                        (CY, "- Couldn't auto-detect tag size, reading until first error.")
+                        (
+                            CY,
+                            "- Couldn't auto-detect tag size, reading until first error.",
+                        )
                     )
                 )
                 max_pages = 256
@@ -584,7 +588,9 @@ class HFMFUNDEFREAD(MFUAuthArgsUnit):
 
         message = ndef.find_ndef_message(bytes(area))
         if message is None:
-            print(color_string((CR, "- No NDEF Message TLV found in the scanned area.")))
+            print(
+                color_string((CR, "- No NDEF Message TLV found in the scanned area."))
+            )
             print(f" - Raw area: {bytes(area).hex()}")
             return
 
@@ -619,7 +625,11 @@ class HFMFUNDEFWRITE(MFUAuthArgsUnit):
         )
         record_group = parser.add_mutually_exclusive_group(required=True)
         record_group.add_argument(
-            "-u", "--uri", type=str, metavar="<uri>", help="Write a URI record, e.g. a URL."
+            "-u",
+            "--uri",
+            type=str,
+            metavar="<uri>",
+            help="Write a URI record, e.g. a URL.",
         )
         record_group.add_argument(
             "-t", "--text", type=str, metavar="<text>", help="Write a Text record."
@@ -637,13 +647,21 @@ class HFMFUNDEFWRITE(MFUAuthArgsUnit):
             type=str,
             metavar="<hex>",
             help="Write a complete, already-encoded raw NDEF message as hex "
-                 "(will still be TLV-wrapped).",
+            "(will still be TLV-wrapped).",
         )
         parser.add_argument(
-            "--lang", type=str, default="en", metavar="<lang>", help="Text record language code (default: en)."
+            "--lang",
+            type=str,
+            default="en",
+            metavar="<lang>",
+            help="Text record language code (default: en).",
         )
         parser.add_argument(
-            "--mime-type", type=str, default=None, metavar="<type>", help="MIME type for --mime, e.g. text/plain."
+            "--mime-type",
+            type=str,
+            default=None,
+            metavar="<type>",
+            help="MIME type for --mime, e.g. text/plain.",
         )
         parser.add_argument(
             "-p",
@@ -662,7 +680,7 @@ class HFMFUNDEFWRITE(MFUAuthArgsUnit):
             default=None,
             metavar="<dec>",
             help="Number of available user pages on the tag, used as a safety "
-                 "check before writing (default: no check).",
+            "check before writing (default: no check).",
         )
         return parser
 
@@ -731,7 +749,9 @@ class HFMFUNDEFWRITE(MFUAuthArgsUnit):
             )
             return
 
-        print(f" - NDEF message: {len(message)} bytes ({len(pages)} pages incl. TLV wrapper)")
+        print(
+            f" - NDEF message: {len(message)} bytes ({len(pages)} pages incl. TLV wrapper)"
+        )
 
         options = {
             "activate_rf_field": 0,
@@ -896,7 +916,7 @@ class HFMFUELOAD(DeviceRequiredUnit):
             if offset >= len(data):
                 page_data = bytes.fromhex("00000000") * cur_count
             else:
-                page_data = data[offset: offset + 4 * cur_count]
+                page_data = data[offset : offset + 4 * cur_count]
 
             self.cmd.mfu_write_emu_page_data(page, page_data)
             page += cur_count
@@ -976,7 +996,7 @@ class HFMFUESAVE(DeviceRequiredUnit):
                 data = self.cmd.mfu_read_emu_page_data(page, cur_count)
                 if save_as_eml:
                     for i in range(0, len(data), 4):
-                        fd.write(data[i: i + 4].hex() + "\n")
+                        fd.write(data[i : i + 4].hex() + "\n")
                 else:
                     fd.write(data)
 
@@ -1666,7 +1686,7 @@ class HFMFUULCG(ReaderRequiredUnit):
                     ][0]
                     full_key = full_key_line.split("Full key (hex): ")[1].strip()
                     key_segment_values[key_segment_idx] = full_key[
-                        (8 * key_segment_idx):
+                        (8 * key_segment_idx) :
                     ][:8]
                     key_found = True
                     crack_effect.add_cracked_block(
@@ -1720,7 +1740,7 @@ class HFMFUULCG(ReaderRequiredUnit):
                 # Write 4 blocks of 4 bytes each
                 for i in range(4):
                     block = 44 + i
-                    data = bytes(key_swapped[i * 4: (i + 1) * 4])
+                    data = bytes(key_swapped[i * 4 : (i + 1) * 4])
                     self.write_block(block, data)
                 print("[+] Key restored on the card")
 
@@ -1752,7 +1772,11 @@ class HFMFUNfcImport(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
         )
         self.add_slot_args(parser)
         parser.add_argument(
-            "-f", "--file", required=True, type=str, help="Path to Flipper Zero .nfc file"
+            "-f",
+            "--file",
+            required=True,
+            type=str,
+            help="Path to Flipper Zero .nfc file",
         )
         parser.add_argument(
             "--amiibo",
@@ -1805,9 +1829,7 @@ class HFMFUNfcImport(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
                     line.split(":", 1)[1].strip().replace(" ", "")
                 )
             elif line.startswith("Mifare version:"):
-                version = bytes.fromhex(
-                    line.split(":", 1)[1].strip().replace(" ", "")
-                )
+                version = bytes.fromhex(line.split(":", 1)[1].strip().replace(" ", ""))
             elif line.startswith("Counter "):
                 match = re.match(r"Counter\s+(\d+):\s+(\d+)", line)
                 if match:
@@ -1845,7 +1867,9 @@ class HFMFUNfcImport(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
             tag_type = TagSpecificType.MF0UL11 if nr <= 20 else TagSpecificType.MF0UL21
 
         if tag_type is None:
-            print(color_string((CR, f"Unsupported Flipper device type: '{device_type}'")))
+            print(
+                color_string((CR, f"Unsupported Flipper device type: '{device_type}'"))
+            )
             print(
                 "  Supported types: "
                 f"{', '.join(sorted(self.FLIPPER_TYPE_MAP.keys()))}, "
@@ -1883,14 +1907,20 @@ class HFMFUNfcImport(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
             try:
                 self.cmd.mf0_ntag_set_version_data(version)
             except (ValueError, chameleon_com.CMDInvalidException, TimeoutError):
-                print(color_string((CY, "  Warning: tag type does not support GET_VERSION.")))
+                print(
+                    color_string(
+                        (CY, "  Warning: tag type does not support GET_VERSION.")
+                    )
+                )
 
         if signature and len(signature) == 32:
             print("Setting signature data...")
             try:
                 self.cmd.mf0_ntag_set_signature_data(signature)
             except (ValueError, chameleon_com.CMDInvalidException, TimeoutError):
-                print(color_string((CY, "  Warning: tag type does not support READ_SIG.")))
+                print(
+                    color_string((CY, "  Warning: tag type does not support READ_SIG."))
+                )
 
         if counters:
             print("Setting counter data...")
@@ -1960,7 +1990,11 @@ class HFMFUNfcImport(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
                     )
                 )
             elif uid is None or len(uid) != 7:
-                print(color_string((CY, "  Warning: --amiibo flag ignored (UID is not 7 bytes).")))
+                print(
+                    color_string(
+                        (CY, "  Warning: --amiibo flag ignored (UID is not 7 bytes).")
+                    )
+                )
             else:
                 pwd = bytes(
                     [

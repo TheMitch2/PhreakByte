@@ -45,7 +45,7 @@ from chameleon_utils import (
     tqdm_if_exists,
     print_key_table,
     odd_parity_byte,
-    default_cwd
+    default_cwd,
 )
 
 from chameleon_utils import CLITree
@@ -93,7 +93,7 @@ def load_key_file(import_key, keys):
     with open(import_key.name, "rb") as file:
         data = file.read()
     for i in range(0, len(data), 6):
-        key = data[i:i+6]
+        key = data[i : i + 6]
         if len(key) == 6:
             keys.add(key)
     return keys
@@ -469,7 +469,11 @@ def _idteck_compose_frame(card_id: int) -> bytes:
     """
     card_id &= 0xFFFFFF
     # The card ID is stored with bytes reversed in the payload; mirror PM3.
-    reversed_id = ((card_id & 0xFF) << 16) | ((card_id >> 8) & 0xFF) << 8 | ((card_id >> 16) & 0xFF)
+    reversed_id = (
+        ((card_id & 0xFF) << 16)
+        | ((card_id >> 8) & 0xFF) << 8
+        | ((card_id >> 16) & 0xFF)
+    )
     chksum = _idteck_compute_checksum(reversed_id)
     payload = (chksum << 24) | reversed_id
     return bytes.fromhex(IDTECK_PREAMBLE_HEX) + payload.to_bytes(4, "big")
@@ -534,9 +538,11 @@ def _fdxb_frame_ok(frame: bytes) -> "tuple[bool, str]":
     v = int.from_bytes(frame[0:8], "little")
     reserved = (v >> 49) & ((1 << 14) - 1)
     if reserved != 0:
-        return False, (f"reserved bits 49-62 are nonzero (0x{reserved:04x}); "
-                       f"a conformant reader will reject this frame as malformed "
-                       f"and the written tag will read back as not found")
+        return False, (
+            f"reserved bits 49-62 are nonzero (0x{reserved:04x}); "
+            f"a conformant reader will reject this frame as malformed "
+            f"and the written tag will read back as not found"
+        )
     return True, ""
 
 
@@ -556,8 +562,9 @@ def _fdxb_crc_ok(frame: bytes) -> bool:
     return stored == _fdxb_crc16(frame[0:8])
 
 
-def _fdxb_build_frame(country: int, national: int, animal: int = 1,
-                      extended: int = 0) -> bytes:
+def _fdxb_build_frame(
+    country: int, national: int, animal: int = 1, extended: int = 0
+) -> bytes:
     """
     Build a 13-byte destuffed FDX-B frame from logical fields.
 
@@ -629,9 +636,9 @@ lf = root.subgroup("lf", "Low Frequency commands")
 lf_em = lf.subgroup("em", "EM commands")
 lf_em_4x05 = lf_em.subgroup("4x05", "EM4x05/EM4x69 commands")
 lf_indala = lf.subgroup("indala", "Indala commands")
-data = root.subgroup('data', 'Data analysis and visualization commands')
-emv = root.subgroup('emv', 'EMV contactless payment card commands')
-standalone = root.subgroup('standalone', 'Host-less standalone modes')
+data = root.subgroup("data", "Data analysis and visualization commands")
+emv = root.subgroup("emv", "EMV contactless payment card commands")
+standalone = root.subgroup("standalone", "Host-less standalone modes")
 
 
 lf_em_410x = lf_em.subgroup("410x", "EM410x commands")
@@ -650,6 +657,7 @@ lf_t55xx = lf.subgroup("t55xx", "T55xx/T5577 raw block commands")
 # --- shared helpers relocated from chameleon_cli_unit during the split ---
 # (used by cli_hf_mfu/cli_hf_des/cli_lf and the monolith; must live in the
 #  foundation so every module can import them.)
+
 
 class CrackEffect:
     """
@@ -802,8 +810,9 @@ class CrackEffect:
         scramble_thread.join()
 
 
-def _decode_14a_frame_col(data: bytes, szBits: int, is_tx: bool = False,
-                          prev_cmd=None, iso_dep: bool = False):
+def _decode_14a_frame_col(
+    data: bytes, szBits: int, is_tx: bool = False, prev_cmd=None, iso_dep: bool = False
+):
     """Return (description, colour, cmd_tag) for a 14A frame.
 
     Direction- and context-gated so demod garbage is not dressed up as protocol:
@@ -820,106 +829,143 @@ def _decode_14a_frame_col(data: bytes, szBits: int, is_tx: bool = False,
     feed it as prev_cmd to the next frame and track ISO-DEP state.
     """
     if not data:
-        return '', C0, None
+        return "", C0, None
     b0 = data[0]
 
-    def raw(reason=''):
-        body = f'raw {data.hex()}'
-        return (f'{body}  ({reason})' if reason else body), _CD, None
+    def raw(reason=""):
+        body = f"raw {data.hex()}"
+        return (f"{body}  ({reason})" if reason else body), _CD, None
 
     # ===================== READER -> CARD : commands =====================
     if not is_tx:
         if szBits == 7:
             if b0 == 0x26:
-                return 'REQA', CG, 'reqa'
+                return "REQA", CG, "reqa"
             if b0 == 0x52:
-                return 'WUPA', CG, 'wupa'
-            return f'short(0x{b0:02x})', CC, None
+                return "WUPA", CG, "wupa"
+            return f"short(0x{b0:02x})", CC, None
         if b0 in (0x93, 0x95, 0x97):
-            lvl = {0x93: '1', 0x95: '2', 0x97: '3'}[b0]
+            lvl = {0x93: "1", 0x95: "2", 0x97: "3"}[b0]
             if len(data) > 1 and data[1] == 0x70:
-                uid = ' '.join(f'{b:02x}' for b in data[2:6]) if len(data) >= 6 else ''
-                return f'SELECT CL{lvl}  UID={uid}', CB, f'select{lvl}'
-            nvb = f'NVB={data[1]:02x}' if len(data) > 1 else ''
-            return f'ANTICOLL CL{lvl}  {nvb}', CB, f'anticoll{lvl}'
+                uid = " ".join(f"{b:02x}" for b in data[2:6]) if len(data) >= 6 else ""
+                return f"SELECT CL{lvl}  UID={uid}", CB, f"select{lvl}"
+            nvb = f"NVB={data[1]:02x}" if len(data) > 1 else ""
+            return f"ANTICOLL CL{lvl}  {nvb}", CB, f"anticoll{lvl}"
         if b0 == 0x50:
-            return 'HALT', CC, 'halt'
-        if b0 == 0xc2:
-            return 'S-DESELECT', CC, 'deselect'
-        if b0 == 0xd0:
-            return (f'PPS  PPS1={data[1]:02x}' if len(data) > 1 else 'PPS'), CC, None
-        if b0 == 0xe0:
+            return "HALT", CC, "halt"
+        if b0 == 0xC2:
+            return "S-DESELECT", CC, "deselect"
+        if b0 == 0xD0:
+            return (f"PPS  PPS1={data[1]:02x}" if len(data) > 1 else "PPS"), CC, None
+        if b0 == 0xE0:
             fsdi = (data[1] >> 4) if len(data) > 1 else 0
-            cid = (data[1] & 0xf) if len(data) > 1 else 0
-            return f'RATS  FSDI={fsdi} CID={cid}', CC, 'rats'
+            cid = (data[1] & 0xF) if len(data) > 1 else 0
+            return f"RATS  FSDI={fsdi} CID={cid}", CC, "rats"
         if b0 == 0x60:
-            return (f'AUTH KeyA  block={data[1]}' if len(data) > 1 else 'AUTH KeyA'), CR, 'auth'
+            return (
+                (f"AUTH KeyA  block={data[1]}" if len(data) > 1 else "AUTH KeyA"),
+                CR,
+                "auth",
+            )
         if b0 == 0x61:
-            return (f'AUTH KeyB  block={data[1]}' if len(data) > 1 else 'AUTH KeyB'), CR, 'auth'
+            return (
+                (f"AUTH KeyB  block={data[1]}" if len(data) > 1 else "AUTH KeyB"),
+                CR,
+                "auth",
+            )
         if b0 == 0x30:
-            return (f'READ  block={data[1]}' if len(data) > 1 else 'READ'), CC, 'read'
-        if b0 == 0xa0:
-            return (f'WRITE block={data[1]}' if len(data) > 1 else 'WRITE'), CY, 'write'
+            return (f"READ  block={data[1]}" if len(data) > 1 else "READ"), CC, "read"
+        if b0 == 0xA0:
+            return (f"WRITE block={data[1]}" if len(data) > 1 else "WRITE"), CY, "write"
         if b0 == 0x40:
-            return 'MAGIC WUPC1', CY, None
+            return "MAGIC WUPC1", CY, None
         if b0 == 0x43:
-            return 'MAGIC WUPC2', CY, None
+            return "MAGIC WUPC2", CY, None
         if b0 == 0x41:
-            return 'MAGIC WIPE', CR, None
+            return "MAGIC WIPE", CR, None
         # ISO 7816-4 APDU -- only inside an established ISO-DEP channel
-        if iso_dep and len(data) >= 4 and b0 in (0x00, 0x80, 0x90, 0xa0):
+        if iso_dep and len(data) >= 4 and b0 in (0x00, 0x80, 0x90, 0xA0):
             cla, ins = data[0], data[1]
             p1 = data[2] if len(data) > 2 else 0
             p2 = data[3] if len(data) > 3 else 0
-            if cla == 0x00 and ins == 0xa4:
+            if cla == 0x00 and ins == 0xA4:
                 if len(data) > 5:
-                    aid = ' '.join(f'{b:02x}' for b in data[5:5 + data[4]])
-                    name = _known_aid(bytes(data[5:5 + data[4]]))
-                    label = f'SELECT AID  {aid.upper()}' + (f'  ({name})' if name else '')
+                    aid = " ".join(f"{b:02x}" for b in data[5 : 5 + data[4]])
+                    name = _known_aid(bytes(data[5 : 5 + data[4]]))
+                    label = f"SELECT AID  {aid.upper()}" + (
+                        f"  ({name})" if name else ""
+                    )
                     return label, CY, None
-                return 'SELECT', CY, None
-            if cla == 0x00 and ins == 0xb0:
-                return f'READ BINARY  off={p1 << 8 | p2} len={data[4] if len(data) > 4 else 0}', CC, None
-            if cla == 0x00 and ins == 0xb2:
-                return f'READ RECORD  SFI={p2 >> 3} rec={p1}', CC, None
-            if cla == 0x80 and ins == 0xca:
+                return "SELECT", CY, None
+            if cla == 0x00 and ins == 0xB0:
+                return (
+                    f"READ BINARY  off={p1 << 8 | p2} len={data[4] if len(data) > 4 else 0}",
+                    CC,
+                    None,
+                )
+            if cla == 0x00 and ins == 0xB2:
+                return f"READ RECORD  SFI={p2 >> 3} rec={p1}", CC, None
+            if cla == 0x80 and ins == 0xCA:
                 name = _known_bertag((p1 << 8) | p2)
-                return f'GET DATA  {p1:02x}{p2:02x}' + (f'  ({name})' if name else ''), CC, None
-            if cla == 0x80 and ins == 0xa8:
-                return 'GPO  (Get Processing Options)', CY, None
-            if cla == 0x80 and ins == 0xae:
-                actype = {0x00: 'AAC', 0x40: 'TC', 0x80: 'ARQC'}.get(p1 & 0xc0, f'AC/{p1:02x}')
-                return f'GENERATE AC  requesting {actype}', CR, None
+                return (
+                    f"GET DATA  {p1:02x}{p2:02x}" + (f"  ({name})" if name else ""),
+                    CC,
+                    None,
+                )
+            if cla == 0x80 and ins == 0xA8:
+                return "GPO  (Get Processing Options)", CY, None
+            if cla == 0x80 and ins == 0xAE:
+                actype = {0x00: "AAC", 0x40: "TC", 0x80: "ARQC"}.get(
+                    p1 & 0xC0, f"AC/{p1:02x}"
+                )
+                return f"GENERATE AC  requesting {actype}", CR, None
             if cla == 0x00 and ins == 0x20:
-                return 'VERIFY PIN', CY, None
+                return "VERIFY PIN", CY, None
             if cla == 0x00 and ins == 0x88:
-                return 'INTERNAL AUTH', CR, None
+                return "INTERNAL AUTH", CR, None
             if cla == 0x00 and ins == 0x82:
-                return 'EXTERNAL AUTH', CR, None
+                return "EXTERNAL AUTH", CR, None
             if cla == 0x00 and ins == 0x70:
-                return 'MANAGE CHANNEL', CC, None
-            return f'APDU  CLA={cla:02x} INS={ins:02x} P1={p1:02x} P2={p2:02x}', CY, None
+                return "MANAGE CHANNEL", CC, None
+            return (
+                f"APDU  CLA={cla:02x} INS={ins:02x} P1={p1:02x} P2={p2:02x}",
+                CY,
+                None,
+            )
         if szBits >= 64:
-            return '(encrypted / data)', CC, None
-        return f'unknown cmd (0x{b0:02x})', CC, None
+            return "(encrypted / data)", CC, None
+        return f"unknown cmd (0x{b0:02x})", CC, None
 
     # ===================== CARD -> READER : responses =====================
     # ATQA -- 2 bytes, only right after REQA/WUPA
-    if (szBits == 16 and len(data) == 2 and prev_cmd in ('reqa', 'wupa')
-            and (data[0] & 0x20) == 0        # byte0 bit5 is RFU (0)
-            and (data[0] & 0x1f) != 0        # byte0 must carry a bit-frame SDD bit
-            and (data[1] & 0xf0) == 0):       # byte1 high nibble is RFU (0)
+    if (
+        szBits == 16
+        and len(data) == 2
+        and prev_cmd in ("reqa", "wupa")
+        and (data[0] & 0x20) == 0  # byte0 bit5 is RFU (0)
+        and (data[0] & 0x1F) != 0  # byte0 must carry a bit-frame SDD bit
+        and (data[1] & 0xF0) == 0
+    ):  # byte1 high nibble is RFU (0)
         atqa = data[0] | (data[1] << 8)
         return f"ATQA (Answer To Request, Type A) = 0x{atqa:04X}", CG, None
     # UID/anticoll response -- 5 bytes with VALID BCC, only after ANTICOLL
-    if szBits == 40 and len(data) == 5 and prev_cmd in ('anticoll1', 'anticoll2', 'anticoll3'):
+    if (
+        szBits == 40
+        and len(data) == 5
+        and prev_cmd in ("anticoll1", "anticoll2", "anticoll3")
+    ):
         u0, u1, u2, u3, bcc = data
         if (u0 ^ u1 ^ u2 ^ u3) == bcc:
-            return f"ANTICOLL response: UID={bytes(data[:4]).hex()}  BCC=0x{bcc:02X} (OK)", CG, None
-        return raw('BCC fail')
+            return (
+                f"ANTICOLL response: UID={bytes(data[:4]).hex()}  BCC=0x{bcc:02X} (OK)",
+                CG,
+                None,
+            )
+        return raw("BCC fail")
     # SAK -- 1 byte (or 3 on the wire incl. CRC-A), only after a SELECT
-    if prev_cmd in ('select1', 'select2', 'select3') and \
-            ((szBits == 8 and len(data) == 1) or (szBits == 24 and len(data) == 3)):
+    if prev_cmd in ("select1", "select2", "select3") and (
+        (szBits == 8 and len(data) == 1) or (szBits == 24 and len(data) == 3)
+    ):
         return _sak_desc(data[0]), CG, None
     # ISO-DEP response -- ISO 7816 status word at the tail
     if iso_dep and len(data) >= 2:
@@ -927,147 +973,160 @@ def _decode_14a_frame_col(data: bytes, szBits: int, is_tx: bool = False,
             if len(data) >= abs(off):
                 lbl = _decode_sw(data[off], data[off + 1])
                 if lbl:
-                    return f'SW {data[off]:02X} {data[off + 1]:02X}  {lbl}', CY, None
+                    return f"SW {data[off]:02X} {data[off + 1]:02X}  {lbl}", CY, None
     # large blob (the caller's auth tracker names the specific NT/NR||AR/AT)
     if szBits >= 64:
-        return '(encrypted / data)', CC, None
+        return "(encrypted / data)", CC, None
     # nothing matched a plausible response -> show raw, do not invent a label
     return raw()
 
     # Short frames (7-bit)
     if szBits == 7:
         if b0 == 0x26:
-            return 'REQA', CG
+            return "REQA", CG
         if b0 == 0x52:
-            return 'WUPA', CG
-        return f'short(0x{b0:02x})', CC
+            return "WUPA", CG
+        return f"short(0x{b0:02x})", CC
 
     # Sub-byte noise frames (< 7 bits) — field activation artefacts
     if szBits < 7:
-        return f'field noise ({szBits} bit)', CC
+        return f"field noise ({szBits} bit)", CC
 
     # Anti-collision / Select
     if b0 == 0x93:
         if len(data) > 1 and data[1] == 0x70:
-            uid = ' '.join(f'{b:02x}' for b in data[2:6]) if len(data) >= 6 else ''
-            return f'SELECT CL1  UID={uid}', CB
-        nvb = f'NVB={data[1]:02x}' if len(data) > 1 else ''
-        return f'ANTICOLL CL1  {nvb}', CB
+            uid = " ".join(f"{b:02x}" for b in data[2:6]) if len(data) >= 6 else ""
+            return f"SELECT CL1  UID={uid}", CB
+        nvb = f"NVB={data[1]:02x}" if len(data) > 1 else ""
+        return f"ANTICOLL CL1  {nvb}", CB
     if b0 == 0x95:
         if len(data) > 1 and data[1] == 0x70:
-            uid = ' '.join(f'{b:02x}' for b in data[2:6]) if len(data) >= 6 else ''
-            return f'SELECT CL2  UID={uid}', CB
-        nvb = f'NVB={data[1]:02x}' if len(data) > 1 else ''
-        return f'ANTICOLL CL2  {nvb}', CB
+            uid = " ".join(f"{b:02x}" for b in data[2:6]) if len(data) >= 6 else ""
+            return f"SELECT CL2  UID={uid}", CB
+        nvb = f"NVB={data[1]:02x}" if len(data) > 1 else ""
+        return f"ANTICOLL CL2  {nvb}", CB
     if b0 == 0x97:
         if len(data) > 1 and data[1] == 0x70:
-            uid = ' '.join(f'{b:02x}' for b in data[2:6]) if len(data) >= 6 else ''
-            return f'SELECT CL3  UID={uid}', CB
-        nvb = f'NVB={data[1]:02x}' if len(data) > 1 else ''
-        return f'ANTICOLL CL3  {nvb}', CB
+            uid = " ".join(f"{b:02x}" for b in data[2:6]) if len(data) >= 6 else ""
+            return f"SELECT CL3  UID={uid}", CB
+        nvb = f"NVB={data[1]:02x}" if len(data) > 1 else ""
+        return f"ANTICOLL CL3  {nvb}", CB
 
     # HALT (0x50 0x00 + CRC — b1 may vary after parity strip)
     if b0 == 0x50:
-        return 'HALT', CC
+        return "HALT", CC
 
     # S-DESELECT (ISO14443-4 block)
-    if b0 == 0xc2:
-        return 'S-DESELECT', CC
+    if b0 == 0xC2:
+        return "S-DESELECT", CC
 
     # PPS
-    if b0 == 0xd0:
-        return f'PPS  PPS1={data[1]:02x}' if len(data) > 1 else 'PPS', CC
+    if b0 == 0xD0:
+        return f"PPS  PPS1={data[1]:02x}" if len(data) > 1 else "PPS", CC
 
     # RATS
-    if b0 == 0xe0:
+    if b0 == 0xE0:
         fsdi = (data[1] >> 4) if len(data) > 1 else 0
-        cid = (data[1] & 0xf) if len(data) > 1 else 0
-        return f'RATS  FSDI={fsdi} CID={cid}', CC
+        cid = (data[1] & 0xF) if len(data) > 1 else 0
+        return f"RATS  FSDI={fsdi} CID={cid}", CC
 
     # MIFARE Classic commands
     if b0 == 0x60:
-        return (f'AUTH KeyA  block=0x{data[1]:02X} ({data[1]})' if len(data) > 1 else 'AUTH KeyA'), CR
+        return (
+            f"AUTH KeyA  block=0x{data[1]:02X} ({data[1]})"
+            if len(data) > 1
+            else "AUTH KeyA"
+        ), CR
     if b0 == 0x61:
-        return (f'AUTH KeyB  block=0x{data[1]:02X} ({data[1]})' if len(data) > 1 else 'AUTH KeyB'), CR
+        return (
+            f"AUTH KeyB  block=0x{data[1]:02X} ({data[1]})"
+            if len(data) > 1
+            else "AUTH KeyB"
+        ), CR
     # Encrypted nonce / auth response (follows AUTH, first byte varies)
     if szBits == 72:
-        return '(encrypted nonce — auth challenge/response)', CC
+        return "(encrypted nonce — auth challenge/response)", CC
 
     if b0 == 0x30:
-        return f'READ  block={data[1]}' if len(data) > 1 else 'READ', CC
-    if b0 == 0xa0:
-        return f'WRITE block={data[1]}' if len(data) > 1 else 'WRITE', CY
+        return f"READ  block={data[1]}" if len(data) > 1 else "READ", CC
+    if b0 == 0xA0:
+        return f"WRITE block={data[1]}" if len(data) > 1 else "WRITE", CY
     if b0 == 0x40:
-        return 'MAGIC WUPC1', CY
+        return "MAGIC WUPC1", CY
     if b0 == 0x43:
-        return 'MAGIC WUPC2', CY
+        return "MAGIC WUPC2", CY
     if b0 == 0x41:
-        return 'MAGIC WIPE', CR
+        return "MAGIC WIPE", CR
 
     # ISO 7816-4 APDUs
-    if len(data) >= 2 and b0 in (0x00, 0x80, 0x90, 0xa0):
+    if len(data) >= 2 and b0 in (0x00, 0x80, 0x90, 0xA0):
         cla, ins = data[0], data[1]
         p1 = data[2] if len(data) > 2 else 0
         p2 = data[3] if len(data) > 3 else 0
         # SELECT FILE / AID
-        if cla == 0x00 and ins == 0xa4:
+        if cla == 0x00 and ins == 0xA4:
             if len(data) > 5:
-                aid = ' '.join(f'{b:02x}' for b in data[5:5+data[4]])
+                aid = " ".join(f"{b:02x}" for b in data[5 : 5 + data[4]])
                 # Identify known AIDs
-                aid_raw = bytes(data[5:5+data[4]])
+                aid_raw = bytes(data[5 : 5 + data[4]])
                 name = _known_aid(aid_raw)
-                label = f'SELECT AID  {aid.upper()}'
+                label = f"SELECT AID  {aid.upper()}"
                 if name:
-                    label += f'  ({name})'
+                    label += f"  ({name})"
                 return label, CY
-            return 'SELECT', CY
+            return "SELECT", CY
         # READ BINARY
-        if cla == 0x00 and ins == 0xb0:
-            return f'READ BINARY  off={p1 << 8 | p2} len={data[4] if len(data) > 4 else 0}', CC
+        if cla == 0x00 and ins == 0xB0:
+            return (
+                f"READ BINARY  off={p1 << 8 | p2} len={data[4] if len(data) > 4 else 0}",
+                CC,
+            )
         # READ RECORD
-        if cla == 0x00 and ins == 0xb2:
+        if cla == 0x00 and ins == 0xB2:
             sfi = p2 >> 3
-            return f'READ RECORD  SFI={sfi} rec={p1}', CC
+            return f"READ RECORD  SFI={sfi} rec={p1}", CC
         # GET DATA
-        if cla == 0x80 and ins == 0xca:
+        if cla == 0x80 and ins == 0xCA:
             tag = (p1 << 8) | p2
             name = _known_bertag(tag)
-            return f'GET DATA  {p1:02x}{p2:02x}' + (f'  ({name})' if name else ''), CC
+            return f"GET DATA  {p1:02x}{p2:02x}" + (f"  ({name})" if name else ""), CC
         # GET PROCESSING OPTIONS
-        if cla == 0x80 and ins == 0xa8:
-            return 'GPO  (Get Processing Options)', CY
+        if cla == 0x80 and ins == 0xA8:
+            return "GPO  (Get Processing Options)", CY
         # GENERATE AC
-        if cla == 0x80 and ins == 0xae:
-            actype = {0x00: 'AAC', 0x40: 'TC', 0x80: 'ARQC'}.get(p1 & 0xc0, f'AC/{p1:02x}')
-            return f'GENERATE AC  requesting {actype}', CR
+        if cla == 0x80 and ins == 0xAE:
+            actype = {0x00: "AAC", 0x40: "TC", 0x80: "ARQC"}.get(
+                p1 & 0xC0, f"AC/{p1:02x}"
+            )
+            return f"GENERATE AC  requesting {actype}", CR
         # VERIFY
         if cla == 0x00 and ins == 0x20:
-            return 'VERIFY PIN', CY
+            return "VERIFY PIN", CY
         # INTERNAL AUTHENTICATE
         if cla == 0x00 and ins == 0x88:
-            return 'INTERNAL AUTH', CR
+            return "INTERNAL AUTH", CR
         # EXTERNAL AUTHENTICATE
         if cla == 0x00 and ins == 0x82:
-            return 'EXTERNAL AUTH', CR
+            return "EXTERNAL AUTH", CR
         # MANAGE CHANNEL
         if cla == 0x00 and ins == 0x70:
-            return 'MANAGE CHANNEL', CC
-        return f'APDU  CLA={cla:02x} INS={ins:02x} P1={p1:02x} P2={p2:02x}', CY
+            return "MANAGE CHANNEL", CC
+        return f"APDU  CLA={cla:02x} INS={ins:02x} P1={p1:02x} P2={p2:02x}", CY
 
     # ISO 7816-4 status word — scan last 2 bytes (and last 4 if CRC present)
-    sw_label = ''
+    sw_label = ""
     for sw_offset in (-2, -4):
         if len(data) >= abs(sw_offset):
             s1, s2 = data[sw_offset], data[sw_offset + 1]
             lbl = _decode_sw(s1, s2)
             if lbl:
-                sw_label = f'SW {s1:02X} {s2:02X}  {lbl}'
+                sw_label = f"SW {s1:02X} {s2:02X}  {lbl}"
                 break
     if sw_label:
         return sw_label, CY
 
     # Unknown — show first byte
-    return f'unknown (0x{b0:02x})', CC
+    return f"unknown (0x{b0:02x})", CC
 
 
 def indala_encode_raw(fc: int, cn: int) -> bytes:
@@ -1108,10 +1167,18 @@ def indala_encode_raw(fc: int, cn: int) -> bytes:
     bits[41] = cn & 1
 
     # checksum (sum of specific cn bits)
-    chk = sum([
-        (cn >> 14) & 1, (cn >> 12) & 1, (cn >> 9) & 1, (cn >> 8) & 1,
-        (cn >> 6) & 1, (cn >> 5) & 1, (cn >> 2) & 1, cn & 1,
-    ])
+    chk = sum(
+        [
+            (cn >> 14) & 1,
+            (cn >> 12) & 1,
+            (cn >> 9) & 1,
+            (cn >> 8) & 1,
+            (cn >> 6) & 1,
+            (cn >> 5) & 1,
+            (cn >> 2) & 1,
+            cn & 1,
+        ]
+    )
     if chk % 2 == 0:
         bits[62], bits[63] = 1, 0
     else:
@@ -1144,59 +1211,60 @@ def indala_format_output(raw: bytes) -> str:
 
 # --- shared decode/table helpers relocated during the split ---
 
+
 def _decode_sw(sw1: int, sw2: int) -> str:
     """Decode an ISO 7816-4 status word pair."""
     exact = {
-        0x9000: 'OK',
-        0x6100: 'Response bytes available',
-        0x6283: 'File deactivated',
-        0x6300: 'Auth failed',
-        0x6400: 'No changes',
-        0x6581: 'Memory failure',
-        0x6700: 'Wrong length',
-        0x6881: 'Logical channel not supported',
-        0x6882: 'Secure messaging not supported',
-        0x6900: 'Command not allowed',
-        0x6981: 'Command incompatible with file structure',
-        0x6982: 'Security status not satisfied',
-        0x6983: 'Auth method blocked',
-        0x6984: 'Referenced data invalidated',
-        0x6985: 'Conditions of use not satisfied',
-        0x6986: 'Command not allowed — no EF selected',
-        0x6A00: 'Wrong parameters P1-P2',
-        0x6A80: 'Incorrect data in command',
-        0x6A81: 'Function not supported',
-        0x6A82: 'File not found',
-        0x6A83: 'Record not found',
-        0x6A84: 'Not enough memory',
-        0x6A85: 'Lc inconsistent with TLV',
-        0x6A86: 'Incorrect parameters P1-P2',
-        0x6A87: 'Lc inconsistent with P1-P2',
-        0x6A88: 'Referenced data not found',
-        0x6B00: 'Wrong parameters P1-P2',
-        0x6D00: 'Instruction not supported',
-        0x6E00: 'Class not supported',
-        0x6F00: 'Unknown error',
+        0x9000: "OK",
+        0x6100: "Response bytes available",
+        0x6283: "File deactivated",
+        0x6300: "Auth failed",
+        0x6400: "No changes",
+        0x6581: "Memory failure",
+        0x6700: "Wrong length",
+        0x6881: "Logical channel not supported",
+        0x6882: "Secure messaging not supported",
+        0x6900: "Command not allowed",
+        0x6981: "Command incompatible with file structure",
+        0x6982: "Security status not satisfied",
+        0x6983: "Auth method blocked",
+        0x6984: "Referenced data invalidated",
+        0x6985: "Conditions of use not satisfied",
+        0x6986: "Command not allowed — no EF selected",
+        0x6A00: "Wrong parameters P1-P2",
+        0x6A80: "Incorrect data in command",
+        0x6A81: "Function not supported",
+        0x6A82: "File not found",
+        0x6A83: "Record not found",
+        0x6A84: "Not enough memory",
+        0x6A85: "Lc inconsistent with TLV",
+        0x6A86: "Incorrect parameters P1-P2",
+        0x6A87: "Lc inconsistent with P1-P2",
+        0x6A88: "Referenced data not found",
+        0x6B00: "Wrong parameters P1-P2",
+        0x6D00: "Instruction not supported",
+        0x6E00: "Class not supported",
+        0x6F00: "Unknown error",
     }
     key = (sw1 << 8) | sw2
     if key in exact:
         return exact[key]
     if sw1 == 0x61:
-        return f'Response bytes available: {sw2}'
+        return f"Response bytes available: {sw2}"
     if sw1 == 0x62:
-        return f'Warning — no info change: {sw2:02X}'
+        return f"Warning — no info change: {sw2:02X}"
     if sw1 == 0x63:
-        return f'Warning — state changed: {sw2:02X}'
+        return f"Warning — state changed: {sw2:02X}"
     if sw1 == 0x6C:
-        return f'Wrong Le — use {sw2}'
+        return f"Wrong Le — use {sw2}"
     if sw1 == 0x90:
-        return 'OK'
+        return "OK"
     if sw1 == 0x91:
-        return 'Proprietary OK'
-    return ''
+        return "Proprietary OK"
+    return ""
 
 
-_CD = "\033[90m"   # dim grey: raw/garbled frames that fail validation
+_CD = "\033[90m"  # dim grey: raw/garbled frames that fail validation
 
 
 def _sak_desc(sak: int):
@@ -1211,30 +1279,30 @@ def _sak_desc(sak: int):
 
 def _known_aid(aid: bytes) -> str:
     table = {
-        bytes.fromhex('a0000000031010'): 'Visa Credit/Debit',
-        bytes.fromhex('a0000000032010'): 'Visa Electron',
-        bytes.fromhex('a0000000033010'): 'Visa Classic',
-        bytes.fromhex('a0000000038010'): 'Visa Plus',
-        bytes.fromhex('a0000000041010'): 'Mastercard',
-        bytes.fromhex('a0000000043060'): 'Maestro',
-        bytes.fromhex('a000000025010801'): 'AmEx',
-        bytes.fromhex('a0000000181002'): 'Mastercard Debit',
-        bytes.fromhex('d2760000850101'): 'NDEF (NFC Forum)',
-        bytes.fromhex('d27600002545'): 'NDEF Type 4',
-        bytes.fromhex('315041592e5359532e4444463031'): 'PPSE (2PAY.SYS.DDF01)',
+        bytes.fromhex("a0000000031010"): "Visa Credit/Debit",
+        bytes.fromhex("a0000000032010"): "Visa Electron",
+        bytes.fromhex("a0000000033010"): "Visa Classic",
+        bytes.fromhex("a0000000038010"): "Visa Plus",
+        bytes.fromhex("a0000000041010"): "Mastercard",
+        bytes.fromhex("a0000000043060"): "Maestro",
+        bytes.fromhex("a000000025010801"): "AmEx",
+        bytes.fromhex("a0000000181002"): "Mastercard Debit",
+        bytes.fromhex("d2760000850101"): "NDEF (NFC Forum)",
+        bytes.fromhex("d27600002545"): "NDEF Type 4",
+        bytes.fromhex("315041592e5359532e4444463031"): "PPSE (2PAY.SYS.DDF01)",
     }
-    return table.get(aid, '')
+    return table.get(aid, "")
 
 
 def _known_bertag(tag: int) -> str:
     table = {
-        0x9f36: 'ATC',
-        0x9f13: 'Last Online ATC',
-        0x9f17: 'PIN Try Counter',
-        0x9f4f: 'Log Format',
-        0x9f4e: 'Merchant Name',
+        0x9F36: "ATC",
+        0x9F13: "Last Online ATC",
+        0x9F17: "PIN Try Counter",
+        0x9F4F: "Log Format",
+        0x9F4E: "Merchant Name",
     }
-    return table.get(tag, '')
+    return table.get(tag, "")
 
 
 def indala_decode_raw(raw: bytes):
@@ -1277,6 +1345,7 @@ def indala_decode_raw(raw: bytes):
 
 # --- shared helpers relocated from cli_lf (used by the monolith too) ---
 
+
 def jablotron_card_id(raw_bytes: bytes) -> int:
     """Convert 5 raw Jablotron bytes to decimal card number via BCD."""
     card_id = 0
@@ -1318,11 +1387,11 @@ def pac_encode_raw(card_id: bytes) -> bytes:
 
 # --- shared helpers relocated from cli_hf_mf (used by the monolith too) ---
 
-_TOOL_MISSING = "MISSING"    # binary not found on disk
+_TOOL_MISSING = "MISSING"  # binary not found on disk
 
-_TOOL_BLOCKED = "BLOCKED"    # binary exists but OS/AV prevented execution
+_TOOL_BLOCKED = "BLOCKED"  # binary exists but OS/AV prevented execution
 
-_TOOL_NO_KEY = "NO_KEY"     # binary ran cleanly, no key found for these nonces
+_TOOL_NO_KEY = "NO_KEY"  # binary ran cleanly, no key found for these nonces
 
 
 def _sniff_tool_path(name):
@@ -1409,8 +1478,13 @@ def _run_mfkey32v2_sniff(n0, n1):
         result = subprocess.run(
             [
                 str(path),
-                n0["uid"], n0["nt"], n0["nr"], n0["ar"],
-                n1["nt"],  n1["nr"], n1["ar"],
+                n0["uid"],
+                n0["nt"],
+                n0["nr"],
+                n0["ar"],
+                n1["nt"],
+                n1["nr"],
+                n1["ar"],
             ],
             capture_output=True,
             timeout=30,

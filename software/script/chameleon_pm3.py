@@ -47,11 +47,11 @@ from chameleon_dfc import (
 # TypeRaw byte  <-> spec `Type` token
 _FILE_TYPE_TOKEN = {
     FILE_TYPE_STANDARD: "standard",
-    FILE_TYPE_BACKUP:   "backup",
-    FILE_TYPE_VALUE:    "value",
-    FILE_TYPE_LINEAR:   "linear_record",
-    FILE_TYPE_CYCLIC:   "cyclic_record",
-    0x05:               "transaction_mac",
+    FILE_TYPE_BACKUP: "backup",
+    FILE_TYPE_VALUE: "value",
+    FILE_TYPE_LINEAR: "linear_record",
+    FILE_TYPE_CYCLIC: "cyclic_record",
+    0x05: "transaction_mac",
 }
 _FILE_TOKEN_TYPE = {v: k for k, v in _FILE_TYPE_TOKEN.items()}
 
@@ -75,8 +75,9 @@ def _keytype_token(ks2: int, key_len: int) -> str:
 
 def _ks2_from_token(token: str, num_keys: int, has_iso: bool) -> int:
     """Rebuild the raw NumKeysRaw/ks2 byte: keytype<<6 | iso<<5 | count(low5)."""
-    top = {"des": 0x00, "2tdea": 0x00, "3tdea": KEY_TYPE_3K3DES,
-           "aes": KEY_TYPE_AES}[token]
+    top = {"des": 0x00, "2tdea": 0x00, "3tdea": KEY_TYPE_3K3DES, "aes": KEY_TYPE_AES}[
+        token
+    ]
     return top | (0x20 if has_iso else 0x00) | (num_keys & 0x1F)
 
 
@@ -90,11 +91,12 @@ def _uh(s: str) -> bytes:
 
 # ============================================================ DESFire: save ===
 
+
 def dfc_to_mfdes_json(cred: DfcCredential) -> dict:
     """DfcCredential -> `mfdes v1` dict (json.dump-ready)."""
     card: dict = {"UID": _h(cred.uid)}
     if cred.picc_atqa is not None:
-        card["ATQA"] = _h(cred.picc_atqa)          # wire order, as pm3 stores it
+        card["ATQA"] = _h(cred.picc_atqa)  # wire order, as pm3 stores it
     if cred.picc_sak is not None:
         card["SAK"] = f"{cred.picc_sak:02X}"
     if cred.picc_ats:
@@ -116,23 +118,23 @@ def dfc_to_mfdes_json(cred: DfcCredential) -> dict:
     picc_token = _keytype_token(cred.picc_key_settings_2, picc_len)
     apps["000000"] = {
         "KeySettings": f"{cred.picc_key_settings_1:02X}",
-        "NumKeysRaw":  f"{cred.picc_key_settings_2 & 0xFF:02X}",
-        "NumKeys":     len(cred.picc_keys) or 1,
-        "KeyType":     picc_token,
+        "NumKeysRaw": f"{cred.picc_key_settings_2 & 0xFF:02X}",
+        "NumKeys": len(cred.picc_keys) or 1,
+        "KeyType": picc_token,
         "Authenticated": True,
-        "Keys":        _keys_to_json(cred.picc_keys),
+        "Keys": _keys_to_json(cred.picc_keys),
     }
 
     for idx, app in enumerate(cred.apps):
         token = _keytype_token(app.key_settings_2, app.key_len)
         entry: dict = {
             "KeySettings": f"{app.key_settings_1:02X}",
-            "NumKeysRaw":  f"{app.key_settings_2 & 0xFF:02X}",
-            "NumKeys":     len(app.keys),
-            "KeyType":     token,
+            "NumKeysRaw": f"{app.key_settings_2 & 0xFF:02X}",
+            "NumKeys": len(app.keys),
+            "KeyType": token,
             "Authenticated": True,
-            "Keys":        _keys_to_json(app.keys),
-            "Files":       _files_to_json(cred, idx),
+            "Keys": _keys_to_json(app.keys),
+            "Files": _files_to_json(cred, idx),
         }
         if app.has_iso_file_id:
             entry["ISOFileID"] = f"{app.iso_file_id:04X}"
@@ -154,7 +156,7 @@ def _keys_to_json(keys: list[DfcKey]) -> dict:
     out: dict = {}
     for n, k in enumerate(keys):
         rec = {"Version": f"{k.version:02X}"}
-        if k.value:                       # value present ONLY when actually known
+        if k.value:  # value present ONLY when actually known
             rec["Key"] = _h(k.value)
         out[str(n)] = rec
     return out
@@ -166,10 +168,10 @@ def _files_to_json(cred: DfcCredential, app_index: int) -> dict:
         if f.app_index != app_index:
             continue
         rec: dict = {
-            "Type":    _FILE_TYPE_TOKEN.get(f.type, "standard"),
+            "Type": _FILE_TYPE_TOKEN.get(f.type, "standard"),
             "TypeRaw": f"{f.type:02X}",
             "CommMode": _COMM_TOKEN.get(f.comm_settings & 0x03, "plain"),
-            "AccessRights": f"{f.access_rights:04X}",   # big-endian, as printed
+            "AccessRights": f"{f.access_rights:04X}",  # big-endian, as printed
         }
         if f.has_iso_file_id:
             rec["ISOFileID"] = f"{f.iso_file_id:04X}"
@@ -199,6 +201,7 @@ def _files_to_json(cred: DfcCredential, app_index: int) -> dict:
 
 
 # ============================================================ DESFire: load ===
+
 
 def mfdes_json_to_dfc(obj: dict) -> DfcCredential:
     """`mfdes v1` dict -> DfcCredential (ready for to_wire / desfire_set_credential)."""
@@ -238,7 +241,8 @@ def mfdes_json_to_dfc(obj: dict) -> DfcCredential:
         cred.picc_key_settings_2 = int(picc.get("NumKeysRaw", "01"), 16)
         cred.picc_auth_command = auth_command_for_ks2(cred.picc_key_settings_2)
         cred.picc_keys = _keys_from_json(
-            picc.get("Keys", {}), key_length_for_ks2(cred.picc_key_settings_2))
+            picc.get("Keys", {}), key_length_for_ks2(cred.picc_key_settings_2)
+        )
 
     for aid_hex, app in applications.items():
         if aid_hex == "000000":
@@ -279,17 +283,20 @@ def _keys_from_json(keys: dict, key_len: int) -> list[DfcKey]:
     for n in range(len(keys)):
         rec = keys.get(str(n))
         if rec is None:
-            out.append(DfcKey(value=b"", version=0))   # absent -> unknown, no value
+            out.append(DfcKey(value=b"", version=0))  # absent -> unknown, no value
             continue
         ver = int(rec.get("Version", "00"), 16) if rec.get("Version") else 0
-        val = _uh(rec["Key"]) if rec.get("Key") else b""   # missing Key != zeros
+        val = _uh(rec["Key"]) if rec.get("Key") else b""  # missing Key != zeros
         out.append(DfcKey(value=val, version=ver))
     return out
 
 
 def _file_from_json(fno_hex: str, f: dict, app_index: int) -> DfcFile:
-    traw = int(f["TypeRaw"], 16) if f.get("TypeRaw") \
+    traw = (
+        int(f["TypeRaw"], 16)
+        if f.get("TypeRaw")
         else _FILE_TOKEN_TYPE.get(f.get("Type", "standard"), FILE_TYPE_STANDARD)
+    )
     df = DfcFile(app_index=app_index, number=int(fno_hex, 16), type=traw)
     df.comm_settings = _COMM_TOKEN_VAL.get(f.get("CommMode", "plain"), 0)
     df.access_rights = int(f.get("AccessRights", "0000"), 16)
@@ -323,8 +330,10 @@ def _file_from_json(fno_hex: str, f: dict, app_index: int) -> DfcFile:
 
 # =============================================================== MIFARE mfc ===
 
-def mfc_blocks_to_json(uid: bytes, atqa: bytes, sak: int,
-                       blocks: dict[int, bytes]) -> dict:
+
+def mfc_blocks_to_json(
+    uid: bytes, atqa: bytes, sak: int, blocks: dict[int, bytes]
+) -> dict:
     """Raw MIFARE Classic blocks -> `mfc v2` dict.
 
     blocks: {block_number: 16 bytes}. Trailers must already carry keys/access.
@@ -334,7 +343,7 @@ def mfc_blocks_to_json(uid: bytes, atqa: bytes, sak: int,
         "FileType": "mfc v2",
         "Card": {
             "UID": _h(uid),
-            "ATQA": _h(atqa),          # wire order
+            "ATQA": _h(atqa),  # wire order
             "SAK": f"{sak:02X}",
         },
         "blocks": {str(n): _h(blocks[n]) for n in sorted(blocks)},
@@ -351,6 +360,7 @@ def mfc_json_to_blocks(obj: dict) -> tuple[dict, dict[int, bytes]]:
 
 
 # ================================================================= helpers ====
+
 
 def dumps(obj: dict) -> str:
     """Serialize with the 4-space, key-ordered style pm3 files use."""

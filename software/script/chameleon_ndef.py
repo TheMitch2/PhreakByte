@@ -53,7 +53,7 @@ def find_ndef_message(area: bytes):
         if length == 0xFF:
             if i + 4 > n:
                 break
-            length = struct.unpack("!H", area[i + 2:i + 4])[0]
+            length = struct.unpack("!H", area[i + 2 : i + 4])[0]
             value_start = i + 4
         else:
             value_start = i + 2
@@ -105,13 +105,42 @@ TNF_NAMES = {
 
 # NFC Forum URI Record Type Definition abbreviation table (RTD-URI 1.0)
 URI_PREFIXES = [
-    "", "http://www.", "https://www.", "http://", "https://",
-    "tel:", "mailto:", "ftp://anonymous:anonymous@", "ftp://ftp.",
-    "ftps://", "sftp://", "smb://", "nfs://", "ftp://", "dav://",
-    "news:", "telnet://", "imap:", "rtsp://", "urn:", "pop:",
-    "sip:", "sips:", "tftp:", "btspp://", "btl2cap://", "btgoep://",
-    "tcpobex://", "irdaobex://", "file://", "urn:epc:id:", "urn:epc:tag:",
-    "urn:epc:pat:", "urn:epc:raw:", "urn:epc:", "urn:nfc:",
+    "",
+    "http://www.",
+    "https://www.",
+    "http://",
+    "https://",
+    "tel:",
+    "mailto:",
+    "ftp://anonymous:anonymous@",
+    "ftp://ftp.",
+    "ftps://",
+    "sftp://",
+    "smb://",
+    "nfs://",
+    "ftp://",
+    "dav://",
+    "news:",
+    "telnet://",
+    "imap:",
+    "rtsp://",
+    "urn:",
+    "pop:",
+    "sip:",
+    "sips:",
+    "tftp:",
+    "btspp://",
+    "btl2cap://",
+    "btgoep://",
+    "tcpobex://",
+    "irdaobex://",
+    "file://",
+    "urn:epc:id:",
+    "urn:epc:tag:",
+    "urn:epc:pat:",
+    "urn:epc:raw:",
+    "urn:epc:",
+    "urn:nfc:",
 ]
 
 
@@ -123,7 +152,9 @@ class NdefRecord:
         self.id = id_bytes
 
     def __repr__(self):
-        return f"NdefRecord(tnf={self.tnf}, type={self.type!r}, payload={self.payload!r})"
+        return (
+            f"NdefRecord(tnf={self.tnf}, type={self.type!r}, payload={self.payload!r})"
+        )
 
     # -- well-known constructors ------------------------------------------------
 
@@ -165,8 +196,8 @@ class NdefRecord:
                 status = self.payload[0]
                 lang_len = status & 0x3F
                 utf16 = bool(status & 0x80)
-                lang = self.payload[1:1 + lang_len].decode("ascii", "replace")
-                text = self.payload[1 + lang_len:].decode(
+                lang = self.payload[1 : 1 + lang_len].decode("ascii", "replace")
+                text = self.payload[1 + lang_len :].decode(
                     "utf-16-be" if utf16 else "utf-8", "replace"
                 )
                 return f'Text [{lang}]: "{text}"'
@@ -243,7 +274,7 @@ def decode_message(data: bytes):
         else:
             if i + 4 > n:
                 raise NdefError("Truncated payload length")
-            payload_len = struct.unpack("!I", data[i:i + 4])[0]
+            payload_len = struct.unpack("!I", data[i : i + 4])[0]
             i += 4
 
         id_len = 0
@@ -253,11 +284,11 @@ def decode_message(data: bytes):
             id_len = data[i]
             i += 1
 
-        type_bytes = data[i:i + type_len]
+        type_bytes = data[i : i + type_len]
         i += type_len
-        id_bytes = data[i:i + id_len] if il else b""
+        id_bytes = data[i : i + id_len] if il else b""
         i += id_len
-        payload = data[i:i + payload_len]
+        payload = data[i : i + payload_len]
         i += payload_len
 
         records.append(NdefRecord(tnf, type_bytes, payload, id_bytes))
@@ -269,7 +300,5 @@ def decode_message(data: bytes):
 
 def pages_from_message(wrapped_tlv: bytes, page_size: int = 4):
     """Split TLV-wrapped NDEF bytes into page_size-byte pages, zero padded."""
-    padded = wrapped_tlv + bytes(
-        (-len(wrapped_tlv)) % page_size
-    )
-    return [padded[i:i + page_size] for i in range(0, len(padded), page_size)]
+    padded = wrapped_tlv + bytes((-len(wrapped_tlv)) % page_size)
+    return [padded[i : i + page_size] for i in range(0, len(padded), page_size)]

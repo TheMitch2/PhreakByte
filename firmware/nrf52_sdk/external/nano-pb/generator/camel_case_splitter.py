@@ -23,7 +23,7 @@ def split_camel_case(input):
 
 
 def is_camel_case_name(input):
-    if '_' in input:
+    if "_" in input:
         return False
 
     if input.islower():

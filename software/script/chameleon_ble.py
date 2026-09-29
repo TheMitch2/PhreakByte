@@ -32,7 +32,7 @@ NUS_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
 NUS_RX_CHAR_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"  # host -> device (write)
 NUS_TX_CHAR_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"  # device -> host (notify)
 
-DEFAULT_NAME_PREFIX = "Chameleon"   # matches ChameleonUltra / ChameleonLite
+DEFAULT_NAME_PREFIX = "Chameleon"  # matches ChameleonUltra / ChameleonLite
 SCAN_TIMEOUT = 8.0
 CONNECT_TIMEOUT = 20.0
 
@@ -55,10 +55,10 @@ class BLESerialShim:
         self._rx_q: "queue.Queue[bytes]" = queue.Queue()
         self._leftover = bytearray()
         self._connected = threading.Event()
-        self._mtu = 20                      # payload = ATT MTU - 3; refined after connect
+        self._mtu = 20  # payload = ATT MTU - 3; refined after connect
         # pyserial-compatible attributes the CLI touches:
         self.timeout = 0.1
-        self.dtr = True                     # no-op for BLE; present so serial code paths don't fail
+        self.dtr = True  # no-op for BLE; present so serial code paths don't fail
 
     @property
     def payload_size(self) -> int:
@@ -90,7 +90,9 @@ class BLESerialShim:
         """
         self._start_loop()
         try:
-            self._submit(self._connect(target.strip()), timeout=CONNECT_TIMEOUT + SCAN_TIMEOUT)
+            self._submit(
+                self._connect(target.strip()), timeout=CONNECT_TIMEOUT + SCAN_TIMEOUT
+            )
         except Exception as e:
             self.close()
             raise BLEConnectException(str(e))
@@ -104,7 +106,7 @@ class BLESerialShim:
         # Prefer name match; fall back to any advertiser exposing the NUS UUID.
         by_nus = None
         for _addr, (dev, adv) in found.items():
-            name = (adv.local_name or dev.name or "")
+            name = adv.local_name or dev.name or ""
             if want in name.lower():
                 return dev.address
             uuids = [u.lower() for u in (adv.service_uuids or [])]
@@ -114,12 +116,14 @@ class BLESerialShim:
             return by_nus
         raise BLEConnectException(
             f"no BLE device matching '{target or DEFAULT_NAME_PREFIX}' found "
-            f"(is it advertising / is BLE pairing set as you expect?)")
+            f"(is it advertising / is BLE pairing set as you expect?)"
+        )
 
     async def _connect(self, target: str):
         address = await self._resolve_address(target)
-        self._client = BleakClient(address, disconnected_callback=self._on_disconnect,
-                                   timeout=CONNECT_TIMEOUT)
+        self._client = BleakClient(
+            address, disconnected_callback=self._on_disconnect, timeout=CONNECT_TIMEOUT
+        )
         await self._client.connect()
         await self._client.start_notify(NUS_TX_CHAR_UUID, self._on_notify)
         await self._negotiate_mtu()
@@ -185,13 +189,18 @@ class BLESerialShim:
 
     async def _write(self, data: bytes):
         for i in range(0, len(data), self._mtu):
-            await self._client.write_gatt_char(NUS_RX_CHAR_UUID, data[i:i + self._mtu],
-                                               response=False)
+            await self._client.write_gatt_char(
+                NUS_RX_CHAR_UUID, data[i : i + self._mtu], response=False
+            )
 
     def close(self):
         self._connected.clear()
         try:
-            if self._client is not None and self._loop is not None and self._loop.is_running():
+            if (
+                self._client is not None
+                and self._loop is not None
+                and self._loop.is_running()
+            ):
                 try:
                     self._submit(self._disconnect(), timeout=5.0)
                 except Exception:

@@ -771,31 +771,34 @@ class StandaloneMode(enum.IntEnum):
     Values match standalone_mode_t in firmware/application/src/app_standalone.h
     and are persisted to FDS - do not renumber.
     """
+
     DISABLED = 0x00
-    AUTOCLONE = 0x01   # writes_tag, writes_slot - needs HOST_OPTED_IN
-    READ_REPLAY = 0x02   # writes_slot             - needs HOST_OPTED_IN
-    AUTHTRACE = 0x03   # active reader; logs auth exchanges (mfkey-ready)
+    AUTOCLONE = 0x01  # writes_tag, writes_slot - needs HOST_OPTED_IN
+    READ_REPLAY = 0x02  # writes_slot             - needs HOST_OPTED_IN
+    AUTHTRACE = 0x03  # active reader; logs auth exchanges (mfkey-ready)
     SLOT_CYCLE = 0x04
     DICT_CHECK = 0x05
-    EMUL_TRACE = 0x06   # CU as card; logs reader auth exchanges (mfkey-ready)
-    RELAY = 0x07   # two-CU BLE peer relay (Ultra only)
-    HF14A_TAP_SNIFF = 0x08   # passive hf14a tap sniff (Ultra only)
+    EMUL_TRACE = 0x06  # CU as card; logs reader auth exchanges (mfkey-ready)
+    RELAY = 0x07  # two-CU BLE peer relay (Ultra only)
+    HF14A_TAP_SNIFF = 0x08  # passive hf14a tap sniff (Ultra only)
 
     @classmethod
     def from_name(cls, name: str) -> "StandaloneMode":
         """Case-insensitive lookup by name; raises ValueError for unknown."""
         try:
-            return cls[name.upper().replace('-', '_')]
+            return cls[name.upper().replace("-", "_")]
         except KeyError as e:
             raise ValueError(
                 f"unknown standalone mode '{name}'; valid: "
-                + ", ".join(m.name.lower().replace('_', '-')
-                            for m in cls if m != cls.DISABLED)
+                + ", ".join(
+                    m.name.lower().replace("_", "-") for m in cls if m != cls.DISABLED
+                )
             ) from e
 
 
 class StandaloneState(enum.IntEnum):
     """Runtime state of the standalone subsystem (read-only - host observes)."""
+
     DISARMED = 0
     ARMED_IDLE = 1
     MODE_SELECT = 2
@@ -804,7 +807,8 @@ class StandaloneState(enum.IntEnum):
 
 class StandaloneFlag(enum.IntFlag):
     """Flags passed to STANDALONE_SET_MODE."""
+
     NONE = 0
-    HOST_OPTED_IN = 1 << 0   # required for AUTOCLONE / READ_REPLAY
+    HOST_OPTED_IN = 1 << 0  # required for AUTOCLONE / READ_REPLAY
     BUZZER_QUIET = 1 << 1
     LED_QUIET = 1 << 2
