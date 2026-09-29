@@ -13,6 +13,8 @@ import time
 import sys
 
 from cli_core import (
+    jablotron_card_id,
+    pac_encode_raw,
     indala_encode_raw,
     indala_format_output,
     lf_indala,
@@ -1315,43 +1317,8 @@ class LFIOProxEconfig(SlotIndexArgsAndGoUnit, LFIOProxIdArgsUnit):
             print(f"   Raw: {color_string((CY, raw8.hex().upper()))}")
 
 
-def jablotron_card_id(raw_bytes: bytes) -> int:
-    """Convert 5 raw Jablotron bytes to decimal card number via BCD."""
-    card_id = 0
-    for b in raw_bytes:
-        card_id = card_id * 100 + ((b >> 4) * 10) + (b & 0x0F)
-    return card_id
 
 
-def pac_encode_raw(card_id: bytes) -> bytes:
-    """Encode 8-byte card ID to 16-byte T55XX bitstream (128 bits).
-
-    Frame: 0xFF sync (8 bits) + 12 × 10-bit UART frames.
-    UART frame: start(0) + 7 data bits LSB-first + odd parity + stop(1).
-    Payload: STX(0x02), '2', '0', card_id[0..7], XOR checksum.
-    """
-    payload = [0x02, 0x32, 0x30] + list(card_id)
-    xor_check = 0
-    for b in card_id:
-        xor_check ^= b
-    payload.append(xor_check)
-
-    bits = [1] * 8  # sync marker 0xFF
-    for byte_val in payload:
-        bits.append(0)  # start bit
-        ones = 0
-        for i in range(7):
-            bit = (byte_val >> i) & 1
-            bits.append(bit)
-            ones += bit
-        bits.append(0 if (ones & 1) else 1)  # odd parity
-        bits.append(1)  # stop bit
-
-    raw = bytearray(16)
-    for i in range(128):
-        if bits[i]:
-            raw[i >> 3] |= 1 << (7 - (i & 7))
-    return bytes(raw)
 
 
 def pac_decode_raw(raw: bytes) -> bytes:
