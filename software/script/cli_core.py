@@ -1265,3 +1265,168 @@ def indala_decode_raw(raw: bytes):
     cn |= bits[41] << 0
 
     return fc, cn
+
+
+# --- shared helpers relocated from cli_lf (used by the monolith too) ---
+
+def jablotron_card_id(raw_bytes: bytes) -> int:
+    """Convert 5 raw Jablotron bytes to decimal card number via BCD."""
+    card_id = 0
+    for b in raw_bytes:
+        card_id = card_id * 100 + ((b >> 4) * 10) + (b & 0x0F)
+    return card_id
+
+def pac_encode_raw(card_id: bytes) -> bytes:
+    """Encode 8-byte card ID to 16-byte T55XX bitstream (128 bits).
+
+    Frame: 0xFF sync (8 bits) + 12 × 10-bit UART frames.
+    UART frame: start(0) + 7 data bits LSB-first + odd parity + stop(1).
+    Payload: STX(0x02), '2', '0', card_id[0..7], XOR checksum.
+    """
+    payload = [0x02, 0x32, 0x30] + list(card_id)
+    xor_check = 0
+    for b in card_id:
+        xor_check ^= b
+    payload.append(xor_check)
+
+    bits = [1] * 8  # sync marker 0xFF
+    for byte_val in payload:
+        bits.append(0)  # start bit
+        ones = 0
+        for i in range(7):
+            bit = (byte_val >> i) & 1
+            bits.append(bit)
+            ones += bit
+        bits.append(0 if (ones & 1) else 1)  # odd parity
+        bits.append(1)  # stop bit
+
+    raw = bytearray(16)
+    for i in range(128):
+        if bits[i]:
+            raw[i >> 3] |= 1 << (7 - (i & 7))
+    return bytes(raw)
+
+
+# --- shared helpers relocated from cli_hf_mf (used by the monolith too) ---
+
+_TOOL_MISSING = "MISSING"    # binary not found on disk
+
+_TOOL_BLOCKED = "BLOCKED"    # binary exists but OS/AV prevented execution
+
+_TOOL_NO_KEY = "NO_KEY"     # binary ran cleanly, no key found for these nonces
+
+def _sniff_tool_path(name):
+    """Return the Path to a cracking binary, or None if not present."""
+    suffix = ".exe" if sys.platform == "win32" else ""
+    p = default_cwd / (name + suffix)
+    return p if p.exists() else None
+
+def _run_mfkey64(uid, nt, nr, ar, at):
+    """
+    Run mfkey64 and return the recovered key string (12 hex chars), or one of
+    _TOOL_MISSING / _TOOL_BLOCKED / _TOOL_NO_KEY.
+
+    mfkey64 requires 5 args: uid nt {nr} {ar} {at}
+    When cracking a sniff pair (both at==\'\'):
+        at = nonce[1].nt  (the CU sent this as {at} after nonce[0]; the reader
+                           treated it as a fresh nt for the next auth round)
+    When cracking a single complete auth:
+        at = the directly captured {at} frame
+    """
+    path = _sniff_tool_path("mfkey64")
+    if path is None:
+        return _TOOL_MISSING
+    try:
+        result = subprocess.run(
+            [str(path), uid, nt, nr, ar, at],
+            capture_output=True,
+            timeout=30,
+            encoding="ascii",
+        )
+    except FileNotFoundError:
+        return _TOOL_MISSING
+    except PermissionError:
+        return _TOOL_BLOCKED
+    except OSError:
+        # Covers antivirus quarantine, wrong arch, etc.
+        return _TOOL_BLOCKED
+    except subprocess.TimeoutExpired:
+        return _TOOL_BLOCKED
+    if result.returncode not in (0, 1):
+        # Non-zero exit other than 1 (usage error) usually means OS blocked it
+        return _TOOL_BLOCKED
+    sea_obj = _KEY.search(result.stdout)
+    return sea_obj[0] if sea_obj is not None else _TOOL_NO_KEY
+
+def _run_mfkey32v2(items):
+    """
+    Used by HFMFELog (detection-log path) via multiprocessing Pool.
+    Returns (key_str, items) on success, None if not found, raises on binary errors
+    so the pool can propagate them.
+    """
+    output_str = subprocess.run(
+        [
+            default_cwd / ("mfkey32v2.exe" if sys.platform == "win32" else "mfkey32v2"),
+            items[0]["uid"],
+            items[0]["nt"],
+            items[0]["nr"],
+            items[0]["ar"],
+            items[1]["nt"],
+            items[1]["nr"],
+            items[1]["ar"],
+        ],
+        capture_output=True,
+        check=True,
+        encoding="ascii",
+    ).stdout
+    sea_obj = _KEY.search(output_str)
+    if sea_obj is not None:
+        return sea_obj[0], items
+    return None
+
+def _run_mfkey32v2_sniff(n0, n1):
+    """
+    Sniff-path wrapper for mfkey32v2.  Returns a key string, or one of
+    _TOOL_MISSING / _TOOL_BLOCKED / _TOOL_NO_KEY — never raises.
+    """
+    path = _sniff_tool_path("mfkey32v2")
+    if path is None:
+        return _TOOL_MISSING
+    try:
+        result = subprocess.run(
+            [
+                str(path),
+                n0["uid"], n0["nt"], n0["nr"], n0["ar"],
+                n1["nt"],  n1["nr"], n1["ar"],
+            ],
+            capture_output=True,
+            timeout=30,
+            encoding="ascii",
+        )
+    except FileNotFoundError:
+        return _TOOL_MISSING
+    except PermissionError:
+        return _TOOL_BLOCKED
+    except OSError:
+        return _TOOL_BLOCKED
+    except subprocess.TimeoutExpired:
+        return _TOOL_BLOCKED
+    if result.returncode not in (0, 1):
+        return _TOOL_BLOCKED
+    sea_obj = _KEY.search(result.stdout)
+    return sea_obj[0] if sea_obj is not None else _TOOL_NO_KEY
+
+
+# --- shared helpers relocated from cli_hf_des (used by the monolith too) ---
+
+AUTHTRACE_STATUS_NAMES = {
+    0x00: "ok",
+    0x01: "no_tag",
+    0x02: "err_stat",
+    0x06: "auth_fail",
+    0x60: "par_err",
+    0x68: "success",
+}
+
+# --- default MFC key (used by relocated mfkey helpers) ---
+_KEY = re.compile("[a-fA-F0-9]{12}", flags=re.MULTILINE)
