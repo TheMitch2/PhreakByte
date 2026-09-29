@@ -5,8 +5,6 @@ load/save, and the `hf des` command classes. Split out of chameleon_cli_unit;
 foundation imported explicitly from cli_core."""
 
 import re
-import struct
-import json
 import argparse
 import time
 
@@ -667,7 +665,7 @@ examples:
                     return
                 # Update last RX annotation
                 frames[-1] = (frames[-1][0], frames[-1][1], frames[-1][2],
-                              f"I-block resp: 91 00 (SelectApplication OK)")
+                              "I-block resp: 91 00 (SelectApplication OK)")
 
             # ---------- AUTHENTICATE round 1 --------------------------------
             auth_apdu1 = bytes([0x90, auth_cmd, 0x00, 0x00, 0x01, args.keyno & 0xFF, 0x00])
@@ -708,7 +706,7 @@ examples:
             auth_apdu2 = bytes([0x90, 0xAF, 0x00, 0x00, len(enc_token)]) + enc_token + bytes([0x00])
             resp2 = _exchange_iblock(
                 auth_apdu2,
-                annot_tx=f"I-block: 90 AF (continue) + E(RndA||RndB')",
+                annot_tx="I-block: 90 AF (continue) + E(RndA||RndB')",
                 annot_rx_prefix=None,
             )
             if len(resp2) < 2 or resp2[-2] != 0x91 or resp2[-1] != 0x00:
@@ -1139,7 +1137,7 @@ class HfDesInfo(ReaderRequiredUnit):
                 for aid in aids:
                     print(f"   AID: {aid.hex().upper()}  ({int.from_bytes(aid, 'little'):06X})")
             else:
-                print(f"\n Applications  : none")
+                print("\n Applications  : none")
         except Exception as e:
             print(f" {CY}[!] GetApplicationIDs failed: {e}{C0}")
 
@@ -1475,7 +1473,7 @@ class HfDesChk(ReaderRequiredUnit):
         key_no = args.keyno
 
         # Select card and get AID list
-        print(f" Selecting card...")
+        print(" Selecting card...")
         try:
             uid_bytes, sak, _ = _des_select(self.cmd)
         except RuntimeError as e:
