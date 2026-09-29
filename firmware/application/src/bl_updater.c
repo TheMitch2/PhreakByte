@@ -186,7 +186,8 @@ static bl_updater_status_t bl_updater_flash_bl(bool validate_first) {
         {
             uint32_t ri = (UICR_REGOUT0_ADDR - UICR_PAGE_ADDR) / 4;
             uint32_t r  = uicr_backup[ri];
-            if (r == 0xFFFFFFFFUL) r = 0xFFFFFFF8UL;   /* start from erased, clear VOUT field */
+            /* Set VOUT=3.3V, keep all other bits. The UICR is erased below before
+             * these words are written back, so any value is programmable. */
             r = (r & ~(uint32_t)UICR_REGOUT0_VOUT_Msk) |
                 (UICR_REGOUT0_VOUT_3V3 << UICR_REGOUT0_VOUT_Pos);
             uicr_backup[ri] = r;
