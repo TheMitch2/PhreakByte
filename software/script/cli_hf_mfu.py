@@ -5,12 +5,17 @@ emulation slot load/save/config/detect, and the MFUAuthArgsUnit base (moved
 from cli_core). Foundation imported explicitly from cli_core."""
 
 import re
+import sys
+import os
+import threading
+import subprocess
 import json
 import struct
 import argparse
 import time
 
 from cli_core import (
+    CrackEffect,
     ArgumentParserNoExit,
     CG,
     CR,
