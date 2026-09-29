@@ -8,7 +8,6 @@ software/script/:  python3 gen_command_md.py > ../docs/command.md
 import argparse
 import re
 import io
-import sys
 import chameleon_cli_unit as U
 from chameleon_utils import CLITree
 
