@@ -923,7 +923,7 @@ static standalone_rc_t on_tick(uint32_t now_ticks) {
             /* Frame ISR set frame_pending when reader sends a command */
         if (m_st.frame_pending) {
             __DMB();  /* ensure frame_buf/frame_bits writes (ISR) are visible
-                   * before we read them — pairs with the ISR's flag set */
+           * before we read them — pairs with the ISR's flag set */
             m_st.frame_pending = false;
 
             /* Log reader→tag frame in trace */

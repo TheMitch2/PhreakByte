@@ -20,14 +20,7 @@ from pathlib import Path
 from multiprocessing import Pool, cpu_count
 
 from cli_core import (
-    _KEY,
-    _sniff_tool_path,
-    _TOOL_MISSING,
-    _TOOL_BLOCKED,
-    _TOOL_NO_KEY,
-    _run_mfkey64,
     _run_mfkey32v2,
-    _run_mfkey32v2_sniff,
     ArgsParserError,
     ArgumentParserNoExit,
     BaseCLIUnit,
@@ -56,7 +49,6 @@ from cli_core import (
     chameleon_pm3,
     color_string,
     data,
-    default_cwd,
     execute_tool,
     hardnested_utils,
     hf,
@@ -2578,19 +2570,6 @@ class HFMFVALUE(ReaderRequiredUnit):
             self.get_value(dst_blk, dst_type, dst_key)
         else:
             print(f" - {color_string((CR, 'Restore fail.'))}")
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 class ItemGenerator:

@@ -1211,7 +1211,7 @@ class LFIOProxRead(LFIOProxReadArgsUnit, ReaderRequiredUnit):
 
     def on_exec(self, args: argparse.Namespace):
         ver, fc, cn, raw8, *futureuse = self.cmd.ioprox_scan()
-        print("ioProx XSF format")
+        print(f"ioProx XSF format")
         print(f"   Version: {color_string((CG, ver))}")
         print(f"   Facility: {color_string((CG, f'{fc} [0x{fc:02X}]'))}")
         print(f"   ID: {color_string((CY, cn))}")
@@ -1248,7 +1248,7 @@ class LFIOProxWriteT55xx(LFIOProxIdArgsUnit, ReaderRequiredUnit):
         )
         result = self.cmd.ioprox_write_to_t55xx(payload16)
 
-        print("ioProx XSF format")
+        print(f"ioProx XSF format")
         print(f"   Version: {color_string((CG, ver))}")
         print(f"   Facility: {color_string((CG, f'{fc} [0x{fc:02X}]'))}")
         print(f"   ID: {color_string((CY, cn))}")
@@ -1299,7 +1299,7 @@ class LFIOProxEconfig(SlotIndexArgsAndGoUnit, LFIOProxIdArgsUnit):
 
             result = self.cmd.ioprox_set_emu_id(payload16)
 
-            print("ioProx XSF format")
+            print(f"ioProx XSF format")
             print(f"   Version: {color_string((CG, ver))}")
             print(f"   Facility: {color_string((CG, f'{fc} [0x{fc:02X}]'))}")
             print(f"   ID: {color_string((CY, cn))}")
@@ -1308,15 +1308,11 @@ class LFIOProxEconfig(SlotIndexArgsAndGoUnit, LFIOProxIdArgsUnit):
         else:
             # GET
             ver, fc, cn, raw8, *futureuse = self.cmd.ioprox_get_emu_id()
-            print("ioProx XSF format")
+            print(f"ioProx XSF format")
             print(f"   Version: {color_string((CG, ver))}")
             print(f"   Facility: {color_string((CG, f'{fc} [0x{fc:02X}]'))}")
             print(f"   ID: {color_string((CY, cn))}")
             print(f"   Raw: {color_string((CY, raw8.hex().upper()))}")
-
-
-
-
 
 
 def pac_decode_raw(raw: bytes) -> bytes:
@@ -1645,7 +1641,7 @@ class LFT55xxClone(ReaderRequiredUnit):
     def on_exec(self, args: argparse.Namespace):
         # Clone requires LF writer — only available on Chameleon Ultra (not Lite)
         if self.cmd.get_device_model() != 0:
-            print(" - Error: LF clone requires Chameleon Ultra. Lite has no LF writer.")
+            print(f" - Error: LF clone requires Chameleon Ultra. Lite has no LF writer.")
             return
         t = args.type
 
@@ -1683,7 +1679,7 @@ class LFT55xxClone(ReaderRequiredUnit):
                 oem,
             )
             self.cmd.hidprox_write_to_t55xx(id_bytes)
-            print(" - HID Prox cloned to T55xx")
+            print(f" - HID Prox cloned to T55xx")
             print(f"   Format : {fmt.name}")
             if fc:
                 print(f"   FC     : {fc}")
@@ -1705,7 +1701,7 @@ class LFT55xxClone(ReaderRequiredUnit):
                 raw8 = res[3]
             payload16 = struct.pack(">BBH8s4x", ver & 0xFF, fc & 0xFF, cn & 0xFFFF, raw8)
             self.cmd.ioprox_write_to_t55xx(payload16)
-            print(" - ioProx cloned to T55xx")
+            print(f" - ioProx cloned to T55xx")
             print(f"   Ver    : {ver}")
             print(f"   FC     : {fc} [0x{fc:02X}]")
             print(f"   CN     : {cn}")

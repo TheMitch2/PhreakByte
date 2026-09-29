@@ -598,8 +598,6 @@ class HF14AInfo(ReaderRequiredUnit):
         scan.scan(deep=True)
 
 
-
-
 @hw_slot.command("list")
 class HWSlotList(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -2200,18 +2198,6 @@ examples:
                 print(f"   {CR}AT not received — auth was rejected by the card{C0}")
         elif nt_int is not None:
             print(f" {CY}Auth aborted before NR||AR — NT={nt_int:08X}, no further analysis{C0}")
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def _extract_sniff_nonces(frames):

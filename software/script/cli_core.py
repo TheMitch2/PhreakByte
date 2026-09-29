@@ -801,6 +801,7 @@ class CrackEffect:
         self.stop_event.set()
         scramble_thread.join()
 
+
 def _decode_14a_frame_col(data: bytes, szBits: int, is_tx: bool = False,
                           prev_cmd=None, iso_dep: bool = False):
     """Return (description, colour, cmd_tag) for a 14A frame.
@@ -1068,6 +1069,7 @@ def _decode_14a_frame_col(data: bytes, szBits: int, is_tx: bool = False,
     # Unknown — show first byte
     return f'unknown (0x{b0:02x})', CC
 
+
 def indala_encode_raw(fc: int, cn: int) -> bytes:
     """Encode FC/CN into 8-byte Indala 26-bit raw frame (PM3-compatible bit mapping)."""
     bits = [0] * 64
@@ -1131,6 +1133,7 @@ def indala_encode_raw(fc: int, cn: int) -> bytes:
             raw[i // 8] |= 1 << (7 - (i % 8))
     return bytes(raw)
 
+
 def indala_format_output(raw: bytes) -> str:
     """Format Indala raw bytes as PM3-style output string."""
     fc, cn = indala_decode_raw(raw)
@@ -1192,7 +1195,9 @@ def _decode_sw(sw1: int, sw2: int) -> str:
         return 'Proprietary OK'
     return ''
 
+
 _CD = "\033[90m"   # dim grey: raw/garbled frames that fail validation
+
 
 def _sak_desc(sak: int):
     try:
@@ -1202,6 +1207,7 @@ def _sak_desc(sak: int):
     if sak_type:
         return f"SAK (Select Acknowledge) = 0x{sak:02X}  [{sak_type}]"
     return f"SAK (Select Acknowledge) = 0x{sak:02X}"
+
 
 def _known_aid(aid: bytes) -> str:
     table = {
@@ -1219,6 +1225,7 @@ def _known_aid(aid: bytes) -> str:
     }
     return table.get(aid, '')
 
+
 def _known_bertag(tag: int) -> str:
     table = {
         0x9f36: 'ATC',
@@ -1228,6 +1235,7 @@ def _known_bertag(tag: int) -> str:
         0x9f4e: 'Merchant Name',
     }
     return table.get(tag, '')
+
 
 def indala_decode_raw(raw: bytes):
     """Decode Indala 26-bit FC/CN from 8-byte raw frame (PM3-compatible bit mapping)."""
@@ -1276,6 +1284,7 @@ def jablotron_card_id(raw_bytes: bytes) -> int:
         card_id = card_id * 100 + ((b >> 4) * 10) + (b & 0x0F)
     return card_id
 
+
 def pac_encode_raw(card_id: bytes) -> bytes:
     """Encode 8-byte card ID to 16-byte T55XX bitstream (128 bits).
 
@@ -1315,11 +1324,13 @@ _TOOL_BLOCKED = "BLOCKED"    # binary exists but OS/AV prevented execution
 
 _TOOL_NO_KEY = "NO_KEY"     # binary ran cleanly, no key found for these nonces
 
+
 def _sniff_tool_path(name):
     """Return the Path to a cracking binary, or None if not present."""
     suffix = ".exe" if sys.platform == "win32" else ""
     p = default_cwd / (name + suffix)
     return p if p.exists() else None
+
 
 def _run_mfkey64(uid, nt, nr, ar, at):
     """
@@ -1358,6 +1369,7 @@ def _run_mfkey64(uid, nt, nr, ar, at):
     sea_obj = _KEY.search(result.stdout)
     return sea_obj[0] if sea_obj is not None else _TOOL_NO_KEY
 
+
 def _run_mfkey32v2(items):
     """
     Used by HFMFELog (detection-log path) via multiprocessing Pool.
@@ -1383,6 +1395,7 @@ def _run_mfkey32v2(items):
     if sea_obj is not None:
         return sea_obj[0], items
     return None
+
 
 def _run_mfkey32v2_sniff(n0, n1):
     """

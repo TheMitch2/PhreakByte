@@ -183,7 +183,7 @@ class Command(enum.IntEnum):
     DESFIRE_READER_AUTH_ISO7816 = 6012
 
     # Standalone (host-less) modes subsystem
-    STANDALONE_GET_MODE = 7000
+    STANDALONE_GET_MODE =
     STANDALONE_SET_MODE = 7001
     STANDALONE_GET_CONFIG = 7002
     STANDALONE_SET_CONFIG = 7003

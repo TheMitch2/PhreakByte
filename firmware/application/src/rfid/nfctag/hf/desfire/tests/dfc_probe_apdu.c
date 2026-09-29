@@ -15,7 +15,7 @@
 
 static size_t from_hex(const char *hex, uint8_t *out, size_t cap) {
     size_t n = 0;
-    for (const char * p = hex; *p && n < cap;) {
+    for (const char *p = hex; *p && n < cap;) {
         if (*p == ' ' || *p == ':') {
             p++;
             continue;
