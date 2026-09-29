@@ -1626,7 +1626,7 @@ class HWRaw(DeviceRequiredUnit):
         if response.data:
             print(f"   Data (HEX): {response.data.hex()}")
         else:
-            print(f"   Data (HEX): (none)")
+            print("   Data (HEX): (none)")
 
 
 @hf_14a.command("raw")
@@ -2519,9 +2519,9 @@ def _print_14a_sniff_summary(frames):
         print(f" {'-'*55}")
         print(f" {CC}Nonces   :{C0} {CY}{n_auth} AUTH captured, but every card nonce (NT) "
               f"came back garbled{C0}")
-        print(f"   Reader side is clean (AUTH + NR||AR present); the RC522 is mangling")
-        print(f"   the 4-byte NT. One clean 32-bit NT in the frame right after an AUTH")
-        print(f"   is all that's needed to crack.")
+        print("   Reader side is clean (AUTH + NR||AR present); the RC522 is mangling")
+        print("   the 4-byte NT. One clean 32-bit NT in the frame right after an AUTH")
+        print("   is all that's needed to crack.")
 
 
 def _get_capture():
@@ -3275,7 +3275,7 @@ class EMVScan(DeviceRequiredUnit):
         tags[0x9F12] = app_tags[0x9F12]
         tags[0x50] = app_tags[0x50]
 
-        print(f'')
+        print('')
         print(f' {CG}── Card Details ──────────────────────{C0}')
 
         # App label — show first unique label only
@@ -3667,7 +3667,7 @@ class EMVApdu(DeviceRequiredUnit):
         timeout_ms = max(1000, min(60000, args.timeout))
 
         print(f' {CY}ISO14443-4 T=CL APDU relay started{C0}')
-        print(f' Waiting for a reader to connect (SAK=20 slot required)...')
+        print(' Waiting for a reader to connect (SAK=20 slot required)...')
         print(f' Type {CY}quit{C0} to exit, or enter hex response bytes when prompted.')
 
         exchange_count = 0
@@ -4509,12 +4509,12 @@ class StandaloneConfig(DeviceRequiredUnit):
                 wtx_ms = raw[0] | (raw[1] << 8) | (raw[2] << 16) | (raw[3] << 24)
             else:
                 wtx_ms = 2000  # firmware default
-            print(color_string((CG, f"relay config:")))
+            print(color_string((CG, "relay config:")))
             print(f"  wtx  {wtx_ms} ms  (time to request from reader via WTX "
                   f"while BLE round-trip completes)"
                   + (color_string((CY, "  [default]")) if not raw or len(raw) < 4 else ""))
-            print(f"  link auto-pair nearest available CU in relay mode")
-            print(f"  role lower MAC = RELAY_CARD (reader side), "
+            print("  link auto-pair nearest available CU in relay mode")
+            print("  role lower MAC = RELAY_CARD (reader side), "
                   f"higher MAC = RELAY_READER (card side)")
             print(color_string((CY, "Ultra only. Arm both units with both-button chord.")))
             return
@@ -4666,11 +4666,11 @@ class HFSeosELoad(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
         parser.add_argument("-d", "--data", type=str, default=None, metavar="<hex>",
                             help="Data to present to reader (2-255 bytes). Must be valid BER-TLV.")
         parser.add_argument("-o", "--oid", type=str, default=None, metavar="<hex>",
-                            help=f"Target OID (1-32 bytes).")
+                            help="Target OID (1-32 bytes).")
         parser.add_argument("-t", "--tag", type=str, default=None, metavar="<hex>",
-                            help=f"Tag of presented data (1-2 bytes).")
+                            help="Tag of presented data (1-2 bytes).")
         parser.add_argument("--diversifier", type=str, default=None, metavar="<hex>",
-                            help=f"Simulated card diversifier (1-16 bytes).")
+                            help="Simulated card diversifier (1-16 bytes).")
         return parser
 
     def on_exec(self, args: argparse.Namespace):
@@ -4687,7 +4687,7 @@ class HFSeosELoad(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
         anti_coll_data = self.cmd.hf14a_get_anti_coll_data()
         if anti_coll_data is None or len(anti_coll_data) == 0:
             print(
-                f"{color_string((CR, f'Slot does not contain any HF 14A config'))}"
+                f"{color_string((CR, 'Slot does not contain any HF 14A config'))}"
             )
             return
         uid = anti_coll_data["uid"]
