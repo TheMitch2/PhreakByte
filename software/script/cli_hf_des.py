@@ -11,6 +11,7 @@ import argparse
 import time
 
 from cli_core import (
+    _decode_14a_frame_col,
     ArgumentParserNoExit,
     BaseCLIUnit,
     C0,
