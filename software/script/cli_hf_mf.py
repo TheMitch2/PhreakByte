@@ -22,6 +22,14 @@ from pathlib import Path
 from multiprocessing import Pool, cpu_count
 
 from cli_core import (
+    _KEY,
+    _sniff_tool_path,
+    _TOOL_MISSING,
+    _TOOL_BLOCKED,
+    _TOOL_NO_KEY,
+    _run_mfkey64,
+    _run_mfkey32v2,
+    _run_mfkey32v2_sniff,
     ArgsParserError,
     ArgumentParserNoExit,
     BaseCLIUnit,
@@ -2574,118 +2582,17 @@ class HFMFVALUE(ReaderRequiredUnit):
             print(f" - {color_string((CR, 'Restore fail.'))}")
 
 
-_KEY = re.compile("[a-fA-F0-9]{12}", flags=re.MULTILINE)
-
-_TOOL_MISSING = "MISSING"    # binary not found on disk
-
-_TOOL_BLOCKED = "BLOCKED"    # binary exists but OS/AV prevented execution
-
-_TOOL_NO_KEY = "NO_KEY"     # binary ran cleanly, no key found for these nonces
 
 
-def _sniff_tool_path(name):
-    """Return the Path to a cracking binary, or None if not present."""
-    suffix = ".exe" if sys.platform == "win32" else ""
-    p = default_cwd / (name + suffix)
-    return p if p.exists() else None
 
 
-def _run_mfkey64(uid, nt, nr, ar, at):
-    """
-    Run mfkey64 and return the recovered key string (12 hex chars), or one of
-    _TOOL_MISSING / _TOOL_BLOCKED / _TOOL_NO_KEY.
-
-    mfkey64 requires 5 args: uid nt {nr} {ar} {at}
-    When cracking a sniff pair (both at==\'\'):
-        at = nonce[1].nt  (the CU sent this as {at} after nonce[0]; the reader
-                           treated it as a fresh nt for the next auth round)
-    When cracking a single complete auth:
-        at = the directly captured {at} frame
-    """
-    path = _sniff_tool_path("mfkey64")
-    if path is None:
-        return _TOOL_MISSING
-    try:
-        result = subprocess.run(
-            [str(path), uid, nt, nr, ar, at],
-            capture_output=True,
-            timeout=30,
-            encoding="ascii",
-        )
-    except FileNotFoundError:
-        return _TOOL_MISSING
-    except PermissionError:
-        return _TOOL_BLOCKED
-    except OSError:
-        # Covers antivirus quarantine, wrong arch, etc.
-        return _TOOL_BLOCKED
-    except subprocess.TimeoutExpired:
-        return _TOOL_BLOCKED
-    if result.returncode not in (0, 1):
-        # Non-zero exit other than 1 (usage error) usually means OS blocked it
-        return _TOOL_BLOCKED
-    sea_obj = _KEY.search(result.stdout)
-    return sea_obj[0] if sea_obj is not None else _TOOL_NO_KEY
 
 
-def _run_mfkey32v2(items):
-    """
-    Used by HFMFELog (detection-log path) via multiprocessing Pool.
-    Returns (key_str, items) on success, None if not found, raises on binary errors
-    so the pool can propagate them.
-    """
-    output_str = subprocess.run(
-        [
-            default_cwd / ("mfkey32v2.exe" if sys.platform == "win32" else "mfkey32v2"),
-            items[0]["uid"],
-            items[0]["nt"],
-            items[0]["nr"],
-            items[0]["ar"],
-            items[1]["nt"],
-            items[1]["nr"],
-            items[1]["ar"],
-        ],
-        capture_output=True,
-        check=True,
-        encoding="ascii",
-    ).stdout
-    sea_obj = _KEY.search(output_str)
-    if sea_obj is not None:
-        return sea_obj[0], items
-    return None
 
 
-def _run_mfkey32v2_sniff(n0, n1):
-    """
-    Sniff-path wrapper for mfkey32v2.  Returns a key string, or one of
-    _TOOL_MISSING / _TOOL_BLOCKED / _TOOL_NO_KEY — never raises.
-    """
-    path = _sniff_tool_path("mfkey32v2")
-    if path is None:
-        return _TOOL_MISSING
-    try:
-        result = subprocess.run(
-            [
-                str(path),
-                n0["uid"], n0["nt"], n0["nr"], n0["ar"],
-                n1["nt"],  n1["nr"], n1["ar"],
-            ],
-            capture_output=True,
-            timeout=30,
-            encoding="ascii",
-        )
-    except FileNotFoundError:
-        return _TOOL_MISSING
-    except PermissionError:
-        return _TOOL_BLOCKED
-    except OSError:
-        return _TOOL_BLOCKED
-    except subprocess.TimeoutExpired:
-        return _TOOL_BLOCKED
-    if result.returncode not in (0, 1):
-        return _TOOL_BLOCKED
-    sea_obj = _KEY.search(result.stdout)
-    return sea_obj[0] if sea_obj is not None else _TOOL_NO_KEY
+
+
+
 
 
 class ItemGenerator:
