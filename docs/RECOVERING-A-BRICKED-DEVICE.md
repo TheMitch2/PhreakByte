@@ -3,14 +3,14 @@
 ## Symptom
 
 After a **revert-to-stock**, a battery-powered Ultra powers on with **only the
-red LED** — no white/other LEDs, and it does **not** enumerate over USB. It looks
+red LED** ,  no white/other LEDs, and it does **not** enumerate over USB. It looks
 dead but the power light is on.
 
 ## Cause
 
 On HV-mode boards the core runs off the nRF52840's `REGOUT0` regulator setting
 (battery → VDDH → REG0 → VDD). If `REGOUT0` is left blank or set to **1.8 V**,
-the core voltage is too low to boot — the chip powers on but can't run any
+the core voltage is too low to boot ,  the chip powers on but can't run any
 firmware. An older revert path could leave `REGOUT0` at 1.8 V, producing exactly
 this state.
 
@@ -28,7 +28,7 @@ bits left erased).
 ### With nRF Command Line Tools (nrfjprog)
 
 ```sh
-# 1) Read it back first (optional — a bricked unit usually shows 0xFFFFFFFF or ...FFF7 = 1.8V)
+# 1) Read it back first (optional ,  a bricked unit usually shows 0xFFFFFFFF or ...FFF7 = 1.8V)
 nrfjprog -f NRF52 --memrd 0x10001304 --n 4
 
 # 2) Erase the UICR, then write REGOUT0 = 3.3V.
@@ -36,7 +36,7 @@ nrfjprog -f NRF52 --memrd 0x10001304 --n 4
 nrfjprog -f NRF52 --eraseuicr
 nrfjprog -f NRF52 --memwr 0x10001304 --val 0xFFFFFFFD
 
-# 3) Reset — REGOUT0 only takes effect after a reset.
+# 3) Reset ,  REGOUT0 only takes effect after a reset.
 nrfjprog -f NRF52 --reset
 ```
 
