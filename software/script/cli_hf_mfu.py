@@ -9,10 +9,8 @@ import sys
 import os
 import threading
 import subprocess
-import json
 import struct
 import argparse
-import time
 
 from cli_core import (
     CrackEffect,
