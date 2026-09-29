@@ -11,6 +11,7 @@ import argparse
 import time
 
 from cli_core import (
+    AUTHTRACE_STATUS_NAMES,
     _decode_14a_frame_col,
     ArgumentParserNoExit,
     BaseCLIUnit,
@@ -1580,12 +1581,3 @@ class HfDesChk(ReaderRequiredUnit):
 #                      bits 14..0 = frame length in BITS)
 #   u8[ceil(szBits/8)] frame_bytes
 # -----------------------------------------------------------------------------
-
-AUTHTRACE_STATUS_NAMES = {
-    0x00: "ok",
-    0x01: "no_tag",
-    0x02: "err_stat",
-    0x06: "auth_fail",
-    0x60: "par_err",
-    0x68: "success",
-}
