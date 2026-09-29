@@ -207,9 +207,24 @@ static void dfu_observer(nrf_dfu_evt_type_t evt_type) {
  * power even when battery boot is dead, so it self-heals on the next USB boot
  * and the unit works on battery again after one reset. */
 static void ensure_regout0_3v3(void) {
-    if ((NRF_UICR->REGOUT0 & UICR_REGOUT0_VOUT_Msk) !=
-            (UICR_REGOUT0_VOUT_DEFAULT << UICR_REGOUT0_VOUT_Pos)) {
-        return;                     /* already programmed — leave it */
+    /* Write 3.3V whenever REGOUT0 is not ALREADY 3.3V. The previous test
+     * (VOUT != DEFAULT) was inverted: DEFAULT is 1.8V, so a blank/1.8V unit --
+     * exactly the one that bricks (core too low to boot: powers on, red LED,
+     * no USB) -- matched "== DEFAULT" and returned WITHOUT setting 3.3V. VOUT
+     * 3.3V (0b101) is reachable from the blank/erased value (0b111) by a plain
+     * flash write (clears bit 1 only), so no UICR erase is needed here. */
+    if ((NRF_UICR->REGOUT0 & UICR_REGOUT0_VOUT_Msk) ==
+            (UICR_REGOUT0_VOUT_3V3 << UICR_REGOUT0_VOUT_Pos)) {
+        return;                     /* already 3.3V — nothing to do */
+    }
+    /* Only write REGOUT0 while powered from USB. On battery a bricked unit runs
+     * at 1.8V, and a flash write below the rated voltage can be incomplete or
+     * corrupt REGOUT0 (a hard brick), and if it doesn't take we'd reset into a
+     * loop. VBUS present means VDD is a solid ~3.3V, so the write is safe. The
+     * self-heal therefore lands on the next USB boot; the unit then works on
+     * battery again. Without USB, leave REGOUT0 alone and boot normally. */
+    if ((NRF_POWER->USBREGSTATUS & POWER_USBREGSTATUS_VBUSDETECT_Msk) == 0) {
+        return;
     }
     NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos);
     while (NRF_NVMC->READY == NVMC_READY_READY_Busy) {}
