@@ -35,6 +35,14 @@
 #define BL_REGION_PAGES    ((BL_REGION_END - BL_REGION_START) / BL_PAGE_SIZE)
 #define BL_REGION_BYTES    (BL_REGION_END - BL_REGION_START)
 #define APP_REGION_START   0x00027000UL
+/* DFU settings page (nRF52840). The stock bootloader decides an app is
+ * valid from bank_0.bank_code here, NOT from the app's vector table, so
+ * erasing only the app page leaves the stock BL thinking a valid app is
+ * present: it skips DFU and jumps into the erased app, which hard-faults
+ * and hangs. On battery the device then sits powered until it drains,
+ * never reaching DFU. Erase this page too so bank_code reads blank and
+ * the stock BL enters DFU on the next boot. */
+#define DFU_SETTINGS_ADDR  0x000FF000UL
 
 #define UICR_BOOTLOADER_ADDR  0x10001014UL
 #define UICR_REGOUT0_ADDR     0x10001304UL   /* REGOUT0: core/GPIO VOUT */
@@ -217,6 +225,7 @@ bl_updater_status_t bl_updater_run_and_invalidate_app_force(void) {
     bl_updater_status_t st = bl_updater_flash_bl(false);
     if (st != BL_UPDATER_OK) return st;
     nvmc_page_erase(APP_REGION_START);
+    nvmc_page_erase(DFU_SETTINGS_ADDR);   /* invalidate bank_code -> stock BL enters DFU */
     nrf_delay_ms(50);
     NVIC_SystemReset();
     return BL_UPDATER_OK;
