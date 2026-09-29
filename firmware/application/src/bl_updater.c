@@ -3,8 +3,9 @@
  *
  * Entry points:
  *   bl_updater_run()                          replace BL, reset (CRC check)
- *   bl_updater_run_and_invalidate_app_force() replace BL, erase own vector
- *                                             table, reset — NO CRC check
+ *   bl_updater_run_and_invalidate_app_force() replace BL, invalidate the
+ *                                             app via DFU settings
+ *                                             (bank_code), reset — no CRC
  */
 
 #include "bl_updater.h"
@@ -217,8 +218,14 @@ bl_updater_status_t bl_updater_run_and_invalidate_app_force(void)
 {
     bl_updater_status_t st = bl_updater_flash_bl(false);
     if (st != BL_UPDATER_OK) return st;
-    nvmc_page_erase(APP_REGION_START);
-    nvmc_page_erase(DFU_SETTINGS_ADDR);   /* clear bank_code so stock BL enters DFU */
+    /* Do NOT erase the app region here: this recovery app is executing from it,
+     * and leaving the app region blank makes the freshly installed stock BL jump
+     * into empty flash and hard-fault (device stops responding after the revert
+     * reset; only a power cycle recovered it). Instead, invalidate the app the
+     * way the bootloader actually checks it -- clear bank_0.bank_code in the DFU
+     * settings page -- so the stock BL enters DFU and accepts a fresh app flash,
+     * with a valid vector table still present to boot into meanwhile. */
+    nvmc_page_erase(DFU_SETTINGS_ADDR);
     nrf_delay_ms(50);
     NVIC_SystemReset();
     return BL_UPDATER_OK;
