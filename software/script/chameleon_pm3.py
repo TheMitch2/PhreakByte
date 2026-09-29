@@ -25,12 +25,21 @@ from __future__ import annotations
 import json
 
 from chameleon_dfc import (
-    DfcCredential, DfcApplication, DfcFile, DfcKey,
-    KEY_TYPE_MASK, KEY_TYPE_3K3DES, KEY_TYPE_AES,
-    FILE_TYPE_STANDARD, FILE_TYPE_BACKUP, FILE_TYPE_VALUE,
-    FILE_TYPE_LINEAR, FILE_TYPE_CYCLIC,
-    OWNER_PICC, DEFAULT_CARD_STORAGE, GENERATIONS,
-    key_length_for_ks2, auth_command_for_ks2, DfcError,
+    DfcCredential,
+    DfcApplication,
+    DfcFile,
+    DfcKey,
+    KEY_TYPE_MASK,
+    KEY_TYPE_3K3DES,
+    KEY_TYPE_AES,
+    FILE_TYPE_STANDARD,
+    FILE_TYPE_BACKUP,
+    FILE_TYPE_VALUE,
+    FILE_TYPE_LINEAR,
+    FILE_TYPE_CYCLIC,
+    key_length_for_ks2,
+    auth_command_for_ks2,
+    DfcError,
 )
 
 # ---------------------------------------------------------------- tokens ------
