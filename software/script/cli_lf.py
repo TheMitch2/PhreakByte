@@ -13,6 +13,8 @@ import time
 import sys
 
 from cli_core import (
+    indala_encode_raw,
+    indala_format_output,
     lf_indala,
     ArgsParserError,
     ArgumentParserNoExit,
