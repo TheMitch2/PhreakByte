@@ -5,6 +5,12 @@ write/dump/clone, value blocks, emulation slot load/save, and sim. Split out
 of chameleon_cli_unit; foundation imported explicitly from cli_core."""
 
 import re
+import binascii
+import sys
+import math
+import glob
+import random
+import datetime
 import os
 import json
 import time
