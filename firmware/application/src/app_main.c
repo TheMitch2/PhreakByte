@@ -1212,6 +1212,13 @@ static void ensure_regout0_3v3(void) {
 
 int main(void) {
 #ifdef RECOVERY_MODE
+    /* Belt-and-suspenders: guarantee a bootable core voltage BEFORE the revert.
+     * bl_updater's UICR restore also forces REGOUT0=3.3V, but doing it here too
+     * means a battery unit is safe even if the revert is interrupted between the
+     * UICR erase and the restore. ensure_regout0_3v3() only writes+resets when
+     * REGOUT0 isn't already 3.3V, so on a healthy unit it's a no-op and the
+     * revert proceeds. */
+    ensure_regout0_3v3();
     /* Revert-to-stock build: as the VERY FIRST thing main() does (before any
      * peripheral or SoftDevice init), write the embedded STOCK bootloader to
      * the BL region, invalidate this recovery app's vector table, and reset.

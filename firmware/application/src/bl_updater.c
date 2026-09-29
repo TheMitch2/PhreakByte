@@ -37,6 +37,7 @@
 #define APP_REGION_START   0x00027000UL
 
 #define UICR_BOOTLOADER_ADDR  0x10001014UL
+#define UICR_REGOUT0_ADDR     0x10001304UL   /* REGOUT0: core/GPIO VOUT */
 #define UICR_PAGE_ADDR        0x10001000UL
 
 
@@ -174,6 +175,22 @@ static bl_updater_status_t bl_updater_flash_bl(bool validate_first) {
         volatile uint32_t *uicr = (volatile uint32_t *)UICR_PAGE_ADDR;
         for (uint32_t i = 0; i < 256; i++) uicr_backup[i] = uicr[i];
         uicr_backup[(UICR_BOOTLOADER_ADDR - UICR_PAGE_ADDR) / 4] = UICR_BL_ADDR_STOCK;
+
+        /* Force REGOUT0 to 3.3V. On HV-mode boards (battery -> VDDH -> REG0 ->
+         * VDD) the core runs off REGOUT0; a blank/1.8V value leaves the reverted
+         * unit unable to boot (powers on, red LED, no USB -- the classic
+         * "revert bricked my device" report). The app's ensure_regout0_3v3()
+         * self-heal never runs in a RECOVERY build (main() resets before
+         * reaching it), so this restore is the only place that can guarantee a
+         * bootable voltage. Preserving the old value is not safe; set it. */
+        {
+            uint32_t ri = (UICR_REGOUT0_ADDR - UICR_PAGE_ADDR) / 4;
+            uint32_t r  = uicr_backup[ri];
+            if (r == 0xFFFFFFFFUL) r = 0xFFFFFFF8UL;   /* start from erased, clear VOUT field */
+            r = (r & ~(uint32_t)UICR_REGOUT0_VOUT_Msk) |
+                (UICR_REGOUT0_VOUT_3V3 << UICR_REGOUT0_VOUT_Pos);
+            uicr_backup[ri] = r;
+        }
 
         nvmc_page_erase(UICR_PAGE_ADDR);
         for (uint32_t i = 0; i < 256; i++) {
