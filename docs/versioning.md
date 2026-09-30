@@ -12,8 +12,8 @@ different commands.
 Set in `firmware/Makefile.defs`:
 
 ```makefile
-APP_FW_VER_MAJOR := 2
-APP_FW_VER_MINOR := 1
+APP_FW_VER_MAJOR := 1
+APP_FW_VER_MINOR := 0
 APP_FW_VER_PATCH := 0
 APP_FW_SEMVER    := $(APP_FW_VER_MAJOR).$(APP_FW_VER_MINOR).$(APP_FW_VER_PATCH)
 ```
