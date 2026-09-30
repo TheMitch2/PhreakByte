@@ -26,7 +26,7 @@ Ultra and Lite are both supported; the scripts auto-detect which is attached.
   `flash-dfu-app.sh` / `flash-dfu-full.sh` / `flash-dfu-sdbl.sh`, all over USB.
 - **No CDC driver for the UF2 path.** Mass storage is universal — Linux, macOS,
   Windows, ChromeOS.
-- **A path back to stock, also without SWD** — `revert-to-stock.sh` (see
+- **A path back to stock, also without SWD** — flash the stock app (see
   `RECOVERY_BUILD.md`).
 
 The one thing to know about the UF2 drive: it writes the **application region
@@ -241,17 +241,18 @@ use the serial-DFU packages, not the drive.
 
 ---
 
-## Step 8 — going back to stock (no SWD)
+## Step 8 — going back to stock firmware (no SWD)
+
+You don't swap the bootloader — this fork's bootloader already speaks stock
+serial DFU. Just flash the stock app through it:
 
 ```bash
-./revert-to-stock.sh ~/Downloads/ultra-dfu-full.zip
+# device unplugged: hold button B, plug USB -> enumerates as 1915:521f
+nrfutil device program --firmware ~/Downloads/<stock-app>.zip --traits nordicDfu
 ```
 
-Builds a recovery UF2 from the stock release zip, drops it on the drive (the
-recovery app rewrites the bootloader region back to stock at `0xF3000` from
-application context), then flashes the stock package over serial DFU. Full
-mechanism, and how to produce a distributable recovery UF2, in
-`firmware/tools/RECOVERY_BUILD.md`.
+The device reboots into stock firmware; you keep the UF2-capable bootloader.
+Details in `firmware/tools/RECOVERY_BUILD.md`.
 
 ---
 
