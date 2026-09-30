@@ -29,6 +29,9 @@
 #define DATA_CMD_GET_SLOT_INFO                  (1019)
 #define DATA_CMD_WIPE_FDS                       (1020)
 #define DATA_CMD_DELETE_SLOT_TAG_NICK           (1021)
+// 1022 was DATA_CMD_UPDATE_BL (app-side BL self-flash) — removed; BL
+// updates/reverts now go through serial DFU. ID left reserved.
+
 #define DATA_CMD_GET_ENABLED_SLOTS              (1023)
 #define DATA_CMD_DELETE_SLOT_SENSE_TYPE         (1024)
 #define DATA_CMD_GET_BATTERY_INFO               (1025)
@@ -48,6 +51,7 @@
 #define DATA_CMD_GET_SLEEP_TIMEOUT              (1039)
 #define DATA_CMD_SET_SLEEP_TIMEOUT              (1040)
 #define DATA_CMD_GET_BOOTLOADER_VERSION         (1041)
+#define DATA_CMD_GET_DFU_APP_VERSION            (1046)  /* DFU application-version counter (build.sh) from settings page */
 #define DATA_CMD_GET_FREE_MEMORY                (1042)
 #define DATA_CMD_GET_BLE_NAME                   (1043)
 #define DATA_CMD_SET_BLE_NAME                   (1044)
