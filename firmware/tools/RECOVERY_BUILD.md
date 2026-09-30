@@ -37,9 +37,20 @@ it in place — it behaves as the stock bootloader plus UF2.
 ## If you genuinely need the *stock bootloader* back
 
 Restoring the literal stock bootloader is an **SWD** operation — the same way it
-was installed at the factory. It is intentionally not offered as an in-field
-flash, because installing a bootloader at its linked address from a running
-image cannot be done reliably without a debugger. Use a debug probe (J-Link,
-CMSIS-DAP / picoprobe, Black Magic Probe) and program the upstream `sd_bl` /
-bootloader image, then the stock app. This is only needed for development or
-resale; ordinary use never requires it.
+was installed at the factory.
+
+This is not offered as an in-field DFU flash. Repackaging RRG's stock bootloader
+as a signed DFU image was tried thoroughly: the package builds correctly and is
+byte-for-byte equivalent in structure to this fork's own (working) bootloader
+DFU zip — same manifest, same key, same layout, the image is contiguous and
+fits — yet the device rejects the stock bootloader at the post-write
+verification step (`ObjectExecute` → `VerificationFailed`), while an identically
+packaged build of *this* fork's bootloader flashes fine. The stock bootloader
+binary simply does not verify through this device's DFU, for a device-side
+reason not visible in the image or the package. So bootloader replacement is
+SWD-only.
+
+Use a debug probe (J-Link, CMSIS-DAP / picoprobe, Black Magic Probe) to program
+the upstream bootloader image, then flash the stock app. This is only needed for
+development or resale; ordinary use never requires it, because running stock
+firmware only needs the stock app (above).
