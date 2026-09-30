@@ -533,6 +533,10 @@ CFLAGS += -DAPP_FW_VER_MAJOR=$(APP_FW_VER_MAJOR) -DAPP_FW_VER_MINOR=$(APP_FW_VER
 BL_VERSION ?= 0
 CFLAGS += -DBL_VERSION=$(BL_VERSION)
 
+# DFU application-version counter shown by `hw status` -- compile-time (build.sh application_version)
+APP_DFU_VERSION ?= 0
+CFLAGS += -DAPP_DFU_VERSION=$(APP_DFU_VERSION)
+
 # C++ flags common to all targets
 CXXFLAGS += $(OPT)
 # Assembler flags common to all targets

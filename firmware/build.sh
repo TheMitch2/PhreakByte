@@ -45,7 +45,7 @@ rm -rf "objects"
 
 (
   cd application
-    make -j BL_VERSION=$bootloader_version
+    make -j BL_VERSION=$bootloader_version APP_DFU_VERSION=$application_version
 )
 
 (
