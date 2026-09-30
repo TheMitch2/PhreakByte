@@ -92,19 +92,6 @@ ret_code_t nrf_bootloader_flash_protect(uint32_t address, uint32_t size)
 {
     /* ---------------------------------------------------------------------
      * Flash protection intentionally DISABLED for this open-source fork.
-     *
-     * Upstream, this sets an ACL write-disable on the bootloader region
-     * every time the bootloader launches the application. ACL latches until
-     * the next reset and cannot be cleared by software — which makes the
-     * bl_updater self-update mechanism (the app writing the BL region via
-     * NVMC) fail silently: the erase/write is blocked, the post-write verify
-     * fails, and the update is a no-op. That defeats `hw update_bl` and the
-     * revert-to-stock path.
-     *
-     * Since this fork deliberately allows the application to rewrite the
-     * bootloader (with its own CRC + memcmp verification), we skip ACL
-     * entirely. Return success so callers (nrf_bootloader_app_start_final)
-     * proceed normally.
      * ------------------------------------------------------------------- */
     (void)address;
     (void)size;
