@@ -26,12 +26,10 @@ onto a USB drive." That is the whole point: shorter build-flash-test loops.
 - **UF2 bootloader.** Firmware is flashed by copying a `.uf2` file onto the
   `CHAMELEON` mass-storage drive. No `nrfutil`, no signed packages, no driver
   install for routine updates.
-- **`bl_updater`.** Bootstrap a new bootloader from the running application,
-  without an SWD probe. A freshly built bootloader is embedded in the
-  application and written to flash via a CLI command.
 - **Multi-image DFU flashing.** Combined images can be pushed in a single pass.
-- **Revert-to-stock UF2.** A single drag-and-drop restores the signed Nordic
-  Secure DFU bootloader whenever you want it back. See
+- **Stock-compatible.** The bootloader lives at the stock address and speaks
+  the stock serial/BLE DFU as well as UF2, so stock firmware installs straight
+  through it — no bootloader swap. See
   [`firmware/tools/RECOVERY_BUILD.md`](firmware/tools/RECOVERY_BUILD.md).
 - **Native cross-platform BLE.** The desktop CLI connects over BLE (Nordic UART)
   as well as USB.
@@ -58,17 +56,16 @@ Then flash with the UF2 helper:
 ./flash-uf2-app.sh
 ```
 
-Other flash paths (`flash-dfu-app.sh`, `flash-dfu-full.sh`, `flash-dfu-sdbl.sh`)
-remain available for SWD and signed-DFU workflows.
+Other flash paths (`flash-dfu-app.sh`, `flash-dfu-full.sh`) remain available
+for SWD and signed-DFU workflows.
 
 ## Revert to stock
 
-To return to the upstream signed-DFU bootloader:
-
-```
-cd firmware
-./revert-to-stock.sh
-```
+You don't need to change the bootloader to run stock firmware — this fork's
+bootloader is a superset of the stock one. Just flash the stock **app** through
+it: enter serial DFU (hold button B, plug USB) and push the upstream app zip
+with `nrfutil` or any stock DFU flasher. Full steps in
+[`firmware/tools/RECOVERY_BUILD.md`](firmware/tools/RECOVERY_BUILD.md).
 
 Details and the recovery-image build are documented in
 [`firmware/tools/RECOVERY_BUILD.md`](firmware/tools/RECOVERY_BUILD.md).
