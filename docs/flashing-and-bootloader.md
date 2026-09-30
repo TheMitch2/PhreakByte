@@ -60,7 +60,7 @@ These are outside the UF2 window, so use one of:
 
 If a bad `fullimage.uf2` (or an interrupted BL flash) left the device
 unresponsive, reflash a known-good image over SWD (`flash_stlink` /
-`nrfjprog`), or use the recovery build (`revert-to-stock.sh` /
+`nrfjprog`), or flash the stock app through the existing bootloader (
 `RECOVERY_ZIP=…`). After recovery the normal application-UF2 path works again.
 
 ## Downgrade prevention
@@ -72,7 +72,7 @@ This fork **does not enforce firmware downgrade prevention**:
 * The bootloader branch of `fw_version_ok()`
   (`nrf52_sdk/.../nrf_dfu_ver_validation.c`) is patched to return `true`
   unconditionally, so an equal or older bootloader is accepted — re-flashing
-  the same build and revert-to-stock both work.
+  the same build works; stock firmware installs through the bootloader.
 
 Because of this, the `bootloader_version` value carries no monotonic
 constraint here; it is free to use as the `hw blver` display value (see
