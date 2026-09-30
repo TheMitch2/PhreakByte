@@ -4820,6 +4820,8 @@ def parse_relay_frames(trace: bytes) -> list:
     """Decode a raw trace buffer into frame dicts (same format as AuthTrace)."""
     frames = []
     off = 0
+    prev_cmd = None
+    iso_dep = False
     while off + 2 <= len(trace):
         hdr       = (trace[off] << 8) | trace[off + 1]
         tag_to_rd = bool(hdr & 0x8000)
@@ -4829,7 +4831,16 @@ def parse_relay_frames(trace: bytes) -> list:
         if off + byte_cnt > len(trace):
             break
         raw = trace[off:off + byte_cnt]
-        decoded, col = _decode_14a_frame_col(raw, bits)
+        decoded, col, cmd_tag = _decode_14a_frame_col(
+            raw, bits, tag_to_rd, prev_cmd, iso_dep)
+        if not tag_to_rd:
+            prev_cmd = cmd_tag
+            if cmd_tag == 'rats':
+                iso_dep = True
+            elif cmd_tag in ('halt', 'deselect'):
+                iso_dep = False
+        else:
+            prev_cmd = None      # a response consumes its command context
         frames.append({
             'dir':     'tag→reader' if tag_to_rd else 'reader→tag',
             'bits':    bits,
