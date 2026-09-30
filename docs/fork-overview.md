@@ -20,9 +20,8 @@ application.
   `uf2_ghostfat.[ch]`, `uf2_status.[ch]` (ghostfat derived from tinyuf2,
   `LICENSE.MIT`); reworked `bootloader/Makefile`, `main.c`, `app_config.h`,
   `sdk_config.h`; linker split (`bootloader-stage1.ld`).
-* Application self-update path: `bl_updater.[ch]`.
-* Host tooling: `gen_embedded_bl.py`, `flash-uf2-app.sh`, `flash-dfu-sdbl.sh`,
-  `revert-to-stock.sh`, a rewritten `build.sh` (app / fullimage / recovery
+* Host tooling: `flash-uf2-app.sh`, `flash-dfu-sdbl.sh`,
+  a rewritten `build.sh` (app / fullimage
   outputs), and `firmware/tools/UF2_INSTALL.md`.
 * Several vendored SDK bootloader/USB files patched to support it.
 
