@@ -13,7 +13,7 @@ Set in `firmware/Makefile.defs`:
 
 ```makefile
 APP_FW_VER_MAJOR := 2
-APP_FW_VER_MINOR := 2
+APP_FW_VER_MINOR := 1
 APP_FW_VER_PATCH := 0
 APP_FW_SEMVER    := $(APP_FW_VER_MAJOR).$(APP_FW_VER_MINOR).$(APP_FW_VER_PATCH)
 ```
@@ -56,7 +56,7 @@ The value is passed into the application build:
 ```bash
 (
   cd application
-  make -j BL_VERSION=$bootloader_version    # RECOVERY_MODE=1 also, in recovery build
+  make -j BL_VERSION=$bootloader_version
 )
 ```
 
