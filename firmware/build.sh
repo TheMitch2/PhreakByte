@@ -21,14 +21,6 @@ esac
 # ---------------------------------------------------------------------------
 # Recovery-mode build
 # ---------------------------------------------------------------------------
-if [[ -n "$RECOVERY_ZIP" ]]; then
-  if [[ ! -f "$RECOVERY_ZIP" ]]; then
-    echo "error: RECOVERY_ZIP=$RECOVERY_ZIP does not exist" >&2
-    exit 1
-  fi
-  RECOVERY_MODE=1
-  echo "Recovery-mode build — embedding stock BL from $RECOVERY_ZIP"
-fi
 
 echo "Building firmware for $device_type (hw_version=$hw_version)"
 
@@ -36,7 +28,6 @@ set -xe
 
 rm -rf "objects"
 
-if [[ -z "$RECOVERY_MODE" ]]; then
   # ---- Single composite bootloader at 0xF3000 (44KB) ---------------------
   # UF2 (MSC) + CDC serial DFU, no debug CDC, no logging. Fits the stock
   # 44KB region so it's directly flashable from stock — no SWD, no
@@ -50,37 +41,16 @@ if [[ -z "$RECOVERY_MODE" ]]; then
     arm-none-eabi-objcopy -O ihex ../objects/bootloader.out ../objects/bootloader.hex
   )
 
-  ./tools/gen_embedded_bl.py \
-    objects/bootloader.hex \
-    application/src/embedded_bootloader.h
 
-else
-  ./tools/make_recovery_header.py \
-    "$RECOVERY_ZIP" \
-    application/src/embedded_bootloader.h
-fi
 
 (
   cd application
-  if [[ -n "$RECOVERY_MODE" ]]; then
-    make -j RECOVERY_MODE=1 BL_VERSION=$bootloader_version
-  else
     make -j BL_VERSION=$bootloader_version
-  fi
 )
 
 (
   cd objects
 
-  if [[ -n "$RECOVERY_MODE" ]]; then
-    ../tools/uf2conv.py application.hex -o ${device_type}-revert-to-stock.uf2
-
-    set +x
-    echo
-    echo "=========================================================="
-    echo "Built recovery UF2: objects/${device_type}-revert-to-stock.uf2"
-    echo "=========================================================="
-  else
     cp ../nrf52_sdk/components/softdevice/${softdevice}/hex/${softdevice}_nrf52_${softdevice_version}_softdevice.hex softdevice.hex
 
     # SD+BL DFU zip — composite BL at 0xF3000, flashable from stock
@@ -144,5 +114,4 @@ fi
     echo "  Full image : objects/${device_type}-fullimage.uf2"
     echo "Use flash-dfu-sdbl.sh to install both stages."
     echo "=========================================================="
-  fi
 )
