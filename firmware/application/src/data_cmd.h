@@ -29,9 +29,6 @@
 #define DATA_CMD_GET_SLOT_INFO                  (1019)
 #define DATA_CMD_WIPE_FDS                       (1020)
 #define DATA_CMD_DELETE_SLOT_TAG_NICK           (1021)
-// 1022 was DATA_CMD_UPDATE_BL (app-side BL self-flash) — removed; BL
-// updates/reverts now go through serial DFU. ID left reserved.
-
 #define DATA_CMD_GET_ENABLED_SLOTS              (1023)
 #define DATA_CMD_DELETE_SLOT_SENSE_TYPE         (1024)
 #define DATA_CMD_GET_BATTERY_INFO               (1025)
