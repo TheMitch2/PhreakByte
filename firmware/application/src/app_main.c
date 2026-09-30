@@ -22,9 +22,6 @@
 
 #define NRF_LOG_MODULE_NAME app_main
 #include "nrf_log.h"
-#ifdef RECOVERY_MODE
-#include "bl_updater.h"   // recovery: revert-to-stock hook
-#endif
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 NRF_LOG_MODULE_REGISTER();
@@ -1016,7 +1013,7 @@ static bool dispatch_chord_if_pending(void) {
         /* Malformed chord (one button released long ago, other never
          * triggered chord_active reset): abort. */
         if ((m_is_a_btn_release && !m_is_b_btn_press) ||
-                (m_is_b_btn_release && !m_is_a_btn_press)) {
+            (m_is_b_btn_release && !m_is_a_btn_press)) {
             NRF_LOG_INFO("CHORD_ABORT");
             m_chord_active = false;
             return false;
@@ -1025,7 +1022,7 @@ static bool dispatch_chord_if_pending(void) {
     }
 
     uint32_t dur = app_timer_cnt_diff_compute(app_timer_cnt_get(),
-        m_chord_start);
+                                              m_chord_start);
     standalone_button_evt_t evt;
     if (dur >= APP_TIMER_TICKS(5000)) {
         evt = STANDALONE_BTN_BOTH_VLONG;
@@ -1195,25 +1192,11 @@ static void fds_idle_gc_maybe(void) {
  * erase is needed and no REGOUT0 window is opened. Runs from USB normal-voltage
  * power even when battery boot is dead, so it self-heals on the next USB boot
  * and the unit works on battery again after one reset. */
-static void ensure_regout0_3v3(void) {
-    /* Write 3.3V whenever REGOUT0 is not ALREADY 3.3V. The previous test
-     * (VOUT != DEFAULT) was inverted: DEFAULT is 1.8V, so a blank/1.8V unit --
-     * exactly the one that bricks (core too low to boot: powers on, red LED,
-     * no USB) -- matched "== DEFAULT" and returned WITHOUT setting 3.3V. VOUT
-     * 3.3V (0b101) is reachable from the blank/erased value (0b111) by a plain
-     * flash write (clears bit 1 only), so no UICR erase is needed here. */
-    if ((NRF_UICR->REGOUT0 & UICR_REGOUT0_VOUT_Msk) ==
-            (UICR_REGOUT0_VOUT_3V3 << UICR_REGOUT0_VOUT_Pos)) {
-        return;                     /* already 3.3V — nothing to do */
-    }
-    /* Only write REGOUT0 while powered from USB. On battery a bricked unit runs
-     * at 1.8V, and a flash write below the rated voltage can be incomplete or
-     * corrupt REGOUT0 (a hard brick), and if it doesn't take we'd reset into a
-     * loop. VBUS present means VDD is a solid ~3.3V, so the write is safe. The
-     * self-heal therefore lands on the next USB boot; the unit then works on
-     * battery again. Without USB, leave REGOUT0 alone and boot normally. */
-    if ((NRF_POWER->USBREGSTATUS & POWER_USBREGSTATUS_VBUSDETECT_Msk) == 0) {
-        return;
+static void ensure_regout0_3v3(void)
+{
+    if ((NRF_UICR->REGOUT0 & UICR_REGOUT0_VOUT_Msk) !=
+        (UICR_REGOUT0_VOUT_DEFAULT << UICR_REGOUT0_VOUT_Pos)) {
+        return;                     /* already programmed — leave it */
     }
     NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos);
     while (NRF_NVMC->READY == NVMC_READY_READY_Busy) {}
@@ -1226,23 +1209,6 @@ static void ensure_regout0_3v3(void) {
 }
 
 int main(void) {
-#ifdef RECOVERY_MODE
-    /* Revert-to-stock build: as the VERY FIRST thing main() does (before any
-     * peripheral or SoftDevice init), write the embedded STOCK bootloader to
-     * the BL region, invalidate this recovery app's vector table, and reset.
-     * The stock BL then boots, finds no valid app, and drops to stock DFU
-     * mode. Does not return on success.
-     *
-     * Uses the _force variant (skips the runtime CRC check). The embedded
-     * image's CRC is verified at BUILD time by make_recovery_header.py, and
-     * the runtime crc32_compute has been observed to disagree with it for
-     * reasons unrelated to data integrity — a runtime CRC check here only
-     * causes a silent no-op (the exact "revert did nothing" symptom).
-     * bl_updater_flash_bl still does a post-write memcmp verify, which is the
-     * integrity check that actually matters. */
-    (void)bl_updater_run_and_invalidate_app_force();
-    while (1) { __WFE(); }   // only reached if the post-write verify failed
-#endif
     ensure_regout0_3v3();   /* self-heal VDD rail after any UICR erase */
     hw_connect_init();        // Remember to initialize the pins first
 
