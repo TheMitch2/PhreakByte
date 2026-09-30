@@ -79,9 +79,20 @@ static data_frame_tx_t *cmd_processor_get_git_version(uint16_t cmd, uint16_t sta
 
 #define BOOTLOADER_SETTINGS_ADDRESS             0xFF000UL
 #define DFU_SETTINGS_BL_VERSION_OFFSET          12U
+#define DFU_SETTINGS_APP_VERSION_OFFSET         8U
 
 static data_frame_tx_t *cmd_processor_get_bootloader_version(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
     uint32_t payload = U32HTONL((uint32_t)BL_VERSION);
+    return data_frame_make(cmd, STATUS_SUCCESS, sizeof(payload), (uint8_t *)&payload);
+}
+
+static data_frame_tx_t *cmd_processor_get_dfu_app_version(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
+    /* The DFU application-version counter (build.sh --application-version) lives
+     * in the bootloader settings page, distinct from the compiled semantic
+     * APP_FW_VER. Read it straight from the settings page. */
+    uint32_t app_version =
+        *(volatile uint32_t *)(BOOTLOADER_SETTINGS_ADDRESS + DFU_SETTINGS_APP_VERSION_OFFSET);
+    uint32_t payload = U32HTONL(app_version);
     return data_frame_make(cmd, STATUS_SUCCESS, sizeof(payload), (uint8_t *)&payload);
 }
 
@@ -789,9 +800,7 @@ static data_frame_tx_t *cmd_processor_em410x_scan(uint16_t cmd, uint16_t status,
 #define LF_SEARCH_DEFAULT_MS        500u   /* module default restored after the sweep */
 
 static data_frame_tx_t *cmd_processor_lf_search(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
-    (void)status;
-    (void)length;
-    (void)data;
+    (void)status; (void)length; (void)data;
     /* Response is always [tag_type(2, big-endian), id...]. The two reader
      * families differ: em410x/fdxb write the tag_type into the buffer
      * themselves, but hidprox/ioprox/pac/viking/jablotron write only the raw id
@@ -806,40 +815,29 @@ static data_frame_tx_t *cmd_processor_lf_search(uint16_t cmd, uint16_t status, u
     /* --- readers that already prefix [tag_type, id] --- */
 #if defined(PROJECT_CHAMELEON_ULTRA)
     if (st != STATUS_LF_TAG_OK && scan_fdxb(buf) == STATUS_LF_TAG_OK) {
-        out_len = 2 + FDXB_DATA_SIZE;
-        st = STATUS_LF_TAG_OK;
+        out_len = 2 + FDXB_DATA_SIZE; st = STATUS_LF_TAG_OK;
     }
 #endif
     /* --- readers that write only the raw id: scan into buf+2, prepend type --- */
     if (st != STATUS_LF_TAG_OK && scan_hidprox(buf + 2, 0) == STATUS_LF_TAG_OK) {
-        buf[0] = (uint8_t)(TAG_TYPE_HID_PROX >> 8);
-        buf[1] = (uint8_t)TAG_TYPE_HID_PROX;
-        out_len = 2 + LF_HIDPROX_TAG_ID_SIZE;
-        st = STATUS_LF_TAG_OK;
+        buf[0] = (uint8_t)(TAG_TYPE_HID_PROX >> 8); buf[1] = (uint8_t)TAG_TYPE_HID_PROX;
+        out_len = 2 + LF_HIDPROX_TAG_ID_SIZE; st = STATUS_LF_TAG_OK;
     }
     if (st != STATUS_LF_TAG_OK && scan_ioprox(buf + 2, 0) == STATUS_LF_TAG_OK) {
-        buf[0] = (uint8_t)(TAG_TYPE_IOPROX >> 8);
-        buf[1] = (uint8_t)TAG_TYPE_IOPROX;
-        out_len = 2 + LF_IOPROX_TAG_ID_SIZE;
-        st = STATUS_LF_TAG_OK;
+        buf[0] = (uint8_t)(TAG_TYPE_IOPROX >> 8); buf[1] = (uint8_t)TAG_TYPE_IOPROX;
+        out_len = 2 + LF_IOPROX_TAG_ID_SIZE; st = STATUS_LF_TAG_OK;
     }
     if (st != STATUS_LF_TAG_OK && scan_pac(buf + 2) == STATUS_LF_TAG_OK) {
-        buf[0] = (uint8_t)(TAG_TYPE_PAC >> 8);
-        buf[1] = (uint8_t)TAG_TYPE_PAC;
-        out_len = 2 + LF_PAC_TAG_ID_SIZE;
-        st = STATUS_LF_TAG_OK;
+        buf[0] = (uint8_t)(TAG_TYPE_PAC >> 8); buf[1] = (uint8_t)TAG_TYPE_PAC;
+        out_len = 2 + LF_PAC_TAG_ID_SIZE; st = STATUS_LF_TAG_OK;
     }
     if (st != STATUS_LF_TAG_OK && scan_jablotron(buf + 2) == STATUS_LF_TAG_OK) {
-        buf[0] = (uint8_t)(TAG_TYPE_JABLOTRON >> 8);
-        buf[1] = (uint8_t)TAG_TYPE_JABLOTRON;
-        out_len = 2 + LF_JABLOTRON_TAG_ID_SIZE;
-        st = STATUS_LF_TAG_OK;
+        buf[0] = (uint8_t)(TAG_TYPE_JABLOTRON >> 8); buf[1] = (uint8_t)TAG_TYPE_JABLOTRON;
+        out_len = 2 + LF_JABLOTRON_TAG_ID_SIZE; st = STATUS_LF_TAG_OK;
     }
     if (st != STATUS_LF_TAG_OK && scan_viking(buf + 2) == STATUS_LF_TAG_OK) {
-        buf[0] = (uint8_t)(TAG_TYPE_VIKING >> 8);
-        buf[1] = (uint8_t)TAG_TYPE_VIKING;
-        out_len = 2 + LF_VIKING_TAG_ID_SIZE;
-        st = STATUS_LF_TAG_OK;
+        buf[0] = (uint8_t)(TAG_TYPE_VIKING >> 8); buf[1] = (uint8_t)TAG_TYPE_VIKING;
+        out_len = 2 + LF_VIKING_TAG_ID_SIZE; st = STATUS_LF_TAG_OK;
     }
     /* em410x reader prefixes [tag_type, id] itself; EM410x last (loosest match). */
     if (st != STATUS_LF_TAG_OK && scan_em410x(buf) == STATUS_LF_TAG_OK) {
@@ -1411,23 +1409,23 @@ static data_frame_tx_t *cmd_processor_seos_read_emu_data(uint16_t cmd, uint16_t 
     tag_data_buffer_t *buffer = get_buffer_by_tag_type(TAG_TYPE_SEOS);
     nfc_tag_seos_information_t *info = (nfc_tag_seos_information_t *)buffer->buffer;
 
-    uint8_t output[1 + info->diversifier_len + 1 + info->oid_len + 1 + info->data_tag_len + 1 + info->data_len + 2];
+    uint8_t output[1+info->diversifier_len + 1+info->oid_len + 1+info->data_tag_len + 1+info->data_len + 2];
     uint16_t offset = 0;
 
     output[offset++] = info->data_len;
-    memcpy(output + offset, info->data, info->data_len);
+    memcpy(output+offset, info->data, info->data_len);
     offset += info->data_len;
 
     output[offset++] = info->oid_len;
-    memcpy(output + offset, info->oid, info->oid_len);
+    memcpy(output+offset, info->oid, info->oid_len);
     offset += info->oid_len;
 
     output[offset++] = info->data_tag_len;
-    memcpy(output + offset, info->data_tag, info->data_tag_len);
+    memcpy(output+offset, info->data_tag, info->data_tag_len);
     offset += info->data_tag_len;
 
     output[offset++] = info->diversifier_len;
-    memcpy(output + offset, info->diversifier, info->diversifier_len);
+    memcpy(output+offset, info->diversifier, info->diversifier_len);
     offset += info->diversifier_len;
 
     output[offset++] = info->hash_alg;
@@ -1448,25 +1446,25 @@ static data_frame_tx_t *cmd_processor_seos_write_emu_data(uint16_t cmd, uint16_t
     uint8_t len = data[offset++];
     if (len > NFC_TAG_SEOS_DATA_MAX) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
     info->data_len = len;
-    memcpy(info->data, data + offset, len);
+    memcpy(info->data, data+offset, len);
     offset += len;
 
     len = data[offset++];
     if (len > NFC_TAG_SEOS_OID_MAX) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
     info->oid_len = len;
-    memcpy(info->oid, data + offset, len);
+    memcpy(info->oid, data+offset, len);
     offset += len;
 
     len = data[offset++];
     if (len > NFC_TAG_SEOS_DATA_TAG_MAX) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
     info->data_tag_len = len;
-    memcpy(info->data_tag, data + offset, len);
+    memcpy(info->data_tag, data+offset, len);
     offset += len;
 
     len = data[offset++];
     if (len > NFC_TAG_SEOS_DIVERSIFIER_MAX) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
     info->diversifier_len = len;
-    memcpy(info->diversifier, data + offset, len);
+    memcpy(info->diversifier, data+offset, len);
     offset += len;
 
     info->hash_alg = data[offset++];
@@ -1482,9 +1480,9 @@ static data_frame_tx_t *cmd_processor_seos_write_emu_keys(uint16_t cmd, uint16_t
     tag_data_buffer_t *buffer = get_buffer_by_tag_type(TAG_TYPE_SEOS);
     nfc_tag_seos_information_t *info = (nfc_tag_seos_information_t *)buffer->buffer;
 
-    memcpy(info->authkey, data + 0, 16);
-    memcpy(info->privenc, data + 16, 16);
-    memcpy(info->privmac, data + 32, 16);
+    memcpy(info->authkey, data+ 0, 16);
+    memcpy(info->privenc, data+16, 16);
+    memcpy(info->privmac, data+32, 16);
 
     return data_frame_make(cmd, STATUS_SUCCESS, 0, NULL);
 }
@@ -1503,7 +1501,7 @@ static data_frame_tx_t *cmd_processor_idteck_write_to_t55xx(uint16_t cmd, uint16
     payload_t *payload = (payload_t *)data;
 
     if (length < sizeof(payload_t) ||
-            (length - offsetof(payload_t, old_keys)) % sizeof(payload->old_keys) != 0) {
+        (length - offsetof(payload_t, old_keys)) % sizeof(payload->old_keys) != 0) {
         return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
     }
 
@@ -2475,7 +2473,7 @@ static uint8_t auth_trace_do_auth(picc_14a_tag_t *tag, uint8_t type, uint8_t blo
     /* Capture NT — 32 bits, card→reader */
     auth_trace_store(answer, 32, true);
     uint32_t nt = ((uint32_t)answer[0] << 24) | ((uint32_t)answer[1] << 16)
-                  | ((uint32_t)answer[2] <<  8) | (uint32_t)answer[3];
+                  | ((uint32_t)answer[2] <<  8) |  (uint32_t)answer[3];
 
     /* Initialise Crypto1 with key (LSB-first, MIFARE convention) */
     uint64_t ui64Key = 0;
@@ -2514,7 +2512,7 @@ static uint8_t auth_trace_do_auth(picc_14a_tag_t *tag, uint8_t type, uint8_t blo
 
     /* Verify AT == prng_successor(nt, 64) ^ ks3 */
     uint32_t at_recv = ((uint32_t)answer[0] << 24) | ((uint32_t)answer[1] << 16)
-                       | ((uint32_t)answer[2] <<  8) | (uint32_t)answer[3];
+                       | ((uint32_t)answer[2] <<  8) |  (uint32_t)answer[3];
     uint32_t ntpp    = prng_successor(nt_succ, 32) ^ crypto1_word(&pcs, 0, 0);
     status = (ntpp == at_recv) ? STATUS_HF_TAG_OK : STATUS_MF_ERR_AUTH;
 
@@ -2722,9 +2720,9 @@ static void hf14a_sniff_finalize(void) {
         uint16_t best_off = 0xFFFFu, off = 0;
         while (off + 6 <= m_sniff_buf_len) {
             uint32_t ts = (uint32_t)m_sniff_buf[off]
-                          | ((uint32_t)m_sniff_buf[off + 1] << 8)
-                          | ((uint32_t)m_sniff_buf[off + 2] << 16)
-                          | ((uint32_t)m_sniff_buf[off + 3] << 24);
+                        | ((uint32_t)m_sniff_buf[off + 1] << 8)
+                        | ((uint32_t)m_sniff_buf[off + 2] << 16)
+                        | ((uint32_t)m_sniff_buf[off + 3] << 24);
             uint16_t bits = ((uint16_t)m_sniff_buf[off + 4] << 8) | m_sniff_buf[off + 5];
             uint16_t n = ((bits & 0x7FFFu) + 7) / 8;
             if (ts != 0xFFFFFFFFu && ts < best_ts) { best_ts = ts; best_off = off; }
@@ -2830,15 +2828,15 @@ uint16_t hf14a_sniff_tap_run(uint32_t timeout_ms, uint16_t *out_cb_count) {
     NRF_TIMER1->TASKS_START = 1;
     if (nrfx_ppi_channel_alloc(&ppi_end) == NRFX_SUCCESS) {
         nrfx_ppi_channel_assign(ppi_end,
-                                (uint32_t)&NRF_NFCT->EVENTS_RXFRAMEEND,
-                                (uint32_t)&NRF_TIMER1->TASKS_CAPTURE[0]);
+            (uint32_t)&NRF_NFCT->EVENTS_RXFRAMEEND,
+            (uint32_t)&NRF_TIMER1->TASKS_CAPTURE[0]);
         nrfx_ppi_channel_enable(ppi_end);
         ppi_end_ok = true;
     }
     if (nrfx_ppi_channel_alloc(&ppi_start) == NRFX_SUCCESS) {
         nrfx_ppi_channel_assign(ppi_start,
-                                (uint32_t)&NRF_NFCT->EVENTS_RXFRAMESTART,
-                                (uint32_t)&NRF_TIMER1->TASKS_CAPTURE[2]);
+            (uint32_t)&NRF_NFCT->EVENTS_RXFRAMESTART,
+            (uint32_t)&NRF_TIMER1->TASKS_CAPTURE[2]);
         nrfx_ppi_channel_enable(ppi_start);
         ppi_start_ok = true;
     }
@@ -3011,8 +3009,7 @@ static data_frame_tx_t *cmd_processor_hf14a_sniff(uint16_t cmd, uint16_t status,
 
     if (m_sniff_buf_len == 0) {
         uint8_t dbg[2] = { (uint8_t)(m_sniff_cb_count >> 8),
-                           (uint8_t)(m_sniff_cb_count & 0xFF)
-                         };
+                           (uint8_t)(m_sniff_cb_count & 0xFF) };
         return data_frame_make(cmd, STATUS_HF_TAG_NO, 2, dbg);
     }
     hf14a_sniff_finalize();  /* chronological order + strip ts (wire format unchanged) */
@@ -3540,24 +3537,15 @@ static data_frame_tx_t *cmd_processor_desfire_get_stats(uint16_t cmd, uint16_t s
         &rx, &tx, &errs, &us, &activations, &atqa, &timeouts, &reset_us);
     unsigned starv = desfire_random_starvations();
     uint8_t resp[18];
-    resp[0] = (uint8_t)(rx >> 8);
-    resp[1] = (uint8_t)rx;
-    resp[2] = (uint8_t)(tx >> 8);
-    resp[3] = (uint8_t)tx;
-    resp[4] = (uint8_t)(errs >> 8);
-    resp[5] = (uint8_t)errs;
-    resp[6] = (uint8_t)(us >> 8);
-    resp[7] = (uint8_t)us;
-    resp[8] = (uint8_t)(starv >> 8);
-    resp[9] = (uint8_t)starv;
-    resp[10] = (uint8_t)(activations >> 8);
-    resp[11] = (uint8_t)activations;
-    resp[12] = (uint8_t)(atqa >> 8);
-    resp[13] = (uint8_t)atqa;
-    resp[14] = (uint8_t)(timeouts >> 8);
-    resp[15] = (uint8_t)timeouts;
-    resp[16] = (uint8_t)(reset_us >> 8);
-    resp[17] = (uint8_t)reset_us;
+    resp[0] = (uint8_t)(rx >> 8);   resp[1] = (uint8_t)rx;
+    resp[2] = (uint8_t)(tx >> 8);   resp[3] = (uint8_t)tx;
+    resp[4] = (uint8_t)(errs >> 8); resp[5] = (uint8_t)errs;
+    resp[6] = (uint8_t)(us >> 8);   resp[7] = (uint8_t)us;
+    resp[8] = (uint8_t)(starv >> 8); resp[9] = (uint8_t)starv;
+    resp[10] = (uint8_t)(activations >> 8); resp[11] = (uint8_t)activations;
+    resp[12] = (uint8_t)(atqa >> 8); resp[13] = (uint8_t)atqa;
+    resp[14] = (uint8_t)(timeouts >> 8); resp[15] = (uint8_t)timeouts;
+    resp[16] = (uint8_t)(reset_us >> 8); resp[17] = (uint8_t)reset_us;
     return data_frame_make(cmd, STATUS_SUCCESS, sizeof(resp), resp);
 }
 
@@ -3577,17 +3565,17 @@ static DfcReaderStatus desfire_reader_run_exchange_(
     const uint8_t *rx = NULL;
     size_t rx_len = 0;
     DfcReaderStatus st;
-    for (;;) {
+    for(;;) {
         size_t tx_len = 0;
         st = dfc_reader_step(ex, rx, rx_len, tx, sizeof(tx), &tx_len);
-        if (st != DfcReaderPending) return st;
+        if(st != DfcReaderPending) return st;
         /* tcl_apdu_'s frame buffer (abuf[64]) holds PCB(1) + APDU + CRC(2),
          * matching the 61-byte cap cmd_processor_hf14a_4_reader_apdu uses
          * for the same 64-byte buffer. */
-        if (tx_len == 0 || tx_len > 61) return DfcReaderBufferTooSmall;
+        if(tx_len == 0 || tx_len > 61) return DfcReaderBufferTooSmall;
         uint8_t *rdata = NULL;
         uint16_t rlen = 0;
-        if (!tcl_apdu_(tx, (uint8_t)tx_len, &rdata, &rlen, abuf, rbuf, chain_buf, rbits, blk)) {
+        if(!tcl_apdu_(tx, (uint8_t)tx_len, &rdata, &rlen, abuf, rbuf, chain_buf, rbits, blk)) {
             return DfcReaderProtocolError; /* T=CL transport failed */
         }
         rx = rdata;
@@ -3623,17 +3611,17 @@ static DfcReaderStatus desfire_reader_run_exchange_(
  *     an application that does not exist)
  */
 static data_frame_tx_t *cmd_processor_desfire_reader_auth_iso7816(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
-    if (length < 7) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    if(length < 7) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
     bool has_aid = (data[0] & 0x01) != 0;
     uint8_t aid[DFC_COMMAND_AID_LENGTH];
     memcpy(aid, &data[1], sizeof(aid));
     uint8_t key_reference = data[4];
     uint8_t algorithm = data[5];
     uint8_t key_len = data[6];
-    if (key_len != DFC_AES_KEY_LENGTH && key_len != DFC_MAX_KEY_LEN) {
+    if(key_len != DFC_AES_KEY_LENGTH && key_len != DFC_MAX_KEY_LEN) {
         return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
     }
-    if (length != (uint16_t)(7 + key_len)) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    if(length != (uint16_t)(7 + key_len)) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
     uint8_t key[DFC_MAX_KEY_LEN];
     memcpy(key, &data[7], key_len);
 
@@ -3651,7 +3639,7 @@ static data_frame_tx_t *cmd_processor_desfire_reader_auth_iso7816(uint16_t cmd, 
     picc_14a_tag_t taginfo;
     status = pcd_14a_reader_scan_auto(&taginfo);
     pcd_14a_reader_timeout_set(DEF_COM_TIMEOUT);
-    if (status != STATUS_HF_TAG_OK) {
+    if(status != STATUS_HF_TAG_OK) {
         return data_frame_make(cmd, STATUS_HF_TAG_NO, 0, NULL);
     }
     bsp_delay_ms(5);
@@ -3661,7 +3649,7 @@ static data_frame_tx_t *cmd_processor_desfire_reader_auth_iso7816(uint16_t cmd, 
     write_register_single(CommandReg, PCD_IDLE);
     {
         uint16_t w = 0;
-        while ((read_register_single(CommandReg) & 0x0F) != PCD_IDLE && w++ < 1000);
+        while((read_register_single(CommandReg) & 0x0F) != PCD_IDLE && w++ < 1000);
     }
     write_register_single(ComIrqReg, 0x7F);
     set_register_mask(FIFOLevelReg, 0x80);
@@ -3673,23 +3661,23 @@ static data_frame_tx_t *cmd_processor_desfire_reader_auth_iso7816(uint16_t cmd, 
     uint16_t rbits = 0;
     uint8_t blk = 0;
 
-    if (has_aid) {
+    if(has_aid) {
         static DfcCommand select_cmd;
-        if (dfc_command_select_application(&select_cmd, aid, NULL) != DfcCommandOk) {
+        if(dfc_command_select_application(&select_cmd, aid, NULL) != DfcCommandOk) {
             return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
         }
         static DfcReaderSession select_session; /* unused: SelectApplication needs no session */
         dfc_reader_session_init(&select_session);
         static DfcReaderExchange select_ex;
         DfcReaderStatus bst = dfc_reader_exchange_begin(
-                                  &select_ex, &select_session, DfcReaderFramingIso7816, &select_cmd, NULL);
-        if (bst != DfcReaderOk) {
+            &select_ex, &select_session, DfcReaderFramingIso7816, &select_cmd, NULL);
+        if(bst != DfcReaderOk) {
             uint8_t resp[1] = {(uint8_t)bst};
             return data_frame_make(cmd, STATUS_HF_TAG_OK, 1, resp);
         }
         DfcReaderStatus sel_st = desfire_reader_run_exchange_(
-                                     &select_ex, abuf, rbuf, chain_buf, &rbits, &blk);
-        if (sel_st != DfcReaderOk || dfc_reader_result_status(&select_ex) != DFC_STATUS_OK) {
+            &select_ex, abuf, rbuf, chain_buf, &rbits, &blk);
+        if(sel_st != DfcReaderOk || dfc_reader_result_status(&select_ex) != DFC_STATUS_OK) {
             uint8_t resp[2];
             resp[0] = (uint8_t)(sel_st == DfcReaderOk ? DfcReaderCardError : sel_st);
             resp[1] = dfc_reader_result_status(&select_ex);
@@ -3698,7 +3686,7 @@ static data_frame_tx_t *cmd_processor_desfire_reader_auth_iso7816(uint16_t cmd, 
     }
 
     size_t random_len = (algorithm == DFC_ISO7816_AUTH_ALGORITHM_2TDEA) ?
-                        DFC_ISO7816_AUTH_CHALLENGE_2TDEA : DFC_ISO7816_AUTH_CHALLENGE_LONG;
+                         DFC_ISO7816_AUTH_CHALLENGE_2TDEA : DFC_ISO7816_AUTH_CHALLENGE_LONG;
     uint8_t random_first[DFC_ISO7816_AUTH_CHALLENGE_LONG];
     uint8_t random_second[DFC_ISO7816_AUTH_CHALLENGE_LONG];
     dfc_random_fill(random_first, random_len);
@@ -3708,17 +3696,17 @@ static data_frame_tx_t *cmd_processor_desfire_reader_auth_iso7816(uint16_t cmd, 
     dfc_reader_session_init(&auth_session);
     static DfcReaderExchange auth_ex;
     DfcReaderStatus bst = dfc_reader_authenticate_iso7816_begin(
-                              &auth_ex, &auth_session, key_reference, key, key_len, algorithm,
-                              random_first, random_second, random_len);
+        &auth_ex, &auth_session, key_reference, key, key_len, algorithm,
+        random_first, random_second, random_len);
     memset(key, 0, sizeof(key));
-    if (bst != DfcReaderOk) {
+    if(bst != DfcReaderOk) {
         uint8_t resp[1] = {(uint8_t)bst};
         return data_frame_make(cmd, STATUS_HF_TAG_OK, 1, resp);
     }
 
     DfcReaderStatus auth_st = desfire_reader_run_exchange_(
-                                  &auth_ex, abuf, rbuf, chain_buf, &rbits, &blk);
-    if (auth_st != DfcReaderOk) {
+        &auth_ex, abuf, rbuf, chain_buf, &rbits, &blk);
+    if(auth_st != DfcReaderOk) {
         uint8_t resp[2];
         resp[0] = (uint8_t)auth_st;
         resp[1] = (auth_st == DfcReaderCardError) ? dfc_reader_result_status(&auth_ex) : 0;
@@ -4140,6 +4128,7 @@ static cmd_data_map_t m_data_cmd_map[] = {
     {    DATA_CMD_SET_SLEEP_TIMEOUT,            NULL,                        cmd_processor_set_sleep_timeout,             NULL                   },
     {    DATA_CMD_GET_ALL_SLOT_NICKS,           NULL,                        cmd_processor_get_all_slot_nicks,            NULL                   },
     {    DATA_CMD_GET_BOOTLOADER_VERSION,       NULL,                        cmd_processor_get_bootloader_version,        NULL                   },
+    {    DATA_CMD_GET_DFU_APP_VERSION,          NULL,                        cmd_processor_get_dfu_app_version,           NULL                   },
     {    DATA_CMD_GET_FREE_MEMORY,              NULL,                        cmd_processor_get_free_memory,               NULL                   },
     {    DATA_CMD_GET_BLE_NAME,                 NULL,                        cmd_processor_get_ble_name,                  NULL                   },
     {    DATA_CMD_SET_BLE_NAME,                 NULL,                        cmd_processor_set_ble_name,                  NULL                   },
