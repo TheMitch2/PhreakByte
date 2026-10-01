@@ -26,6 +26,16 @@ _NAMES = {
     # Apple Enhanced Contactless Polling: sent in the reader's polling loop
     # (Express Mode / VAS), the card is not expected to answer it.
     0x6A: "ECP (Apple Enhanced Contactless Polling)",
+    # Apple MagSafe polling: WUPA variants, 7-bit short frames
+    0x7A: "Apple MagSafe WUPA variant (7-bit)",
+    0x7B: "Apple MagSafe WUPA variant (7-bit)",
+    0x7C: "Apple MagSafe WUPA variant (7-bit)",
+    0x7D: "Apple MagSafe WUPA variant (7-bit)",
+    # NFC Forum Type 1 (Topaz/Jewel): RID is a poll, RALL follows a RID reply
+    0x78: "Topaz RID (NFC Type 1 poll)",
+    0x00: "00: Topaz RALL, or noise / non-Type-A signal",
+    # ISO14443-B poll, seen only if the A demodulator happens to decode it
+    0x05: "REQB/WUPB (Type B poll)",
     # Magic-card (Gen1) backdoor wake-up
     0x40: "magic wake (Gen1, 7-bit)",
     0x43: "magic wake (Gen1, step 2)",
