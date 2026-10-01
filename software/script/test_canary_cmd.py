@@ -20,8 +20,11 @@ class CanaryCmd(unittest.TestCase):
         self.assertIn('DESELECT', canary_cmd_name('engage', 0xC2))
         self.assertIn('WTX', canary_cmd_name('engage', 0xF2))
 
+    def test_ecp(self):
+        self.assertIn('ECP', canary_cmd_name('engage', 0x6A))
+
     def test_unknown(self):
-        self.assertIn('unknown', canary_cmd_name('engage', 0x6A))
+        self.assertIn('unknown', canary_cmd_name('engage', 0x6B))
 
 
 if __name__ == '__main__':
