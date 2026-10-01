@@ -4628,6 +4628,82 @@ def parse_authtrace_frames(trace: bytes):
     return frames
 
 
+# ---------------------------------------------------------------------------
+# nfc_canary helpers. Layouts mirror firmware/.../standalone_modes/nfc_canary_core.h
+# ---------------------------------------------------------------------------
+CANARY_LEVELS = ('field', 'poll', 'select', 'engage')
+CANARY_CFG_VERSION = 1
+CANARY_REC_SIZE = 16
+CANARY_FLAG_NAMES = {0x01: 'forced', 0x02: 'disarm'}
+
+
+def canary_cfg_parse(blob: bytes) -> dict:
+    """Decode the 4-byte config blob; empty/None -> firmware defaults."""
+    if not blob:
+        return {'min_level': 0, 'cooldown_s': 10, 'flags': 3}
+    if len(blob) != 4 or blob[0] != CANARY_CFG_VERSION:
+        raise ValueError(f"unexpected blob {bytes(blob).hex()}")
+    if blob[1] > 3 or blob[2] == 0 or blob[3] & ~0x03:
+        raise ValueError(f"out-of-range blob {bytes(blob).hex()}")
+    return {'min_level': blob[1], 'cooldown_s': blob[2], 'flags': blob[3]}
+
+
+def canary_cfg_pack(cfg: dict) -> bytes:
+    return bytes([CANARY_CFG_VERSION, cfg['min_level'], cfg['cooldown_s'], cfg['flags']])
+
+
+def canary_log_parse(raw: bytes) -> list:
+    """Decode the 16-byte window records the firmware keeps (oldest first)."""
+    out = []
+    for off in range(0, len(raw) - len(raw) % CANARY_REC_SIZE, CANARY_REC_SIZE):
+        r = raw[off:off + CANARY_REC_SIZE]
+        if r[0] != 1:       # NC_REC_TYPE_WINDOW
+            continue
+        flags = r[14]
+        out.append({
+            'level': CANARY_LEVELS[r[1]] if r[1] < len(CANARY_LEVELS) else f'?{r[1]}',
+            'cmd': r[2],
+            'epoch': r[3],
+            'start_s': int.from_bytes(r[4:8], 'little'),
+            'dur_s': int.from_bytes(r[8:10], 'little'),
+            'field_ons': int.from_bytes(r[10:12], 'little'),
+            'frames': int.from_bytes(r[12:14], 'little'),
+            'flags': [n for b, n in CANARY_FLAG_NAMES.items() if flags & b],
+        })
+    return out
+
+
+def canary_log_table(records: list) -> str:
+    if not records:
+        return "  (empty)"
+    lines = [f"  {'arm':>3}  {'start':>7}  {'dur':>5}  {'level':<7} {'cmd':<4} "
+             f"{'fields':>6}  {'frames':>6}  notes"]
+    for r in records:
+        cmd = f"{r['cmd']:02x}" if r['level'] != 'field' else '--'
+        lines.append(f"  {r['epoch']:>3}  {r['start_s']:>6}s  {r['dur_s']:>4}s  "
+                     f"{r['level']:<7} {cmd:<4} {r['field_ons']:>6}  {r['frames']:>6}  "
+                     f"{','.join(r['flags'])}")
+    lines.append("  (start is seconds since that arm; arm = arm counter)")
+    return "\n".join(lines)
+
+
+def canary_event_decode(payload: bytes) -> dict:
+    """Decode the 10-byte BLE notification payload (cmd 7010)."""
+    if len(payload) != 10:
+        raise ValueError(f"expected 10 bytes, got {len(payload)}")
+    t = {1: 'alert', 2: 'end', 3: 'test'}.get(payload[0], f'?{payload[0]}')
+    return {
+        'type': t,
+        'level': CANARY_LEVELS[payload[1]] if payload[1] < 4 else f'?{payload[1]}',
+        'cmd': payload[2],
+        'seq': payload[3],
+        'dur_s': int.from_bytes(payload[4:6], 'little'),
+        'field_ons': payload[6],
+        'flags': [n for b, n in CANARY_FLAG_NAMES.items() if payload[7] & b],
+        'frames': int.from_bytes(payload[8:10], 'little'),
+    }
+
+
 def parse_authtrace_buffer(raw: bytes):
     """Walk the session stream; return list of session dicts."""
     sessions = []
@@ -5139,6 +5215,21 @@ class StandaloneGetResult(DeviceRequiredUnit):
                     f"to format)")))
             return
 
+        if mode == StandaloneMode.NFC_CANARY:
+            records = canary_log_parse(raw)
+            if args.json:
+                import json as _json
+                out = _json.dumps(records, indent=2)
+                if args.file:
+                    Path(args.file).write_text(out)
+                    print(color_string((CG, f"-> {args.file}")))
+                else:
+                    print(out)
+            else:
+                print(color_string((CG, f"{len(records)} nfc-canary window(s)")))
+                print(canary_log_table(records))
+            return
+
         if mode not in (StandaloneMode.AUTHTRACE, StandaloneMode.EMUL_TRACE,
                         StandaloneMode.RELAY, StandaloneMode.HF14A_TAP_SNIFF):
             print(color_string((CY,
@@ -5317,6 +5408,12 @@ class StandaloneConfig(DeviceRequiredUnit):
                             help='[authtrace] tag-poll timeout in ms (100-30000); '
                                  '[hf14a-tap-sniff] capture duration in ms (100-30000); '
                                  '[relay] WTX ms (500-10000)')
+        parser.add_argument('--min-level', choices=list(CANARY_LEVELS), default=None,
+                            help='[nfc-canary] ignore windows that never get this deep')
+        parser.add_argument('--cooldown', type=int, default=None,
+                            help='[nfc-canary] quiet seconds before a window closes (1-255)')
+        parser.add_argument('--ble', choices=['off', 'alert', 'end', 'both'], default=None,
+                            help='[nfc-canary] which BLE notifications to send')
         return parser
 
     def on_exec(self, args):
@@ -5328,6 +5425,37 @@ class StandaloneConfig(DeviceRequiredUnit):
 
         any_setter = any(v is not None for v in
                          (args.block, args.key_type, args.key, args.timeout))
+
+        if mode == StandaloneMode.NFC_CANARY:
+            if any_setter:
+                print(color_string((CR,
+                    "nfc-canary config does not use --block/--key-type/--key/--timeout")))
+                return
+            blob = self.cmd.standalone_get_config(mode)
+            try:
+                cfg = canary_cfg_parse(blob)
+            except ValueError as e:
+                print(color_string((CR, f"stored nfc-canary config is invalid: {e}")))
+                return
+            if any(v is not None for v in (args.min_level, args.cooldown, args.ble)):
+                if args.min_level is not None:
+                    cfg['min_level'] = CANARY_LEVELS.index(args.min_level)
+                if args.cooldown is not None:
+                    if not (1 <= args.cooldown <= 255):
+                        print(color_string((CR, "cooldown must be 1..255 seconds")))
+                        return
+                    cfg['cooldown_s'] = args.cooldown
+                if args.ble is not None:
+                    cfg['flags'] = {'off': 0, 'alert': 1, 'end': 2, 'both': 3}[args.ble]
+                resp = self.cmd.standalone_set_config(mode, canary_cfg_pack(cfg))
+                if resp.status != Status.SUCCESS:
+                    print(color_string((CR, f"set-config failed: status={resp.status}")))
+                    return
+            print(color_string((CG, "nfc-canary config:")))
+            print(f"  min-level  {CANARY_LEVELS[cfg['min_level']]}")
+            print(f"  cooldown   {cfg['cooldown_s']} s")
+            print(f"  ble        {['off', 'alert', 'end', 'both'][cfg['flags']]}")
+            return
 
         if mode == StandaloneMode.RELAY:
             if any(v is not None for v in (args.block, args.key_type, args.key)):

@@ -101,6 +101,14 @@ typedef void (*nfc_tag_14a_tx_sniff_cb_t)(const uint8_t *data, uint16_t szBits);
 void nfc_tag_14a_set_tx_sniff_cb(nfc_tag_14a_tx_sniff_cb_t cb);
 void nfc_tag_14a_clear_tx_sniff_cb(void);
 
+/* Field-edge sniff callback — ISR context. Fires on every NFCT FIELD_DETECTED
+ * (present = true) and FIELD_LOST (present = false), independent of whichever
+ * tag handler owns cb_field. Used by standalone nfc_canary. */
+typedef void (*nfc_tag_14a_field_sniff_cb_t)(bool present);
+
+void nfc_tag_14a_set_field_sniff_cb(nfc_tag_14a_field_sniff_cb_t cb);
+void nfc_tag_14a_clear_field_sniff_cb(void);
+
 /* Passive sniff mode: when true, suppresses all CU anticollision responses
  * (ATQA, UID, SAK) so the CU does not collide with real cards in the field.
  * Enable before starting a sniff session, disable on completion. */

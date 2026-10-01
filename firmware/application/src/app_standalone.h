@@ -54,6 +54,7 @@ typedef enum {
     STANDALONE_MODE_EMUL_TRACE  = 0x06,  /* CU as card, trace reader auth exchanges */
     STANDALONE_MODE_RELAY       = 0x07,  /* two-CU BLE relay — Ultra only           */
     STANDALONE_MODE_HF14A_TAP_SNIFF = 0x08,  /* passive hf14a tap sniff — Ultra only */
+    STANDALONE_MODE_NFC_CANARY  = 0x09,  /* CU as bait card; alerts when a reader probes it */
 
     STANDALONE_MODE__COUNT              /* sentinel - keep last */
 } standalone_mode_t;
@@ -161,6 +162,8 @@ extern const standalone_mode_iface_t mode_relay_iface;         /* BLE peer relay
 #if defined(PROJECT_CHAMELEON_ULTRA)
 extern const standalone_mode_iface_t mode_hf14a_tap_sniff_iface; /* passive tap sniff, needs reader hw */
 #endif
+
+extern const standalone_mode_iface_t mode_nfc_canary_iface;    /* NFCT only, works on Lite */
 
 /* -------------------------------------------------------------------------
  * Public API

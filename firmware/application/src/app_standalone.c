@@ -42,6 +42,9 @@
 #ifndef CONFIG_STANDALONE_EMUL_TRACE
 #define CONFIG_STANDALONE_EMUL_TRACE  1
 #endif
+#ifndef CONFIG_STANDALONE_NFC_CANARY
+#define CONFIG_STANDALONE_NFC_CANARY  1
+#endif
 #ifndef CONFIG_STANDALONE_HF14A_TAP_SNIFF
 #define CONFIG_STANDALONE_HF14A_TAP_SNIFF  1
 #endif
@@ -117,6 +120,9 @@ static const standalone_mode_iface_t *const m_modes[] = {
 #endif
 #if CONFIG_STANDALONE_HF14A_TAP_SNIFF && defined(PROJECT_CHAMELEON_ULTRA)
     &mode_hf14a_tap_sniff_iface,
+#endif
+#if CONFIG_STANDALONE_NFC_CANARY
+    &mode_nfc_canary_iface,
 #endif
 };
 

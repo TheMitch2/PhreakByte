@@ -21,6 +21,8 @@ SRC_FILES += \
   $(PROJ_DIR)/standalone_modes/mode_emultrace.c \
   $(PROJ_DIR)/standalone_modes/mode_relay.c \
   $(PROJ_DIR)/standalone_modes/mode_hf14a_tap_sniff.c \
+  $(PROJ_DIR)/standalone_modes/nfc_canary_core.c \
+  $(PROJ_DIR)/standalone_modes/mode_nfc_canary.c \
   $(PROJ_DIR)/ble_relay.c \
   $(PROJ_DIR)/rfid/nfctag/hf/nfc_relay_tag.c \
   $(PROJ_DIR)/usb_main.c \

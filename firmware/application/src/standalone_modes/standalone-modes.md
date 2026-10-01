@@ -108,6 +108,59 @@ standalone get-result
 ms). **Buttons:** BOTH_SHORT = capture one session · BOTH_LONG = arm/disarm ·
 BOTH_VLONG = discard all sessions. No `--opt-in` needed.
 
+## `nfc-canary` ,  reader tripwire  *(Lite + Ultra)*
+
+CU sits armed as a **bait card** and tells you when something probes it: a
+reader's field appearing, a poll, an anticollision/SELECT, or anything deeper
+(RATS, AUTH, READ, magic-card wake-ups). The **active emulation slot** is the
+bait ,  use a slot with a real HF tag, otherwise readers rarely get past
+`poll`. Nothing is written to any slot or card.
+
+```
+standalone set-mode nfc-canary
+standalone config nfc-canary --min-level poll --cooldown 15 --ble both
+standalone trigger                 # arm (or both-buttons long on device)
+#  ... leave it somewhere ...
+standalone disarm
+standalone get-result              # table of probe windows
+```
+
+**Levels** (deepest the reader got): `field` < `poll` < `select` < `engage`.
+A **window** is one burst of related activity: it opens on the first sign of
+a reader and closes after `--cooldown` quiet seconds with the field gone (or
+after 300 s, so a reader that never leaves still re-alerts). A reader pulsing
+its field every second is therefore **one** window, not one alert per pulse.
+Within a window you get at most one **alert** per level, and only for levels
+>= `--min-level`.
+
+**Config** (4-byte blob): `--min-level field|poll|select|engage` (default
+`field`), `--cooldown 1-255` seconds (default 10), `--ble off|alert|end|both`
+(default `both`).
+
+**Buttons:** BOTH_SHORT = send a **TEST** BLE event (green = delivered, red =
+no BLE client connected) ,  do this before walking away ·
+BOTH_LONG = arm/disarm · BOTH_VLONG = clear the log.
+
+**Notifications.** With a BLE client connected, alerts arrive as standard
+data frames, cmd `7010`, 10-byte payload: `type(1=alert,2=end,3=test) level
+cmd seq dur_s(u16) field_ons flags frames(u16)`, little-endian. `seq`
+increments for every event even if nobody was connected, so a gap after
+reconnecting means you missed some. The CLI helper `canary_event_decode()`
+decodes a payload, and `canary_listen.py` (a small `bleak` script) prints them
+live: `python canary_listen.py` (`--selftest` checks the decoder with no
+hardware). Without a client, you still get a red LED flash on each alert and
+the log; `set-mode --quiet-led` silences the flash.
+
+**Log.** Each reportable window is stored as a 16-byte record (oldest first,
+up to 130, oldest evicted when full) and survives reboots. Flash writes are
+rate-limited to one per 30 s plus one on disarm, so a power loss while armed
+can lose up to 30 s of records. `start` in the table is seconds since that
+arm; the `arm` column is a counter that distinguishes arms.
+
+**Power.** The sleep timer is held off while armed, so the device stays awake.
+Expect days, not weeks, on a battery. Unit tests for the logic:
+`make -C firmware/application/src/standalone_modes/tests`.
+
 ## `relay` ,  two-device BLE relay  *(Ultra only, needs two CUs)*
 
 A transparent Bluetooth relay between **two** ChameleonUltras. Roles are
@@ -226,15 +279,15 @@ paused) · BOTH_LONG = arm/disarm · BOTH_VLONG = pause/resume.
 | `ls` | List available modes. |
 | `status` | Current mode, armed state, stored-result count. |
 | `set-mode <name> [--opt-in] [--quiet-buzzer] [--quiet-led]` | Select the active mode. |
-| `config <name> [--block --key-type --key --timeout \| -d <hex>]` | Write the mode's config. `authtrace` uses `--block/--key-type/--key/--timeout`; `hf14a-tap-sniff` uses `--timeout`; `relay` reuses `--timeout` as WTX; `slot-cycle` uses raw `-d <hex>`. |
+| `config <name> [--block --key-type --key --timeout --min-level --cooldown --ble \| -d <hex>]` | Write the mode's config. `authtrace` uses `--block/--key-type/--key/--timeout`; `hf14a-tap-sniff` uses `--timeout`; `relay` reuses `--timeout` as WTX; `nfc-canary` uses `--min-level/--cooldown/--ble`; `slot-cycle` uses raw `-d <hex>`. |
 | `trigger` | Arm the active mode from the host. |
 | `disarm` | Disarm and save results. |
 | `get-result` | Retrieve stored session results. |
 | `clear-result` | Discard stored results. |
 
 CLI vs firmware names: the CLI uses hyphens (`emul-trace`, `hf14a-tap-sniff`,
-`slot-cycle`); `status` reports the firmware's underscored names (`emul_trace`,
-`hf14a_tap_sniff`, `slot_cycle`). They refer to the same modes.
+`nfc-canary`, `slot-cycle`); `status` reports the firmware's underscored names
+(`emul_trace`, `hf14a_tap_sniff`, `nfc_canary`, `slot_cycle`). They refer to the same modes.
 
 ## Result format
 
@@ -251,6 +304,16 @@ u8  trace[trace_len]   verbatim wire trace (same format as CMD 2017)
 Traces are Proxmark3-decoder-compatible ,  feed them to mfkey32v2 / mfkey64.
 `relay` wraps the same trace bytes with per-session role, UID, ATQA/SAK, and
 frame count.
+
+`nfc-canary` uses its own fixed 16-byte record instead (one per closed window,
+oldest first, little-endian):
+
+```
+u8  type=1   u8 level(0 field..3 engage)   u8 cmd   u8 arm_counter
+u32 start_s  (seconds since that arm)
+u16 dur_s    u16 field_ons   u16 frames   (all saturating)
+u8  flags (1=forced close, 2=closed by disarm)   u8 reserved=0
+```
 
 ## Writing your own mode
 

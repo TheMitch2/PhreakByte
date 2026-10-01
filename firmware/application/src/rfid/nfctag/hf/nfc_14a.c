@@ -100,6 +100,18 @@ void nfc_tag_14a_clear_tx_sniff_cb(void) {
     m_tx_sniff_cb = NULL;
 }
 
+/* Field-edge sniff: independent of m_tag_handler.cb_field (owned by the slot's
+ * tag type), so a standalone mode can observe field on/off without displacing it. */
+static nfc_tag_14a_field_sniff_cb_t m_field_sniff_cb = NULL;
+
+void nfc_tag_14a_set_field_sniff_cb(nfc_tag_14a_field_sniff_cb_t cb) {
+    m_field_sniff_cb = cb;
+}
+
+void nfc_tag_14a_clear_field_sniff_cb(void) {
+    m_field_sniff_cb = NULL;
+}
+
 /* Passive sniff mode: suppress all tag TX responses so the CU does not
  * participate in anticollision and avoids colliding with the real card. */
 static bool m_sniff_passive = false;
@@ -756,6 +768,8 @@ void nfc_tag_14a_event_callback(nrfx_nfct_evt_t const *p_event) {
 
             NRF_LOG_INFO("HF FIELD DETECTED");
 
+            if (m_field_sniff_cb != NULL) m_field_sniff_cb(true);
+
             if (m_tag_handler.cb_field != NULL) m_tag_handler.cb_field(true);
 
             //Turn off the automatic anti -collision, MCU management all the interaction process, and then enable the NFC peripherals so that Io can be performed after enable
@@ -783,6 +797,8 @@ void nfc_tag_14a_event_callback(nrfx_nfct_evt_t const *p_event) {
                 NRFX_NFCT_RX_BYTES
                 break;
             }
+            if (m_field_sniff_cb != NULL) m_field_sniff_cb(false);
+
             g_is_tag_emulating = false;
             // call sleep_timer_start *after* unsetting g_is_tag_emulating
             sleep_timer_start(SLEEP_DELAY_MS_FIELD_NFC_LOST);
