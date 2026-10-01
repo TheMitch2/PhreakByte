@@ -151,6 +151,13 @@ live: `python canary_listen.py` (`--selftest` checks the decoder with no
 hardware). Without a client, you still get a red LED flash on each alert and
 the log; `set-mode --quiet-led` silences the flash.
 
+**Command names.** The `cmd` byte is shown with a readable name in the
+`get-result` table and in `canary_listen.py` (e.g. `50` = HLTA, `e0` = RATS,
+`60` = AUTH-A / GET_VERSION). Only byte 0 of the *last* frame at the deepest
+level is kept, so it is a hint, not a full decode; a byte with no defined
+meaning (e.g. `6a`) is usually a Crypto1-encrypted frame from a reader that is
+mid-authentication. Names live in `software/script/canary_cmd.py`.
+
 **Log.** Each reportable window is stored as a 16-byte record (oldest first,
 up to 130, oldest evicted when full) and survives reboots. Flash writes are
 rate-limited to one per 30 s plus one on disarm, so a power loss while armed
