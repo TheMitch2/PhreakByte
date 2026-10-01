@@ -7,8 +7,9 @@ canary_listen.py can import it.
 
 The firmware only keeps byte 0 of the LAST frame seen at the deepest level, so
 this is a best-effort label, not a full decode. Ambiguous bytes list every
-plausible meaning. Bytes with no defined meaning are most often a Crypto1
-encrypted frame (a MIFARE Classic reader mid-authentication).
+plausible meaning. Bytes with no defined meaning may be a Crypto1
+encrypted frame (a reader mid-authentication) - but an encrypted byte varies
+from frame to frame, so a byte that repeats unchanged is a real fixed command.
 """
 
 _NAMES = {
@@ -22,6 +23,9 @@ _NAMES = {
     # ISO14443-3/4
     0x50: "HLTA",
     0xE0: "RATS",
+    # Apple Enhanced Contactless Polling: sent in the reader's polling loop
+    # (Express Mode / VAS), the card is not expected to answer it.
+    0x6A: "ECP (Apple Enhanced Contactless Polling)",
     # Magic-card (Gen1) backdoor wake-up
     0x40: "magic wake (Gen1, 7-bit)",
     0x43: "magic wake (Gen1, step 2)",
@@ -64,4 +68,4 @@ def canary_cmd_name(level: str, cmd: int) -> str:
         return "ISO-DEP WTX"
     if cmd & 0xF0 == 0xD0:
         return "PPS"
-    return "unknown (encrypted?)"
+    return "unknown"
