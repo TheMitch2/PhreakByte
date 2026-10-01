@@ -20,6 +20,11 @@ class CanaryCmd(unittest.TestCase):
         self.assertIn('DESELECT', canary_cmd_name('engage', 0xC2))
         self.assertIn('WTX', canary_cmd_name('engage', 0xF2))
 
+    def test_more(self):
+        self.assertIn('MagSafe', canary_cmd_name('engage', 0x7A))
+        self.assertIn('Topaz', canary_cmd_name('engage', 0x00))
+        self.assertIn('Topaz', canary_cmd_name('engage', 0x78))
+
     def test_ecp(self):
         self.assertIn('ECP', canary_cmd_name('engage', 0x6A))
 
