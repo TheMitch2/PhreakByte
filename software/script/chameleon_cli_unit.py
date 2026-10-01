@@ -8,6 +8,7 @@ Step 1 of the split: foundation extracted, commands still here."""
 from cli_core import *  # noqa: F401,F403 - foundation: bases, groups, helpers, imports
 import cli_core
 from fdxb_country import ISO3166_NUMERIC
+from canary_cmd import canary_cmd_name
 # re-export everything cli_core defined so command bodies resolve names
 globals().update({k: v for k, v in vars(cli_core).items() if not k.startswith('__')})
 
@@ -4663,6 +4664,7 @@ def canary_log_parse(raw: bytes) -> list:
         out.append({
             'level': CANARY_LEVELS[r[1]] if r[1] < len(CANARY_LEVELS) else f'?{r[1]}',
             'cmd': r[2],
+            'cmd_name': canary_cmd_name(CANARY_LEVELS[r[1]] if r[1] < len(CANARY_LEVELS) else '?', r[2]),
             'epoch': r[3],
             'start_s': int.from_bytes(r[4:8], 'little'),
             'dur_s': int.from_bytes(r[8:10], 'little'),
@@ -4677,13 +4679,14 @@ def canary_log_table(records: list) -> str:
     if not records:
         return "  (empty)"
     lines = [f"  {'arm':>3}  {'start':>7}  {'dur':>5}  {'level':<7} {'cmd':<4} "
-             f"{'fields':>6}  {'frames':>6}  notes"]
+             f"{'fields':>6}  {'frames':>6}  {'last command':<26}  notes"]
     for r in records:
         cmd = f"{r['cmd']:02x}" if r['level'] != 'field' else '--'
         lines.append(f"  {r['epoch']:>3}  {r['start_s']:>6}s  {r['dur_s']:>4}s  "
                      f"{r['level']:<7} {cmd:<4} {r['field_ons']:>6}  {r['frames']:>6}  "
-                     f"{','.join(r['flags'])}")
+                     f"{r['cmd_name']:<26}  {','.join(r['flags'])}")
     lines.append("  (start is seconds since that arm; arm = arm counter)")
+    lines.append("  (last command = first byte of the final frame at the deepest level)")
     return "\n".join(lines)
 
 
@@ -4696,6 +4699,7 @@ def canary_event_decode(payload: bytes) -> dict:
         'type': t,
         'level': CANARY_LEVELS[payload[1]] if payload[1] < 4 else f'?{payload[1]}',
         'cmd': payload[2],
+        'cmd_name': canary_cmd_name(CANARY_LEVELS[payload[1]] if payload[1] < 4 else '?', payload[2]),
         'seq': payload[3],
         'dur_s': int.from_bytes(payload[4:6], 'little'),
         'field_ons': payload[6],
