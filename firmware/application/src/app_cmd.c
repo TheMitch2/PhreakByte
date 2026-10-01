@@ -79,7 +79,6 @@ static data_frame_tx_t *cmd_processor_get_git_version(uint16_t cmd, uint16_t sta
 
 #define BOOTLOADER_SETTINGS_ADDRESS             0xFF000UL
 #define DFU_SETTINGS_BL_VERSION_OFFSET          12U
-#define DFU_SETTINGS_APP_VERSION_OFFSET         8U
 
 static data_frame_tx_t *cmd_processor_get_bootloader_version(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
     uint32_t payload = U32HTONL((uint32_t)BL_VERSION);
@@ -87,10 +86,12 @@ static data_frame_tx_t *cmd_processor_get_bootloader_version(uint16_t cmd, uint1
 }
 
 static data_frame_tx_t *cmd_processor_get_dfu_app_version(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
-    /* DFU application-version counter (build.sh application_version), compiled in.
-     * The settings page (0xFF000) is not writable over UF2, so reading it back
-     * would show a stale value after a UF2 flash. */
-    uint32_t payload = U32HTONL((uint32_t)APP_DFU_VERSION);
+    /* The DFU application-version counter (build.sh application_version), compiled
+     * in via -DAPP_VERSION. It is NOT read from the settings page: a UF2 app flash
+     * does not rewrite the settings-page app_version, so that value goes stale
+     * (always reads the nrfutil default). The compiled constant always reflects
+     * the build that is actually running. */
+    uint32_t payload = U32HTONL((uint32_t)APP_VERSION);
     return data_frame_make(cmd, STATUS_SUCCESS, sizeof(payload), (uint8_t *)&payload);
 }
 
