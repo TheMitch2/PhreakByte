@@ -5,6 +5,10 @@ canary_listen.py - print nfc_canary BLE notifications from a ChameleonUltra/Lite
     pip install bleak
     python canary_listen.py                  # scan for a device named Chameleon*
     python canary_listen.py AA:BB:CC:DD:EE:FF
+    python canary_listen.py chameleon        # match part of the BLE name (also finds a custom name via the UART service)
+    python canary_listen.py --list           # show every BLE device seen (debug "not found")
+    python canary_listen.py --pair           # pair first (if BLE pairing is enabled on the device)
+    python canary_listen.py --reconnect      # keep retrying after a drop
     python canary_listen.py --selftest       # check the frame decoder, no hardware
 
 Notifications are standard Chameleon data frames (cmd 7010, 10-byte payload):
@@ -113,30 +117,85 @@ def selftest():
         handle(parser, tracker, stream[i:i + 7])
 
 
-async def run(addr):
-    from bleak import BleakClient, BleakScanner
-    if addr is None:
-        print("scanning for Chameleon...")
-        dev = await BleakScanner.find_device_by_filter(
-            lambda d, ad: (d.name or "").startswith("Chameleon"), timeout=10)
-        if dev is None:
-            sys.exit("no Chameleon found (is it advertising? USB/button wake)")
-        addr = dev
+NUS_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
+
+
+async def find_device(target, timeout=10.0):
+    """Same matching rules as the CLI (chameleon_ble.py): an address connects
+    directly; otherwise match the target (default "chameleon") as a
+    case-insensitive substring of the advertised name, falling back to any
+    device advertising the Nordic UART service (covers a custom BLE name)."""
+    from bleak import BleakScanner
+    if target and (target.count(":") >= 5 or "-" in target):
+        return target
+    want = (target or "chameleon").lower()
+    found = await BleakScanner.discover(timeout=timeout, return_adv=True)
+    by_nus = None
+    for dev, adv in found.values():
+        name = adv.local_name or dev.name or ""
+        if want in name.lower():
+            return dev
+        if NUS_SERVICE in [u.lower() for u in (adv.service_uuids or [])] and by_nus is None:
+            by_nus = dev
+    return by_nus
+
+
+async def list_devices(timeout=10.0):
+    from bleak import BleakScanner
+    found = await BleakScanner.discover(timeout=timeout, return_adv=True)
+    for dev, adv in sorted(found.values(), key=lambda t: -(t[1].rssi or -999)):
+        nus = "  [NUS]" if NUS_SERVICE in [u.lower() for u in (adv.service_uuids or [])] else ""
+        print(f"{dev.address}  rssi={adv.rssi}  {adv.local_name or dev.name or '(no name)'}{nus}")
+
+
+async def listen_once(target, pair):
+    from bleak import BleakClient
+    print("scanning...")
+    dev = await find_device(target)
+    if dev is None:
+        raise RuntimeError("no Chameleon found. Is it advertising (BLE on, not already "
+                           "connected to the phone/CLI)? Try --list to see what is visible, "
+                           "then pass the address (or part of the name) explicitly.")
+    print(f"connecting to {getattr(dev, 'address', dev)} ...")
     parser, tracker = FrameParser(), Tracker()
     done = asyncio.Event()
-    async with BleakClient(addr, disconnected_callback=lambda c: done.set()) as c:
+    async with BleakClient(dev, timeout=20.0,
+                           disconnected_callback=lambda c: done.set()) as c:
+        if pair:
+            print("pairing (enter the device BLE pairing key when asked) ...")
+            await c.pair()
         await c.start_notify(NUS_TX, lambda _, d: handle(parser, tracker, bytes(d)))
         print("listening (Ctrl-C to quit); press both buttons briefly on the device for a TEST event")
         await done.wait()
         print("device disconnected")
 
 
-if __name__ == "__main__":
-    if "--selftest" in sys.argv:
-        selftest()
-    else:
-        args = [a for a in sys.argv[1:] if not a.startswith("-")]
+async def run(target, pair, reconnect):
+    while True:
         try:
-            asyncio.run(run(args[0] if args else None))
+            await listen_once(target, pair)
+        except Exception as e:           # show the real reason instead of dying silently
+            print(f"error: {type(e).__name__}: {e}")
+            if "uthenticat" in str(e) or "ncryption" in str(e) or "ecurity" in str(e):
+                print("hint: BLE pairing is probably enabled on the device. Pair/bond it "
+                      "first in your OS Bluetooth settings (key from `hw settings blepair`), "
+                      "or re-run with --pair.")
+        if not reconnect:
+            return
+        print("retrying in 5 s ...")
+        await asyncio.sleep(5)
+
+
+if __name__ == "__main__":
+    flags = {a for a in sys.argv[1:] if a.startswith("-")}
+    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    if "--selftest" in flags:
+        selftest()
+    elif "--list" in flags:
+        asyncio.run(list_devices())
+    else:
+        try:
+            asyncio.run(run(args[0] if args else None, "--pair" in flags,
+                            "--reconnect" in flags))
         except KeyboardInterrupt:
             pass
