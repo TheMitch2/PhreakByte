@@ -54,12 +54,12 @@ NRF_LOG_MODULE_REGISTER();
 #define APP_BLE_OBSERVER_PRIO           3                                           /**< Application's BLE observer priority. You shouldn't need to modify this value. */
 #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
 
-#define MIN_CONN_INTERVAL               MSEC_TO_UNITS(20, UNIT_1_25_MS)             /**< Minimum acceptable connection interval (20 ms), Connection interval uses 1.25 ms units. */
-#define MAX_CONN_INTERVAL               MSEC_TO_UNITS(75, UNIT_1_25_MS)             /**< Maximum acceptable connection interval (75 ms), Connection interval uses 1.25 ms units. */
+#define MIN_CONN_INTERVAL               MSEC_TO_UNITS(7.5, UNIT_1_25_MS)            /**< Min connection interval (7.5 ms = BLE minimum). */
+#define MAX_CONN_INTERVAL               MSEC_TO_UNITS(30, UNIT_1_25_MS)             /**< Max connection interval (30 ms). */
 #define SLAVE_LATENCY                   0                                           /**< Slave latency. */
 #define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(4000, UNIT_10_MS)             /**< Connection supervisory timeout (4 seconds), Supervision Timeout uses 10 ms units. */
-#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000)                       /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
-#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000)                      /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
+#define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(100)                        /**< Request the fast connection interval ~immediately after connect, not after 5 s. */
+#define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(5000)                       /**< Retry interval if the central hasn't applied it yet. */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 
 #define BATTERY_LEVEL_MEAS_INTERVAL     APP_TIMER_TICKS(5000)                       /**< Battery level measurement interval (ticks). This value corresponds to N seconds. */
@@ -432,6 +432,11 @@ static void ble_evt_handler(ble_evt_t const *p_ble_evt, void *p_context) {
 
             NRF_LOG_INFO("Connected");
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+            /* Request LE 2M PHY to halve on-air time; central may decline. */
+            {
+                ble_gap_phys_t const phys_2m = { .rx_phys = BLE_GAP_PHY_2MBPS, .tx_phys = BLE_GAP_PHY_2MBPS };
+                (void)sd_ble_gap_phy_update(m_conn_handle, &phys_2m);
+            }
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
             g_is_ble_connected = true;
@@ -651,7 +656,7 @@ void ble_main_relay_adv_set(const uint8_t *raw_adv, uint8_t len) {
         params.secondary_phy   = BLE_GAP_PHY_1MBPS;
 
         ret_code_t rc = sd_ble_gap_adv_set_configure(
-                            &m_advertising.adv_handle, &adv_data, &params);
+            &m_advertising.adv_handle, &adv_data, &params);
         if (rc != NRF_SUCCESS) {
             NRF_LOG_WARNING("relay: adv_set_configure rc=%u", rc);
             return;
@@ -681,7 +686,7 @@ void ble_main_relay_adv_set(const uint8_t *raw_adv, uint8_t len) {
         params.secondary_phy   = BLE_GAP_PHY_1MBPS;
 
         ret_code_t rc = sd_ble_gap_adv_set_configure(
-                            &m_advertising.adv_handle, &adv_data, &params);
+            &m_advertising.adv_handle, &adv_data, &params);
         if (rc != NRF_SUCCESS) {
             NRF_LOG_WARNING("relay: adv reconfig rc=%u", rc);
             return;
