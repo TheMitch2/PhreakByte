@@ -19,29 +19,13 @@
 #include "rfid_main.h"
 #include "bsp_delay.h"
 #include "bsp_wdt.h"
+#include "mf1_dict.h"
 
 #define CFG_VERSION      1
 #define MODE_NAME        "dict_check"
 #define MFC1K_SECTORS    16
 #define MFC_TRAILER(sec) ((uint8_t)((sec) * 4 + 3))
 
-/* Common MIFARE Classic keys (quick on-device check, not a full dictionary). */
-static const uint8_t DICT[][6] = {
-    { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF },
-    { 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5 },
-    { 0xD3, 0xF7, 0xD3, 0xF7, 0xD3, 0xF7 },
-    { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
-    { 0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5 },
-    { 0x4D, 0x3A, 0x99, 0xC3, 0x51, 0xDD },
-    { 0x1A, 0x98, 0x2C, 0x7E, 0x45, 0x9A },
-    { 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF },
-    { 0x71, 0x4C, 0x5C, 0x88, 0x6E, 0x97 },
-    { 0x58, 0x7E, 0xE5, 0xF9, 0x35, 0x0F },
-    { 0xA0, 0x47, 0x8C, 0xC3, 0x90, 0x91 },
-    { 0x53, 0x3C, 0xB6, 0xC7, 0x23, 0xF6 },
-    { 0x8F, 0xD0, 0xA4, 0xF2, 0x56, 0xE9 },
-};
-#define DICT_COUNT  (sizeof(DICT) / sizeof(DICT[0]))
 
 typedef struct __attribute__((packed)) {
     uint8_t version;
@@ -76,13 +60,13 @@ static bool cfg_valid(const cfg_t *c) {
 
 /* Try the dictionary against one sector/key-type. Copies the key out on hit. */
 static bool try_keys(uint8_t sector, uint8_t key_type, uint8_t out_key[6]) {
-    for (uint8_t k = 0; k < DICT_COUNT; k++) {
+    for (uint8_t k = 0; k < MF1_DICT_COUNT; k++) {
         bsp_wdt_feed();
         picc_14a_tag_t t;    /* a failed auth halts the card; re-select each try */
         if (pcd_14a_reader_scan_auto(&t) != STATUS_HF_TAG_OK) continue;
         if (pcd_14a_reader_mf1_auth(&t, key_type, MFC_TRAILER(sector),
-                                    (uint8_t *)DICT[k]) == STATUS_HF_TAG_OK) {
-            memcpy(out_key, DICT[k], 6);
+                                    (uint8_t *)MF1_DICT[k]) == STATUS_HF_TAG_OK) {
+            memcpy(out_key, MF1_DICT[k], 6);
             pcd_14a_reader_mf1_unauth();
             return true;
         }
