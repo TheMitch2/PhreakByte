@@ -148,13 +148,17 @@ typedef struct standalone_mode_iface {
  * CONFIG_STANDALONE_<MODE> defines in app_standalone.c.
  * ------------------------------------------------------------------------- */
 
-extern const standalone_mode_iface_t mode_autoclone_iface;
-extern const standalone_mode_iface_t mode_read_replay_iface;
+#if defined(PROJECT_CHAMELEON_ULTRA)
+extern const standalone_mode_iface_t mode_autoclone_iface;    /* needs reader hw */
+extern const standalone_mode_iface_t mode_read_replay_iface;  /* needs reader hw */
+#endif
 #if defined(PROJECT_CHAMELEON_ULTRA)
 extern const standalone_mode_iface_t mode_authtrace_iface;     /* needs reader hw */
 #endif
 extern const standalone_mode_iface_t mode_slot_cycle_iface;
-extern const standalone_mode_iface_t mode_dict_check_iface;
+#if defined(PROJECT_CHAMELEON_ULTRA)
+extern const standalone_mode_iface_t mode_dict_check_iface;   /* needs reader hw */
+#endif
 extern const standalone_mode_iface_t mode_emultrace_iface;     /* NFCT, works on Lite */
 #if defined(PROJECT_CHAMELEON_ULTRA)
 extern const standalone_mode_iface_t mode_relay_iface;         /* BLE peer relay, Ultra only */

@@ -5159,6 +5159,86 @@ class StandaloneDisarm(DeviceRequiredUnit):
             print(color_string((CY, "Use the both-button chord on the device to disarm manually.")))
 
 
+# read_replay / autoclone / dict_check result decoders.
+# Record layouts mirror firmware/application/src/standalone_modes/mode_*.c
+
+def parse_read_replay_buffer(raw: bytes):
+    # 13B: uid_len, uid[7], atqa[2], sak, sectors_read, sectors_total
+    recs = []
+    for o in range(0, len(raw) - (len(raw) % 13), 13):
+        r = raw[o:o + 13]
+        uid_len = min(r[0], 7)
+        recs.append({
+            "uid":           r[1:1 + uid_len].hex(),
+            "atqa":          r[8:10].hex(),
+            "sak":           r[10],
+            "sectors_read":  r[11],
+            "sectors_total": r[12],
+        })
+    return recs
+
+
+def read_replay_table(recs):
+    if not recs:
+        return "  (no clones recorded)"
+    return "\n".join(
+        f"  [{i}] uid {r['uid']}  atqa {r['atqa']}  sak {r['sak']:02x}  "
+        f"sectors {r['sectors_read']}/{r['sectors_total']}"
+        for i, r in enumerate(recs))
+
+
+_AUTOCLONE_RESULT = {0: "ok", 1: "no source", 2: "no target", 3: "write fail"}
+
+
+def parse_autoclone_buffer(raw: bytes):
+    # 11B: result, uid_len, uid[7], blocks_written (+1 pad)
+    recs = []
+    for o in range(0, len(raw) - (len(raw) % 11), 11):
+        r = raw[o:o + 11]
+        uid_len = min(r[1], 7)
+        recs.append({
+            "result":         r[0],
+            "result_name":    _AUTOCLONE_RESULT.get(r[0], f"?{r[0]}"),
+            "uid":            r[2:2 + uid_len].hex(),
+            "blocks_written": r[9],
+        })
+    return recs
+
+
+def autoclone_table(recs):
+    if not recs:
+        return "  (no clone attempts recorded)"
+    return "\n".join(
+        f"  [{i}] {r['result_name']:<10}  uid {r['uid'] or '-'}  blocks {r['blocks_written']}"
+        for i, r in enumerate(recs))
+
+
+def parse_dict_check_buffer(raw: bytes):
+    # 15B: sector, found_a, keyA[6], found_b, keyB[6]
+    recs = []
+    for o in range(0, len(raw) - (len(raw) % 15), 15):
+        r = raw[o:o + 15]
+        recs.append({
+            "sector":  r[0],
+            "found_a": bool(r[1]),
+            "key_a":   r[2:8].hex(),
+            "found_b": bool(r[8]),
+            "key_b":   r[9:15].hex(),
+        })
+    return recs
+
+
+def dict_check_table(recs):
+    if not recs:
+        return "  (no sectors checked)"
+    lines = []
+    for r in recs:
+        a = r['key_a'] if r['found_a'] else "--"
+        b = r['key_b'] if r['found_b'] else "--"
+        lines.append(f"  sector {r['sector']:2d}  A {a:<12}  B {b:<12}")
+    return "\n".join(lines)
+
+
 @standalone.command('get-result')
 class StandaloneGetResult(DeviceRequiredUnit):
     """
@@ -5232,6 +5312,39 @@ class StandaloneGetResult(DeviceRequiredUnit):
             else:
                 print(color_string((CG, f"{len(records)} nfc-canary window(s)")))
                 print(canary_log_table(records))
+            return
+
+        for _m, _parse, _table, _hdr in (
+            (StandaloneMode.READ_REPLAY, parse_read_replay_buffer, read_replay_table, "clone(s)"),
+            (StandaloneMode.AUTOCLONE,   parse_autoclone_buffer,   autoclone_table,   "attempt(s)"),
+        ):
+            if mode == _m:
+                recs = _parse(raw)
+                if args.json:
+                    out = jsonlib.dumps(recs, indent=2)
+                    if args.file:
+                        Path(args.file).write_text(out)
+                        print(color_string((CG, f"-> {args.file}")))
+                    else:
+                        print(out)
+                else:
+                    print(color_string((CG, f"{len(recs)} {mode.name.lower().replace('_', '-')} {_hdr}")))
+                    print(_table(recs))
+                return
+
+        if mode == StandaloneMode.DICT_CHECK:
+            recs = parse_dict_check_buffer(raw)
+            if args.json:
+                out = jsonlib.dumps(recs, indent=2)
+                if args.file:
+                    Path(args.file).write_text(out)
+                    print(color_string((CG, f"-> {args.file}")))
+                else:
+                    print(out)
+            else:
+                found = sum(1 for r in recs if r['found_a'] or r['found_b'])
+                print(color_string((CG, f"dict-check: {found}/{len(recs)} sector(s) with a known key")))
+                print(dict_check_table(recs))
             return
 
         if mode not in (StandaloneMode.AUTHTRACE, StandaloneMode.EMUL_TRACE,
@@ -5395,6 +5508,9 @@ class StandaloneConfig(DeviceRequiredUnit):
         standalone config authtrace --key FFFFFFFFFFFF --timeout 5000
         standalone config hf14a-tap-sniff                  (read current)
         standalone config hf14a-tap-sniff --timeout 8000
+        standalone config read-replay --read-blocks on
+        standalone config autoclone --also-slot on
+        standalone config dict-check --sectors 16
     """
 
     def args_parser(self) -> ArgumentParserNoExit:
@@ -5418,6 +5534,12 @@ class StandaloneConfig(DeviceRequiredUnit):
                             help='[nfc-canary] quiet seconds before a window closes (1-255)')
         parser.add_argument('--ble', choices=['off', 'alert', 'end', 'both'], default=None,
                             help='[nfc-canary] which BLE notifications to send')
+        parser.add_argument('--read-blocks', choices=['on', 'off'], default=None,
+                            help='[read-replay] also read MFC data blocks with the default key')
+        parser.add_argument('--also-slot', choices=['on', 'off'], default=None,
+                            help='[autoclone] also clone the source into the active slot')
+        parser.add_argument('--sectors', type=int, default=None,
+                            help='[dict-check] number of sectors to test (1-16)')
         return parser
 
     def on_exec(self, args):
@@ -5533,6 +5655,82 @@ class StandaloneConfig(DeviceRequiredUnit):
             else:
                 print(color_string((CY,
                     "no persisted config — default timeout 5000 ms")))
+            return
+
+        if mode == StandaloneMode.READ_REPLAY:
+            if any(v is not None for v in (args.block, args.key_type, args.key, args.timeout)):
+                print(color_string((CR,
+                    "read-replay config uses only --read-blocks")))
+                return
+            if args.read_blocks is not None:
+                rb = 1 if args.read_blocks == 'on' else 0
+                cfg = struct.pack('<BB', 1, rb) + b'\x00' * 2
+                resp = self.cmd.standalone_set_config(mode, cfg)
+                if resp.status == Status.SUCCESS:
+                    print(color_string((CG, f"read-replay read-blocks set to {args.read_blocks}")))
+                else:
+                    print(color_string((CR, f"set-config failed: status={resp.status}")))
+                return
+            blob = self.cmd.standalone_get_config(mode)
+            if blob and len(blob) >= 2:
+                ver, rb = struct.unpack('<BB', blob[:2])
+                print(color_string((CG, "read-replay config:")))
+                print(f"  version:      {ver}")
+                print(f"  read-blocks:  {'on' if rb else 'off'}")
+            else:
+                print(color_string((CY, "no persisted config — default read-blocks on")))
+            print(color_string((CY, "Clones scanned card into the active slot. Needs --opt-in to arm.")))
+            return
+
+        if mode == StandaloneMode.AUTOCLONE:
+            if any(v is not None for v in (args.block, args.key_type, args.key, args.timeout)):
+                print(color_string((CR,
+                    "autoclone config uses only --also-slot")))
+                return
+            if args.also_slot is not None:
+                als = 1 if args.also_slot == 'on' else 0
+                cfg = struct.pack('<BB', 1, als) + b'\x00' * 2
+                resp = self.cmd.standalone_set_config(mode, cfg)
+                if resp.status == Status.SUCCESS:
+                    print(color_string((CG, f"autoclone also-slot set to {args.also_slot}")))
+                else:
+                    print(color_string((CR, f"set-config failed: status={resp.status}")))
+                return
+            blob = self.cmd.standalone_get_config(mode)
+            if blob and len(blob) >= 2:
+                ver, als = struct.unpack('<BB', blob[:2])
+                print(color_string((CG, "autoclone config:")))
+                print(f"  version:    {ver}")
+                print(f"  also-slot:  {'on' if als else 'off'}")
+            else:
+                print(color_string((CY, "no persisted config — default also-slot off")))
+            print(color_string((CY, "Scan source (1st chord), present magic card (2nd chord). Needs --opt-in to arm.")))
+            return
+
+        if mode == StandaloneMode.DICT_CHECK:
+            if any(v is not None for v in (args.block, args.key_type, args.key, args.timeout)):
+                print(color_string((CR,
+                    "dict-check config uses only --sectors")))
+                return
+            if args.sectors is not None:
+                if not (1 <= args.sectors <= 16):
+                    print(color_string((CR, "sectors must be 1..16")))
+                    return
+                cfg = struct.pack('<BB', 1, args.sectors) + b'\x00' * 2
+                resp = self.cmd.standalone_set_config(mode, cfg)
+                if resp.status == Status.SUCCESS:
+                    print(color_string((CG, f"dict-check sectors set to {args.sectors}")))
+                else:
+                    print(color_string((CR, f"set-config failed: status={resp.status}")))
+                return
+            blob = self.cmd.standalone_get_config(mode)
+            if blob and len(blob) >= 2:
+                ver, sectors = struct.unpack('<BB', blob[:2])
+                print(color_string((CG, "dict-check config:")))
+                print(f"  version:  {ver}")
+                print(f"  sectors:  {sectors}")
+            else:
+                print(color_string((CY, "no persisted config — default 16 sectors")))
             return
 
         if not any_setter:

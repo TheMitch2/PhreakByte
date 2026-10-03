@@ -31,13 +31,13 @@
 #define CONFIG_STANDALONE_SLOT_CYCLE  1
 #endif
 #ifndef CONFIG_STANDALONE_AUTOCLONE
-#define CONFIG_STANDALONE_AUTOCLONE   0  /* not yet implemented */
+#define CONFIG_STANDALONE_AUTOCLONE   1
 #endif
 #ifndef CONFIG_STANDALONE_READ_REPLAY
-#define CONFIG_STANDALONE_READ_REPLAY 0  /* not yet implemented */
+#define CONFIG_STANDALONE_READ_REPLAY 1
 #endif
 #ifndef CONFIG_STANDALONE_DICT_CHECK
-#define CONFIG_STANDALONE_DICT_CHECK  0  /* not yet implemented */
+#define CONFIG_STANDALONE_DICT_CHECK  1
 #endif
 #ifndef CONFIG_STANDALONE_EMUL_TRACE
 #define CONFIG_STANDALONE_EMUL_TRACE  1
@@ -97,10 +97,10 @@ static volatile bool m_disarm_pending = false;
  * ------------------------------------------------------------------------- */
 
 static const standalone_mode_iface_t *const m_modes[] = {
-#if CONFIG_STANDALONE_AUTOCLONE
+#if CONFIG_STANDALONE_AUTOCLONE && defined(PROJECT_CHAMELEON_ULTRA)
     &mode_autoclone_iface,
 #endif
-#if CONFIG_STANDALONE_READ_REPLAY
+#if CONFIG_STANDALONE_READ_REPLAY && defined(PROJECT_CHAMELEON_ULTRA)
     &mode_read_replay_iface,
 #endif
 #if CONFIG_STANDALONE_AUTHTRACE && defined(PROJECT_CHAMELEON_ULTRA)
@@ -109,7 +109,7 @@ static const standalone_mode_iface_t *const m_modes[] = {
 #if CONFIG_STANDALONE_SLOT_CYCLE
     &mode_slot_cycle_iface,
 #endif
-#if CONFIG_STANDALONE_DICT_CHECK
+#if CONFIG_STANDALONE_DICT_CHECK && defined(PROJECT_CHAMELEON_ULTRA)
     &mode_dict_check_iface,
 #endif
 #if CONFIG_STANDALONE_EMUL_TRACE
