@@ -26,6 +26,7 @@ SRC_FILES += \
   $(PROJ_DIR)/standalone_modes/mode_autoclone.c \
   $(PROJ_DIR)/standalone_modes/mode_read_replay.c \
   $(PROJ_DIR)/standalone_modes/mode_dict_check.c \
+  $(PROJ_DIR)/standalone_modes/mf1_dict.c \
   $(PROJ_DIR)/ble_relay.c \
   $(PROJ_DIR)/rfid/nfctag/hf/nfc_relay_tag.c \
   $(PROJ_DIR)/usb_main.c \
