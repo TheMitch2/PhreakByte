@@ -5,9 +5,9 @@ app, just the device and its two buttons. You configure a mode over the CLI
 once, **arm** it, then walk away. The device runs the mode on button presses,
 saves results to flash, and you pull them back at the bench later.
 
-Every built-in mode is **safe by default**: none write to a target card or to
-your emulation slots. A mode that would write anything must declare it, and the
-framework refuses to arm such a mode unless you pass `--opt-in`.
+Most built-in modes are **safe by default**: they never write to a target card
+or to your emulation slots. The few that do (`autoclone`, `read_replay`) must
+declare it, and the framework refuses to arm them unless you pass `--opt-in`.
 
 ## How every mode works (the pattern)
 
@@ -270,13 +270,85 @@ Fields (6-byte blob): `version=01`, `slot_mask` (bit N = include slot N),
 (100-60000, default 3000). **Buttons:** BOTH_SHORT = advance now (resumes if
 paused) · BOTH_LONG = arm/disarm · BOTH_VLONG = pause/resume.
 
+## `read_replay` ,  clone a card into a slot and emulate it  *(Ultra only)*
+
+CU acts as a **reader**, scans a card, loads it into the **active emulation
+slot** as MIFARE Classic 1K, then emulates it ,  a one-press "read it, become
+it". The anti-collision data (UID/ATQA/SAK/ATS) is always cloned; the data
+blocks optionally. **Overwrites the active slot**, so switch to a scratch slot
+first.
+
+```
+hw slot change -s 8                       # scratch slot ,  read_replay overwrites the active one
+standalone set-mode read-replay --opt-in  # writes_slot ,  --opt-in required
+standalone config read-replay --read-blocks on
+standalone trigger                        # scan the card ,  it is now cloned and emulating
+standalone get-result                     # uid / atqa / sak / sectors read/total
+standalone disarm
+```
+
+**Config** (4-byte blob): `--read-blocks on|off` (default `on`). With it on, each
+sector is read with the default key `FFFFFFFFFFFF`; sectors with other keys are
+skipped and stay factory, and `sectors read/total` shows the shortfall. With it
+off, only the card identity is cloned. **Buttons:** BOTH_SHORT = scan + clone one
+card · BOTH_LONG = arm/disarm · BOTH_VLONG = discard results. **Requires
+`--opt-in`** (writes the active slot). MIFARE Classic 1K source assumed.
+
+## `autoclone` ,  clone a card to a magic card  *(Ultra only)*
+
+Two-press clone of a MIFARE Classic 1K card onto a **gen1a "magic" card**. The
+first press reads the source and buffers it; the second writes it to the magic
+card you then present. Optionally also drops the clone into the active slot.
+
+```
+standalone set-mode autoclone --opt-in       # writes_tag + writes_slot ,  --opt-in required
+standalone config autoclone --also-slot on   # optional: also clone into the active slot
+#  place the SOURCE card, then:
+standalone trigger                           # 1st press: read + buffer the source
+#  swap to the gen1a MAGIC card, then:
+standalone trigger                           # 2nd press: write the clone
+standalone get-result                        # result / uid / blocks written
+standalone disarm
+```
+
+**Config** (4-byte blob): `--also-slot on|off` (default `off`). Source blocks are
+read with the default key `FFFFFFFFFFFF`; sectors with other keys are skipped, so
+`blocks written` reflects what was readable. The target must be a gen1a magic card
+(block-0 writable); a non-magic card fails the unlock and writes nothing.
+**Buttons:** BOTH_SHORT = read source, then (2nd) write magic · BOTH_LONG =
+arm/disarm · BOTH_VLONG = discard the buffered source and results. **Requires
+`--opt-in`** (writes target memory, and the slot with `--also-slot`). The device
+stays armed after a write, so trigger → trigger repeats for the next card.
+
+## `dict-check` ,  key dictionary check  *(Ultra only)*
+
+CU acts as a **reader** and tries a small built-in key dictionary against each
+sector of a MIFARE Classic card (key A and key B), logging which keys work.
+Read-only.
+
+```
+standalone set-mode dict-check            # read-only ,  no --opt-in
+standalone config dict-check --sectors 16
+standalone trigger                        # hold the card still ,  this takes several seconds
+standalone get-result                     # per-sector: A <key|-->  B <key|-->
+```
+
+**Config** (4-byte blob): `--sectors 1-16` (default 16). The dictionary is a fixed
+set of ~13 common keys (`FFFFFFFFFFFF`, `A0A1A2A3A4A5`, `D3F7D3F7D3F7`, …);
+sectors whose key is not in it show `--`. Because a failed auth halts the card,
+the mode **re-selects before every key attempt**, so a full 16-sector run takes
+~10-20 s ,  keep the card on the antenna until it finishes. **Buttons:**
+BOTH_SHORT = run one check · BOTH_LONG = arm/disarm · BOTH_VLONG = discard
+results. No `--opt-in` needed (never writes).
+
 ---
 ## `--opt-in` and quiet flags
 
 `set-mode` takes optional flags:
-- `--opt-in` ,  sets `HOST_OPTED_IN`. **Required** for modes that act on real
-  targets (e.g. `relay`); arming without it gives a **red double-flash** and a
-  "requires --opt-in" refusal.
+- `--opt-in` ,  sets `HOST_OPTED_IN`. **Required** for modes that write a target
+  card or slot (`autoclone`, `read_replay`) or act on real targets (`relay`);
+  arming without it gives a **red double-flash** and a "requires --opt-in"
+  refusal.
 - `--quiet-buzzer` / `--quiet-led` ,  silence the buzzer / LEDs for covert use.
 
 ## CLI reference (`standalone` group)
@@ -286,7 +358,7 @@ paused) · BOTH_LONG = arm/disarm · BOTH_VLONG = pause/resume.
 | `ls` | List available modes. |
 | `status` | Current mode, armed state, stored-result count. |
 | `set-mode <name> [--opt-in] [--quiet-buzzer] [--quiet-led]` | Select the active mode. |
-| `config <name> [--block --key-type --key --timeout --min-level --cooldown --ble \| -d <hex>]` | Write the mode's config. `authtrace` uses `--block/--key-type/--key/--timeout`; `hf14a-tap-sniff` uses `--timeout`; `relay` reuses `--timeout` as WTX; `nfc-canary` uses `--min-level/--cooldown/--ble`; `slot-cycle` uses raw `-d <hex>`. |
+| `config <name> [--block --key-type --key --timeout --min-level --cooldown --ble --read-blocks --also-slot --sectors \| -d <hex>]` | Write the mode's config. `authtrace` uses `--block/--key-type/--key/--timeout`; `hf14a-tap-sniff` uses `--timeout`; `relay` reuses `--timeout` as WTX; `nfc-canary` uses `--min-level/--cooldown/--ble`; `read-replay` uses `--read-blocks`; `autoclone` uses `--also-slot`; `dict-check` uses `--sectors`; `slot-cycle` uses raw `-d <hex>`. |
 | `trigger` | Arm the active mode from the host. |
 | `disarm` | Disarm and save results. |
 | `get-result` | Retrieve stored session results. |
@@ -320,6 +392,21 @@ u8  type=1   u8 level(0 field..3 engage)   u8 cmd   u8 arm_counter
 u32 start_s  (seconds since that arm)
 u16 dur_s    u16 field_ons   u16 frames   (all saturating)
 u8  flags (1=forced close, 2=closed by disarm)   u8 reserved=0
+```
+
+`read-replay`, `autoclone`, and `dict-check` each use a small fixed record,
+repeated, little-endian:
+
+```
+read-replay (13 B, one per clone):
+  u8 uid_len   u8 uid[7]   u8 atqa[2]   u8 sak   u8 sectors_read   u8 sectors_total
+
+autoclone  (11 B, one per attempt):
+  u8 result (0 ok, 1 no source, 2 no target, 3 write fail)
+  u8 uid_len   u8 uid[7]   u8 blocks_written   (+1 pad)
+
+dict-check (15 B, one per sector):
+  u8 sector   u8 found_a   u8 key_a[6]   u8 found_b   u8 key_b[6]
 ```
 
 ## Writing your own mode
