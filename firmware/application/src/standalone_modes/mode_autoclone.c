@@ -1,10 +1,14 @@
 /*
  * mode_autoclone.c
  *
- * Two-step MIFARE Classic 1K clone to a gen1a "magic" card. Ultra only.
- *   1st BOTH_SHORT: scan a source card, read its blocks (default key), buffer.
+ * Two-step clone of a 14A card onto a gen1a "magic" card. Ultra only.
+ *   1st BOTH_SHORT: scan source, build block 0 from the anticollision (UID clone,
+ *                   no key), and read any data sectors whose key is in the dict.
  *   2nd BOTH_SHORT: write the buffered blocks to the magic card now present.
  * Optionally also clones the source into the active slot (cfg.also_slot).
+ *
+ * The UID is always cloned (works on UID-only / non-FF cards); data sectors are
+ * cloned only where a key is found, so unknown-key sectors are left untouched.
  *
  * writes_tag + writes_slot -> requires STANDALONE_FLAG_HOST_OPTED_IN to arm.
  */
@@ -26,6 +30,7 @@
 #include "tag_base_type.h"
 #include "nfc_14a.h"
 #include "nfc_mf1.h"
+#include "mf1_dict.h"
 
 #define CFG_VERSION      1
 #define MODE_NAME        "autoclone"
@@ -34,7 +39,6 @@
 #define BLK_SIZE         16
 #define MFC_BLK(sec, i)  ((uint8_t)((sec) * 4 + (i)))
 
-static const uint8_t DEFAULT_KEY[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
 typedef struct __attribute__((packed)) {
     uint8_t version;
@@ -97,25 +101,66 @@ static void reader_on(void) {
     bsp_delay_ms(8);
 }
 
-/* Read the source card into the RAM buffer. Returns sectors read. */
-static uint8_t read_source(void) {
-    memset(m_st.valid, 0, sizeof(m_st.valid));
-    uint8_t read = 0;
-    for (uint8_t sec = 0; sec < MFC1K_SECTORS; sec++) {
+// Block 0 (UID clone) built from the anticollision scan — no key required.
+static void build_block0(uint8_t *b0, const picc_14a_tag_t *tag) {
+    memset(b0, 0, BLK_SIZE);
+    if (tag->cascade == 1) {            // 4-byte UID (standard gen1a 1K)
+        memcpy(b0, tag->uid, 4);
+        nfc_tag_14a_create_bcc(b0, 4, &b0[4]);
+        b0[5] = tag->sak;
+        b0[6] = tag->atqa[0];
+        b0[7] = tag->atqa[1];
+    } else {                            // 7/10-byte: copy what fits, best effort
+        memcpy(b0, tag->uid, tag->uid_len > BLK_SIZE ? BLK_SIZE : tag->uid_len);
+    }
+}
+
+// Find a working key of `type` for this sector from the dict. Re-selects each try.
+static bool find_key(uint8_t sec, uint8_t type, uint8_t out[6]) {
+    for (uint8_t k = 0; k < MF1_DICT_COUNT; k++) {
         bsp_wdt_feed();
         picc_14a_tag_t t;
         if (pcd_14a_reader_scan_auto(&t) != STATUS_HF_TAG_OK) continue;
-        if (pcd_14a_reader_mf1_auth(&t, PICC_AUTHENT1A, MFC_BLK(sec, 3),
-                                    (uint8_t *)DEFAULT_KEY) != STATUS_HF_TAG_OK) continue;
+        if (pcd_14a_reader_mf1_auth(&t, type, MFC_BLK(sec, 3), (uint8_t *)MF1_DICT[k]) == STATUS_HF_TAG_OK) {
+            memcpy(out, MF1_DICT[k], 6);
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Capture the source: always clone the UID (keyless); read data sectors whose
+ * key is in the dict. Returns the number of valid blocks buffered (>=1). */
+static uint8_t read_source(void) {
+    memset(m_st.valid, 0, sizeof(m_st.valid));
+    build_block0(m_st.src[0], &m_st.src_tag);   // UID clone works on any card
+    m_st.valid[0] = true;
+
+    for (uint8_t sec = 0; sec < MFC1K_SECTORS; sec++) {
+        bsp_wdt_feed();
+        uint8_t ka[6];
+        if (!find_key(sec, PICC_AUTHENT1A, ka)) continue;   // unknown key -> skip data
+        picc_14a_tag_t t;
+        if (pcd_14a_reader_scan_auto(&t) != STATUS_HF_TAG_OK) continue;
+        if (pcd_14a_reader_mf1_auth(&t, PICC_AUTHENT1A, MFC_BLK(sec, 3), ka) != STATUS_HF_TAG_OK) continue;
         for (uint8_t i = 0; i < 4; i++) {
             uint8_t blk = MFC_BLK(sec, i);
+            if (sec == 0 && i == 0) continue;               // keep constructed block 0
             if (pcd_14a_reader_mf1_read(blk, m_st.src[blk]) == STATUS_HF_TAG_OK)
                 m_st.valid[blk] = true;
         }
-        read++;
+        uint8_t tr = MFC_BLK(sec, 3);
+        if (m_st.valid[tr]) {
+            memcpy(&m_st.src[tr][0], ka, 6);                // key A proven by the auth
+            uint8_t kb[6];
+            if (find_key(sec, PICC_AUTHENT1B, kb)) memcpy(&m_st.src[tr][10], kb, 6);
+        }
     }
     pcd_14a_reader_mf1_unauth();
-    return read;
+
+    uint8_t valid = 0;
+    for (uint8_t b = 0; b < MFC1K_BLOCKS; b++) if (m_st.valid[b]) valid++;
+    return valid;
 }
 
 /* Write buffered blocks to a gen1a magic card. Returns blocks written. */
@@ -189,13 +234,13 @@ static standalone_rc_t on_button(standalone_button_evt_t evt) {
     standalone_feedback(SL_FB_BUSY_START);
 
     if (!m_st.have_source) {
-        /* Step 1: read the source card. */
+        /* Step 1: capture the source (UID always, data where keys are known). */
         reader_on();
         uint8_t st = pcd_14a_reader_scan_auto(&m_st.src_tag);
-        uint8_t read = (st == STATUS_HF_TAG_OK) ? read_source() : 0;
+        uint8_t valid = (st == STATUS_HF_TAG_OK) ? read_source() : 0;
         pcd_14a_reader_antenna_off();
 
-        if (st == STATUS_HF_TAG_OK && read > 0) {
+        if (st == STATUS_HF_TAG_OK && valid > 0) {
             m_st.have_source = true;
             if (m_st.cfg.also_slot) clone_to_slot();
             tag_mode_enter();
