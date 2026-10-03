@@ -9,6 +9,10 @@ const MODES = {0:"none",1:"autoclone",2:"read_replay",3:"authtrace",4:"slot_cycl
 const CMD_EVENT = 7010;
 const CMD_GET_CONFIG = 7002, CMD_SET_CONFIG = 7003, CMD_GET_SIZES = 7007, CMD_RELAY_DIAG = 7008;
 const MODE_AUTHTRACE = 3, MODE_SLOT = 4, MODE_RELAY = 7, MODE_TAP = 8;
+const MODE_AUTOCLONE = 1, MODE_READ_REPLAY = 2, MODE_DICT = 5;
+const ACTION_MODES = [MODE_READ_REPLAY, MODE_AUTOCLONE, MODE_DICT];  /* trigger-driven reader modes */
+const OPTIN_MODES = [MODE_AUTOCLONE, MODE_READ_REPLAY];
+const FLAG_OPTIN = 0x01;
 const SESSION_MODES = [MODE_EMUL, MODE_AUTHTRACE, MODE_TAP];  /* identical session-record format */
 const LEVELS = ["field","poll","select","engage"];
 const TYPES = {1:"Alert",2:"Window ended",3:"Test"};
@@ -250,6 +254,16 @@ async function fetchSaved(){
       st.textContent = ss.length ? ss.length+" relay session(s) (oldest first)." : "No relay sessions stored.";
     } else if(devMode===MODE_SLOT){
       $("saved").textContent=""; st.textContent="slot_cycle keeps no log.";
+    } else if(devMode===MODE_READ_REPLAY){
+      const recs=parseReadReplay(raw); renderReadReplay(recs);
+      st.textContent = recs.length ? recs.length+" clone(s) stored." : "No clones stored.";
+    } else if(devMode===MODE_AUTOCLONE){
+      const recs=parseAutoclone(raw); renderAutoclone(recs);
+      st.textContent = recs.length ? recs.length+" autoclone attempt(s) stored." : "No autoclone attempts stored.";
+    } else if(devMode===MODE_DICT){
+      const recs=parseDict(raw); renderDict(recs);
+      const found=recs.filter(r=>r.foundA||r.foundB).length;
+      st.textContent = recs.length ? found+"/"+recs.length+" sector(s) with a known key." : "No sectors checked.";
     } else {
       const recs=parseRecords(raw);
       renderSaved(recs);
@@ -393,6 +407,18 @@ function renderRelay(ss){
 /* ---- per-mode config (GET_CONFIG 7002 / SET_CONFIG 7003), little-endian cfg_t ---- */
 const u16le=(a,v)=>{ a.push(v&255,(v>>8)&255); };
 const CFG={
+  [MODE_READ_REPLAY]:{  // 4B: ver, read_blocks, rsvd[2]
+    fields:[["read_blocks","Read blocks (on/off)","on"]],
+    enc(g){ return [1, (g.read_blocks||"on").toLowerCase().startsWith("on")?1:0, 0,0]; },
+    dec(d){ return {read_blocks:d[1]?"on":"off"}; }},
+  [MODE_AUTOCLONE]:{  // 4B: ver, also_slot, rsvd[2]
+    fields:[["also_slot","Also clone to slot (on/off)","off"]],
+    enc(g){ return [1, (g.also_slot||"off").toLowerCase().startsWith("on")?1:0, 0,0]; },
+    dec(d){ return {also_slot:d[1]?"on":"off"}; }},
+  [MODE_DICT]:{  // 4B: ver, sectors, rsvd[2]
+    fields:[["sectors","Sectors (1-16)","16"]],
+    enc(g){ return [1, Math.min(16,Math.max(1,+g.sectors||16)), 0,0]; },
+    dec(d){ return {sectors:d[1]}; }},
   [MODE_AUTHTRACE]:{  // 16B: ver,type,block,rsvd,timeout(u16),key[6],rsvd[4]
     fields:[["type","Auth (0x60 A / 0x61 B)","0x60"],["block","Block","4"],["timeout","Timeout ms","3000"],["key","Key (12 hex)","FFFFFFFFFFFF"]],
     enc(g){ const t=parseInt(g.type,16)||0x60, bl=+g.block||0, to=+g.timeout||3000;
@@ -462,6 +488,122 @@ async function relayDiag(){
   }catch(e){}
 }
 
+/* ---- read_replay / autoclone / dict_check result records (see mode_*.c) ---- */
+
+function parseReadReplay(raw){  // 13B: uid_len, uid[7], atqa[2], sak, read, total
+
+  const out=[];
+
+  for(let o=0;o+13<=raw.length;o+=13){ const r=raw.slice(o,o+13);
+
+    out.push({uid:hex(r.slice(1,1+Math.min(r[0],7))),atqa:hex(r.slice(8,10)),sak:r[10],read:r[11],total:r[12]}); }
+
+  return out;
+
+}
+
+function renderReadReplay(recs){
+
+  const ul=$("saved"); ul.textContent="";
+
+  recs.forEach(r=>{
+
+    const li=document.createElement("li"); li.className="ev l2";
+
+    const top=document.createElement("div"); top.className="top";
+
+    const s=document.createElement("strong"); s.textContent="uid "+r.uid;
+
+    const tm=document.createElement("time"); tm.textContent="sectors "+r.read+"/"+r.total;
+
+    top.append(s,tm);
+
+    const d=document.createElement("div"); d.className="det";
+
+    d.textContent="atqa "+r.atqa+" \u00b7 sak "+r.sak.toString(16).padStart(2,"0");
+
+    li.append(top,d); ul.append(li);
+
+  });
+
+}
+
+const AC_RES=["ok","no source","no target","write fail"];
+
+function parseAutoclone(raw){  // 11B: result, uid_len, uid[7], blocks_written (+pad)
+
+  const out=[];
+
+  for(let o=0;o+11<=raw.length;o+=11){ const r=raw.slice(o,o+11);
+
+    out.push({result:r[0],name:AC_RES[r[0]]||("?"+r[0]),uid:hex(r.slice(2,2+Math.min(r[1],7))),written:r[9]}); }
+
+  return out;
+
+}
+
+function renderAutoclone(recs){
+
+  const ul=$("saved"); ul.textContent="";
+
+  recs.forEach(r=>{
+
+    const li=document.createElement("li"); li.className="ev "+(r.result===0?"l1":"l3");
+
+    const top=document.createElement("div"); top.className="top";
+
+    const s=document.createElement("strong"); s.textContent=r.name;
+
+    const tm=document.createElement("time"); tm.textContent="blocks "+r.written;
+
+    top.append(s,tm);
+
+    const d=document.createElement("div"); d.className="det"; d.textContent="uid "+(r.uid||"-");
+
+    li.append(top,d); ul.append(li);
+
+  });
+
+}
+
+function parseDict(raw){  // 15B: sector, found_a, keyA[6], found_b, keyB[6]
+
+  const out=[];
+
+  for(let o=0;o+15<=raw.length;o+=15){ const r=raw.slice(o,o+15);
+
+    out.push({sector:r[0],foundA:!!r[1],keyA:hex(r.slice(2,8)),foundB:!!r[8],keyB:hex(r.slice(9,15))}); }
+
+  return out;
+
+}
+
+function renderDict(recs){
+
+  const ul=$("saved"); ul.textContent="";
+
+  recs.forEach(r=>{
+
+    const li=document.createElement("li"); li.className="ev "+((r.foundA||r.foundB)?"l1":"");
+
+    const top=document.createElement("div"); top.className="top";
+
+    const s=document.createElement("strong"); s.textContent="sector "+r.sector;
+
+    top.append(s);
+
+    const d=document.createElement("div"); d.className="det";
+
+    d.textContent="A "+(r.foundA?r.keyA:"--")+" \u00b7 B "+(r.foundB?r.keyB:"--");
+
+    li.append(top,d); ul.append(li);
+
+  });
+
+}
+
+
+
 $("fetch").addEventListener("click",fetchSaved);
 
 /* ---- arm / disarm / test (7000 GET_MODE, 7006 TRIGGER, 7009 DISARM) ---- */
@@ -473,8 +615,8 @@ async function readState(){
   if(f.status!==STATUS_OK||f.data.length<2) throw new Error("status 0x"+f.status.toString(16));
   devState=f.data[0]; devMode=f.data[1]; devFlags=f.data[2]||0;
   cmsg("Device is "+(STATES[devState]||"state "+devState)+" · active mode: "+(MODES[devMode]||devMode)+(devMode===MODE_CANARY?"":" · no live alerts in this mode, use Fetch saved events"));
-  $("test").textContent = devMode===MODE_EMUL ? "Commit session now" : "Send test event";
-  $("test").style.display = (devMode===MODE_CANARY||devMode===MODE_EMUL) ? "" : "none";
+  $("test").textContent = devMode===MODE_EMUL ? "Commit session now" : (ACTION_MODES.includes(devMode) ? "Trigger" : "Send test event");
+  $("test").style.display = (devMode===MODE_CANARY||devMode===MODE_EMUL||ACTION_MODES.includes(devMode)) ? "" : "none";
   if(MODES[devMode]) $("modeSel").value=String(devMode);
   renderCfg(devMode); relayDiagToggle();
 }
@@ -491,7 +633,8 @@ $("refresh").addEventListener("click",()=>guarded(readState));
 async function changeHardwareStandaloneMode(targetMode) {
   // 7001 SET_MODE needs exactly 2 bytes: [mode, flags]. The mode is saved to flash.
   // If the device is armed in a different mode, the firmware exits that mode itself.
-  const res = await request(CMD_SET_MODE, [targetMode, devFlags]);
+  const flags = OPTIN_MODES.includes(targetMode) ? (devFlags | FLAG_OPTIN) : devFlags;
+  const res = await request(CMD_SET_MODE, [targetMode, flags]);
   if (res.status !== STATUS_OK)
     throw new Error("mode switch rejected: 0x" + res.status.toString(16));
 }
@@ -534,7 +677,7 @@ $("clrdev").addEventListener("click",()=>guarded(async()=>{
 }));
 $("arm").addEventListener("click",()=>guarded(async()=>{
   await readState();
-  if(![MODE_CANARY,MODE_EMUL,MODE_AUTHTRACE,MODE_SLOT,MODE_RELAY,MODE_TAP].includes(devMode)){ cmsg("Active mode "+(MODES[devMode]||devMode)+" can't be armed from here."); return; }
+  if(![MODE_CANARY,MODE_EMUL,MODE_AUTHTRACE,MODE_SLOT,MODE_RELAY,MODE_TAP,MODE_READ_REPLAY,MODE_AUTOCLONE,MODE_DICT].includes(devMode)){ cmsg("Active mode "+(MODES[devMode]||devMode)+" can't be armed from here."); return; }
   if(devState!==0){ cmsg("Already armed."); return; }
   lastSeq=null;
   const f=await request(CMD_TRIGGER);
@@ -554,7 +697,7 @@ $("test").addEventListener("click",()=>guarded(async()=>{
   if(devState===0){ cmsg("Not armed. Arm first."); return; }
   const f=await request(CMD_TRIGGER);
   if(f.status!==STATUS_OK) throw new Error("status 0x"+f.status.toString(16));
-  cmsg(devMode===MODE_EMUL ? "Commit requested. Press Fetch saved events to see the session." : "Test event sent. It should appear in the live list.");
+  cmsg(devMode===MODE_EMUL ? "Commit requested. Press Fetch saved events to see the session." : ACTION_MODES.includes(devMode) ? "Triggered. Press Fetch saved events to see the result." : "Test event sent. It should appear in the live list.");
 }));
 $("btn").addEventListener("click",()=>{ (wantConn||(device&&device.gatt.connected)) ? disconnect() : connect(); });
 $("clr").addEventListener("click",()=>{ events=[]; save(); render(); });
