@@ -2642,6 +2642,8 @@ class HFMFG4GetBlk(ReaderRequiredUnit):
         return parser
 
     def on_exec(self, args: argparse.Namespace):
+        if not 0 <= args.block <= 255:
+            print("block must be 0-255"); return
         ok, resp = _gen4_raw(self.cmd, _gen4_pwd(args), 0xCE, bytes([args.block]))
         if ok and len(resp) >= 16:
             print(f" - Block {args.block}: {resp[:16].hex().upper()}")
@@ -2665,6 +2667,8 @@ class HFMFG4SetBlk(ReaderRequiredUnit):
         data = bytes.fromhex(args.data)
         if len(data) != 16:
             print("block data must be 16 bytes"); return
+        if not 0 <= args.block <= 255:
+            print("block must be 0-255"); return
         _, resp = _gen4_raw(self.cmd, _gen4_pwd(args), 0xCD, bytes([args.block]) + data)
         ok = _gen4_write_ok(resp)
         print(f" - Block {args.block} {'written' if ok else 'write failed'}")
@@ -2705,6 +2709,10 @@ class HFMFG4SetPwd(ReaderRequiredUnit):
         new = bytes.fromhex(args.new)
         if len(new) != 4:
             print("new password must be 4 bytes"); return
+        confirm = input(f" [!] Changing the Gen4 password to {new.hex().upper()}. "
+                        f"A wrong value locks the password-gated commands. Type 'yes': ")
+        if confirm.strip().lower() != "yes":
+            print(" - aborted"); return
         _, resp = _gen4_raw(self.cmd, _gen4_pwd(args), 0xFD, new)
         ok = _gen4_write_ok(resp)
         print(f" - Gen4 password {'changed' if ok else 'change failed'}")
