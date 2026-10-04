@@ -352,8 +352,9 @@ Mifare Classic clone tag from dump
 
 - `-t`, `--dump-file-type` — Dump file content type (choices: bin, hex)
 - `-a`, `--clone-access` — Write ACL from original dump too (! could brick your tag)
+- `--gen1a` — Write via the gen1a backdoor (magic card); no keys needed, clones block 0
 - `-f`, `--dump-file` — Dump file containing data to write on new tag (required)
-- `-d`, `--dic` — Read keys (to communicate with tag to write) from .dic format file (required)
+- `-d`, `--dic` — Read keys (to communicate with tag to write) from .dic format file
 
 #### `hf mf darkside`
 
