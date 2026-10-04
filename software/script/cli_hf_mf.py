@@ -16,6 +16,7 @@ import time
 import struct
 import argparse
 import tempfile
+import json
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
 
@@ -2369,6 +2370,226 @@ def identify_magic_gen(cmd):
     return None
 
 
+def _gen1a_raw(cmd, opt, data, bitlen=None, timeout_ms=200):
+    # hf14a_raw, tolerant of NAK/no-response (returns b"")
+    try:
+        return cmd.hf14a_raw(options=opt, resp_timeout_ms=timeout_ms, data=data, bitlen=bitlen)
+    except UnexpectedResponseError:
+        return b""
+
+
+def _gen1a_unlock(cmd, opt):
+    """Backdoor stage1 (0x40) + stage2 (0x43) unlock. opt must already have
+    activate_rf_field=1, auto_select=0, keep_rf_field=1, append_crc=0 - this
+    mutates opt['append_crc']=1 on success, ready for 0x30/0xA0 commands on
+    the same (still-open) RF session. Raises on failure."""
+    r = _gen1a_raw(cmd, opt, [0x40], bitlen=7, timeout_ms=1000)
+    if not r or r[0] != 0x0a:
+        raise Exception("gen1a unlock failed (not a gen1a magic card?)")
+    r = _gen1a_raw(cmd, opt, [0x43], timeout_ms=1000)
+    if not r or r[0] != 0x0a:
+        raise Exception("gen1a unlock failed (stage 2)")
+    opt["append_crc"] = 1
+
+
+def _gen1a_drop_field(cmd, opt):
+    opt["keep_rf_field"] = 0
+    opt["wait_response"] = 0
+    try:
+        cmd.hf14a_raw(options=opt, resp_timeout_ms=200, data=[])
+    except Exception:
+        pass
+
+
+def _gen1a_new_session():
+    return {"activate_rf_field": 1, "wait_response": 1, "append_crc": 0,
+            "auto_select": 0, "keep_rf_field": 1, "check_response_crc": 0}
+
+
+def _gen1a_read_blk(cmd, opt, blk):
+    r = _gen1a_raw(cmd, opt, [0x30, blk])
+    r = bytes(r) if r else b""
+    if len(r) < 16:
+        raise Exception(f"backdoor read NAK at block {blk}")
+    return r[:16]
+
+
+def _gen1a_write_blk(cmd, opt, blk, data16):
+    r = _gen1a_raw(cmd, opt, [0xA0, blk])
+    if not r or r[0] != 0x0a:
+        raise Exception(f"write command NAK at block {blk}")
+    r = _gen1a_raw(cmd, opt, list(data16))
+    if not r or r[0] != 0x0a:
+        raise Exception(f"write data NAK at block {blk}")
+
+
+def _gen1a_write_dump(cmd, buffer):
+    # Write the dump to a gen1a magic card through the backdoor: unlock, then
+    # raw-write (0xA0) every block including block 0. 4-bit ACK is 0x0a.
+    nblocks = len(buffer) // 16
+    opt = _gen1a_new_session()
+    try:
+        _gen1a_unlock(cmd, opt)
+        for blk in range(nblocks):
+            _gen1a_write_blk(cmd, opt, blk, buffer[blk * 16:blk * 16 + 16])
+            print(color_string((CG, f"block {blk:2d} written")))
+        print(color_string((CG, f"gen1a clone done: {nblocks} blocks")))
+    finally:
+        _gen1a_drop_field(cmd, opt)
+
+
+def _gen1a_read_dump(cmd, nblocks):
+    # Read every block through the gen1a backdoor; no keys needed/used.
+    opt = _gen1a_new_session()
+    buf = bytearray()
+    try:
+        _gen1a_unlock(cmd, opt)
+        for blk in range(nblocks):
+            buf.extend(_gen1a_read_blk(cmd, opt, blk))
+    finally:
+        _gen1a_drop_field(cmd, opt)
+    return bytes(buf)
+
+
+@hf_mf.command("cgetblk")
+class HFMFCGetBlk(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = "Read one block via the gen1a backdoor (no keys needed)"
+        parser.add_argument("-b", "--block", type=int, required=True, metavar="<dec>",
+                            help="Block number")
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        opt = _gen1a_new_session()
+        try:
+            _gen1a_unlock(self.cmd, opt)
+            data = _gen1a_read_blk(self.cmd, opt, args.block)
+            print(f" - Block {args.block}: {data.hex().upper()}")
+        except Exception as e:
+            print(f" - cgetblk failed: {e}")
+        finally:
+            _gen1a_drop_field(self.cmd, opt)
+
+
+@hf_mf.command("csetblk")
+class HFMFCSetBlk(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = "Write one block via the gen1a backdoor (no keys needed)"
+        parser.add_argument("-b", "--block", type=int, required=True, metavar="<dec>",
+                            help="Block number")
+        parser.add_argument("-d", "--data", type=str, required=True, metavar="<hex32>",
+                            help="16-byte block data")
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        block_data = bytes.fromhex(args.data)
+        if len(block_data) != 16:
+            print("block data must be 16 bytes"); return
+        opt = _gen1a_new_session()
+        try:
+            _gen1a_unlock(self.cmd, opt)
+            _gen1a_write_blk(self.cmd, opt, args.block, block_data)
+            print(f" - Block {args.block} written: {block_data.hex().upper()}")
+        except Exception as e:
+            print(f" - csetblk failed: {e}")
+        finally:
+            _gen1a_drop_field(self.cmd, opt)
+
+
+@hf_mf.command("csetuid")
+class HFMFCSetUID(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = (
+            "Set the UID on a gen1a magic card via the backdoor (no keys needed). "
+            "4-byte UID only - keeps the rest of block 0 (SAK/ATQA/manufacturer "
+            "bytes) as read from the card and recomputes BCC."
+        )
+        parser.add_argument("-u", "--uid", type=str, required=True, metavar="<hex8>",
+                            help="New 4-byte UID")
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        uid = bytes.fromhex(args.uid)
+        if len(uid) != 4:
+            print("UID must be 4 bytes (7-byte gen1a UIDs are not supported by this command)")
+            return
+        bcc = 0
+        for b in uid:
+            bcc ^= b
+        opt = _gen1a_new_session()
+        try:
+            _gen1a_unlock(self.cmd, opt)
+            blk0 = bytearray(_gen1a_read_blk(self.cmd, opt, 0))
+            blk0[0:4] = uid
+            blk0[4] = bcc
+            _gen1a_write_blk(self.cmd, opt, 0, bytes(blk0))
+            print(f" - Gen1a UID set to {uid.hex().upper()} (block 0: {blk0.hex().upper()})")
+        except Exception as e:
+            print(f" - csetuid failed: {e}")
+        finally:
+            _gen1a_drop_field(self.cmd, opt)
+
+
+@hf_mf.command("cview")
+class HFMFCView(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = "Dump a gen1a magic card via the backdoor (no keys needed)"
+        parser.add_argument("--4k", dest="is4k", action="store_true",
+                            help="256 blocks (4K) instead of the default 64 blocks (1K)")
+        parser.add_argument("-f", "--file", type=str, default=None, metavar="<fn>",
+                            help="Save to file (.bin raw, or .json Proxmark3 'mfc v2')")
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        nblocks = 256 if args.is4k else 64
+        try:
+            raw = _gen1a_read_dump(self.cmd, nblocks)
+        except Exception as e:
+            print(f" - cview failed: {e}")
+            return
+        print_mem_dump(raw, 16)
+        if args.file:
+            if args.file.lower().endswith(".json"):
+                blocks = {i: raw[i * 16:i * 16 + 16] for i in range(nblocks)}
+                # ATQA/SAK come from the reader-level anticollision response,
+                # not from block 0, so do a normal (non-backdoor) scan for them.
+                scan = self.cmd.hf14a_scan()
+                uid, atqa, sak = (scan[0]["uid"], scan[0]["atqa"], scan[0]["sak"][0]) \
+                    if scan else (raw[0:4], b"\x00\x00", 0)
+                obj = chameleon_pm3.mfc_blocks_to_json(uid, atqa, sak, blocks)
+                with open(args.file, "w") as fh:
+                    json.dump(obj, fh, indent=4)
+            else:
+                with open(args.file, "wb") as fh:
+                    fh.write(raw)
+            print(f" - Saved to {args.file}")
+
+
+@hf_mf.command("cload")
+class HFMFCLoad(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = (
+            "Write a dump to a gen1a magic card via the backdoor (no keys needed). "
+            "Equivalent to `hf mf clone --gen1a`, named to match Proxmark3's `hf mf cload`."
+        )
+        parser.add_argument("-f", "--dump-file", type=argparse.FileType("rb"), required=True,
+                            help="Dump file (raw .bin)")
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        buffer = args.dump_file.read()
+        if len(buffer) % 16 != 0:
+            print("Data block not aligned to 16 bytes"); return
+        if len(buffer) // 16 > 256:
+            print("Data block memory overflow"); return
+        _gen1a_write_dump(self.cmd, buffer)
+
+
 @hf_mf.command("gen3uid")
 class HFMFGen3UID(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -2551,41 +2772,11 @@ class HFMFClone(MF1AuthArgsUnit):
                 self.cmd.mf1_write_one_block(4 * s + b, MfcKeyType.A, keyA, block_data)
 
 
-    def _raw(self, opt, data, bitlen=None, timeout_ms=200):
-        # hf14a_raw, tolerant of NAK/no-response (returns b"")
-        try:
-            return self.cmd.hf14a_raw(options=opt, resp_timeout_ms=timeout_ms, data=data, bitlen=bitlen)
-        except UnexpectedResponseError:
-            return b""
-
     def _clone_gen1a(self, buffer):
-        # Write the dump to a gen1a magic card through the backdoor: unlock, then
-        # raw-write (0xA0) every block including block 0. 4-bit ACK is 0x0a.
-        nblocks = len(buffer) // 16
-        opt = {"activate_rf_field": 1, "wait_response": 1, "append_crc": 0,
-               "auto_select": 0, "keep_rf_field": 1, "check_response_crc": 0}
-        try:
-            r = self._raw(opt, [0x40], bitlen=7, timeout_ms=1000)
-            if not r or r[0] != 0x0a:
-                raise Exception("gen1a unlock failed (not a gen1a magic card?)")
-            r = self._raw(opt, [0x43], timeout_ms=1000)
-            if not r or r[0] != 0x0a:
-                raise Exception("gen1a unlock failed (stage 2)")
-            opt["append_crc"] = 1          # CRC on our frames; ACK is 4-bit, no response CRC
-            for blk in range(nblocks):
-                block_data = list(bytes(buffer[blk * 16:blk * 16 + 16]))
-                r = self._raw(opt, [0xA0, blk])
-                if not r or r[0] != 0x0a:
-                    raise Exception(f"write command NAK at block {blk}")
-                r = self._raw(opt, block_data)
-                if not r or r[0] != 0x0a:
-                    raise Exception(f"write data NAK at block {blk}")
-                print(color_string((CG, f"block {blk:2d} written")))
-            print(color_string((CG, f"gen1a clone done: {nblocks} blocks")))
-        finally:
-            opt["keep_rf_field"] = 0
-            opt["wait_response"] = 0
-            self._raw(opt, [])             # drop the field
+        # Kept for `clone --gen1a` backward compatibility; the real logic now
+        # lives in _gen1a_write_dump (shared with the `cload` command) so
+        # there's one implementation of the backdoor write sequence.
+        _gen1a_write_dump(self.cmd, buffer)
 
 
 @hf_mf.command("value")
