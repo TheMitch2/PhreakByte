@@ -1,6 +1,6 @@
 # Phreakbyte CLI Command Reference
 
-Complete reference for the Phreakbyte edition ChameleonUltra client (`chameleon_cli_main.py`), auto-generated from the live CLI parser: 27 command groups, 147 commands.
+Complete reference for the Phreakbyte edition ChameleonUltra client (`chameleon_cli_main.py`), auto-generated from the live CLI parser: 27 command groups, 152 commands.
 
 Notation: `<...>` are values you supply. Each option lists its flags, help, allowed `choices`, whether it is `required`, and its `default`. Run any command with `-h` in the client for the same information live.
 
@@ -346,6 +346,18 @@ MIFARE Classic auto recovery (PM3-style): detect PRNG, check known keys, then es
 - `--keyfile` — Resume: seed known keys from a Proxmark3 .key (A||B per sector) or .dic file, so already-recovered sectors are skipped.
 - `--no-dump` — Recover keys only; skip the card dump.
 
+#### `hf mf cgetblk`
+
+Read one block via the gen1a backdoor (no keys needed)
+
+- `-b`, `--block` — Block number (required)
+
+#### `hf mf cload`
+
+Write a dump to a gen1a magic card via the backdoor (no keys needed). Equivalent to `hf mf clone --gen1a`, named to match Proxmark3's `hf mf cload`.
+
+- `-f`, `--dump-file` — Dump file (raw .bin) (required)
+
 #### `hf mf clone`
 
 Mifare Classic clone tag from dump
@@ -355,6 +367,26 @@ Mifare Classic clone tag from dump
 - `--gen1a` — Write via the gen1a backdoor (magic card); no keys needed, clones block 0
 - `-f`, `--dump-file` — Dump file containing data to write on new tag (required)
 - `-d`, `--dic` — Read keys (to communicate with tag to write) from .dic format file
+
+#### `hf mf csetblk`
+
+Write one block via the gen1a backdoor (no keys needed)
+
+- `-b`, `--block` — Block number (required)
+- `-d`, `--data` — 16-byte block data (required)
+
+#### `hf mf csetuid`
+
+Set the UID on a gen1a magic card via the backdoor (no keys needed). 4-byte UID only - keeps the rest of block 0 (SAK/ATQA/manufacturer bytes) as read from the card and recomputes BCC.
+
+- `-u`, `--uid` — New 4-byte UID (required)
+
+#### `hf mf cview`
+
+Dump a gen1a magic card via the backdoor (no keys needed)
+
+- `--4k` — 256 blocks (4K) instead of the default 64 blocks (1K)
+- `-f`, `--file` — Save to file (.bin raw, or .json Proxmark3 'mfc v2')
 
 #### `hf mf darkside`
 
