@@ -1,6 +1,6 @@
 # Phreakbyte CLI Command Reference
 
-Complete reference for the Phreakbyte edition ChameleonUltra client (`chameleon_cli_main.py`), auto-generated from the live CLI parser: 27 command groups, 144 commands.
+Complete reference for the Phreakbyte edition ChameleonUltra client (`chameleon_cli_main.py`), auto-generated from the live CLI parser: 27 command groups, 147 commands.
 
 Notation: `<...>` are values you supply. Each option lists its flags, help, allowed `choices`, whether it is `required`, and its `default`. Run any command with `-h` in the client for the same information live.
 
@@ -433,6 +433,23 @@ Mifare Classic fast key check on sectors
 - `--export-key` — Export result as .key format, file will be OVERWRITTEN if exists
 - `--export-dic` — Export result as .dic format, file will be OVERWRITTEN if exists
 - `-m`, `--mask` — Which sectorKey to be skip, 1 bit per sectorKey. `0b1` represent to skip to check. (in hex[20] format) (default: 00000000000000000000)
+
+#### `hf mf gen3blk`
+
+Write full block 0 on a Gen3 magic card
+
+- `-d`, `--data` — 16-byte block 0 (required)
+
+#### `hf mf gen3freeze`
+
+Permanently lock the UID of a Gen3 magic card (IRREVERSIBLE)
+
+
+#### `hf mf gen3uid`
+
+Set UID on a Gen3 magic card (block 0 manufacturer bytes kept)
+
+- `-u`, `--uid` — New UID, 4 or 7 bytes (required)
 
 #### `hf mf hardnested`
 
