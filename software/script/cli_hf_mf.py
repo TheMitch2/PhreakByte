@@ -2301,6 +2301,22 @@ class HFMFDump(MF1AuthArgsUnit):
         args.dump_file.write(buffer)
 
 
+def _gen3_raw(cmd, apdu: bytes):
+    """Send a Gen3 magic APDU. Returns (ok, raw_response_bytes).
+
+    hf14a_raw() returns the raw response bytes (not a Response object), so
+    success is judged from the card's reply: Gen3 cards answer with SW 90 00.
+    """
+    opt = {'activate_rf_field': 0, 'wait_response': 1, 'append_crc': 1,
+           'auto_select': 1, 'keep_rf_field': 0, 'check_response_crc': 1}
+    try:
+        resp = cmd.hf14a_raw(options=opt, resp_timeout_ms=1000, data=list(apdu))
+    except (UnexpectedResponseError, TimeoutError):
+        return False, b""
+    resp = bytes(resp)
+    return resp[-2:] == b"\x90\x00", resp
+
+
 @hf_mf.command("gen3uid")
 class HFMFGen3UID(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -2314,14 +2330,12 @@ class HFMFGen3UID(ReaderRequiredUnit):
         uid = bytes.fromhex(args.uid)
         if len(uid) not in (4, 7):
             print("UID must be 4 or 7 bytes"); return
-        opt = {'activate_rf_field': 0, 'wait_response': 1, 'append_crc': 1,
-               'auto_select': 1, 'keep_rf_field': 0, 'check_response_crc': 1}
         apdu = bytes([0x90, 0xFB, 0xCC, 0xCC, len(uid)]) + uid
-        resp = self.cmd.hf14a_raw(options=opt, resp_timeout_ms=1000, data=list(apdu))
-        if resp.status == Status.HF_TAG_OK:
+        ok, resp = _gen3_raw(self.cmd, apdu)
+        if ok:
             print(f" - Gen3 UID set to {uid.hex().upper()}")
         else:
-            print(" - Gen3 UID set failed (is this a Gen3 card?)")
+            print(f" - Gen3 UID set failed (is this a Gen3 card?) resp={resp.hex() or 'none'}")
 
 
 @hf_mf.command("gen3blk")
@@ -2337,14 +2351,12 @@ class HFMFGen3Blk(ReaderRequiredUnit):
         blk0 = bytes.fromhex(args.data)
         if len(blk0) != 16:
             print("block 0 must be 16 bytes"); return
-        opt = {'activate_rf_field': 0, 'wait_response': 1, 'append_crc': 1,
-               'auto_select': 1, 'keep_rf_field': 0, 'check_response_crc': 1}
         apdu = bytes([0x90, 0xF0, 0xCC, 0xCC, 0x10]) + blk0
-        resp = self.cmd.hf14a_raw(options=opt, resp_timeout_ms=1000, data=list(apdu))
-        if resp.status == Status.HF_TAG_OK:
+        ok, resp = _gen3_raw(self.cmd, apdu)
+        if ok:
             print(f" - Gen3 block 0 written: {blk0.hex().upper()}")
         else:
-            print(" - Gen3 block 0 write failed (is this a Gen3 card?)")
+            print(f" - Gen3 block 0 write failed (is this a Gen3 card?) resp={resp.hex() or 'none'}")
 
 
 @hf_mf.command("gen3freeze")
@@ -2358,14 +2370,12 @@ class HFMFGen3Freeze(ReaderRequiredUnit):
         confirm = input(" [!] This permanently locks the UID and cannot be undone. Type 'yes': ")
         if confirm.strip().lower() != "yes":
             print(" - aborted"); return
-        opt = {'activate_rf_field': 0, 'wait_response': 1, 'append_crc': 1,
-               'auto_select': 1, 'keep_rf_field': 0, 'check_response_crc': 1}
         apdu = bytes([0x90, 0xFD, 0x11, 0x11, 0x00])
-        resp = self.cmd.hf14a_raw(options=opt, resp_timeout_ms=1000, data=list(apdu))
-        if resp.status == Status.HF_TAG_OK:
+        ok, resp = _gen3_raw(self.cmd, apdu)
+        if ok:
             print(" - Gen3 UID permanently locked")
         else:
-            print(" - Gen3 freeze failed (is this a Gen3 card?)")
+            print(f" - Gen3 freeze failed (is this a Gen3 card?) resp={resp.hex() or 'none'}")
 
 
 @hf_mf.command("clone")
