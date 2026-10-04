@@ -504,7 +504,7 @@ class HF14AScan(ReaderRequiredUnit):
         guess when the SAK/ATS are ambiguous (e.g. SAK 0x20 covers Plus EV,
         DESFire and NTAG 4xx alike)."""
         if magic_gen == "gen1a":
-            print(f"  # {CY}Recommended:{C0} hf mf cload/cview, or clone --gen1a to write one")
+            print(f"  # {CY}Recommended:{C0} hf mf clone --gen1a to write one")
             return
         if magic_gen == "gen3":
             print(f"  # {CY}Recommended:{C0} hf mf gen3uid / gen3blk")
