@@ -5,22 +5,17 @@ write/dump/clone, value blocks, emulation slot load/save, and sim. Split out
 of chameleon_cli_unit; foundation imported explicitly from cli_core."""
 
 import re
-import binascii
-import sys
-import math
-import glob
-import random
-import datetime
 import os
+import json
 import time
 import struct
 import argparse
+import subprocess
 import tempfile
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
 
 from cli_core import (
-    _run_mfkey32v2,
     ArgsParserError,
     ArgumentParserNoExit,
     BaseCLIUnit,
@@ -49,6 +44,7 @@ from cli_core import (
     chameleon_pm3,
     color_string,
     data,
+    default_cwd,
     execute_tool,
     hardnested_utils,
     hf,
@@ -217,7 +213,6 @@ class HFMFNested(ReaderRequiredUnit):
             )
         return
 
-
 @hf_mf.command("darkside")
 class HFMFDarkside(ReaderRequiredUnit):
     def __init__(self):
@@ -297,7 +292,6 @@ class HFMFDarkside(ReaderRequiredUnit):
         else:
             print(" - Key recover fail.")
         return
-
 
 @hf_mf.command("hardnested")
 class HFMFHardNested(ReaderRequiredUnit):
@@ -818,7 +812,7 @@ class HFMFHardNested(ReaderRequiredUnit):
                     # Found the target line, now extract the key using regex
                     # Regex now looks for 12 hex chars specifically after the prefix
                     sea_obj = re.search(
-                        r"([a-fA-F0-9]{12})", line_stripped[len(key_prefix) :]
+                        r"([a-fA-F0-9]{12})", line_stripped[len(key_prefix):]
                     )
                     if sea_obj:
                         key_list.append(sea_obj.group(1))
@@ -959,7 +953,6 @@ class HFMFHardNested(ReaderRequiredUnit):
         else:
             print(color_string((CR, " - HardNested attack failed to recover the key.")))
 
-
 @hf_mf.command("senested")
 class HFMFStaticEncryptedNested(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1053,7 +1046,7 @@ class HFMFStaticEncryptedNested(ReaderRequiredUnit):
             )
             for i in tqdm_if_exists(range(0, len(keys_bytes), 64)):
                 data = self.cmd.mf1_check_keys_on_block(
-                    sector * 4 + 3, 0x61, keys_bytes[i : i + 64]
+                    sector * 4 + 3, 0x61, keys_bytes[i: i + 64]
                 )
                 if data:
                     key = data.hex().zfill(12)
@@ -1104,7 +1097,7 @@ class HFMFStaticEncryptedNested(ReaderRequiredUnit):
                     )
                     for i in tqdm_if_exists(range(0, len(keys_bytes), 64)):
                         data = self.cmd.mf1_check_keys_on_block(
-                            sector * 4 + 3, 0x60, keys_bytes[i : i + 64]
+                            sector * 4 + 3, 0x60, keys_bytes[i: i + 64]
                         )
                         if data:
                             key = data.hex().zfill(12)
@@ -1119,7 +1112,6 @@ class HFMFStaticEncryptedNested(ReaderRequiredUnit):
 
         return key_map
 
-
 @hf_mf.command("autopwn")
 class HFMFAutopwn(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1132,69 +1124,41 @@ class HFMFAutopwn(ReaderRequiredUnit):
             "-s/--slot additionally loads the card into an emulation slot."
         )
         parser.add_argument(
-            "-k",
-            "--key",
-            type=str,
-            required=False,
-            metavar="<hex>",
-            help="Known key (12 hex)",
+            "-k", "--key", type=str, required=False, metavar="<hex>", help="Known key (12 hex)"
         )
         # Proxmark3-compatible: -f is the DICTIONARY (was output before; matches
         # `hf mf autopwn -f <dict>` muscle memory). --dict/--dic are aliases.
         parser.add_argument(
-            "-f",
-            "--file",
-            "--dict",
-            "--dic",
-            dest="dict",
-            type=str,
-            default=None,
-            metavar="<fn>",
-            help="Filename of key dictionary to try first (PM3 -f).",
+            "-f", "--file", "--dict", "--dic", dest="dict", type=str, default=None,
+            metavar="<fn>", help="Filename of key dictionary to try first (PM3 -f)."
         )
         # Proxmark3-compatible: -o is a SUFFIX; outputs auto-name as
         # hf-mf-<uid>-dump[-suffix].json and hf-mf-<uid>-key[-suffix].(dic|bin).
         parser.add_argument(
-            "-o",
-            "--output",
-            dest="output",
-            type=str,
-            nargs="?",
-            const="",
-            default=None,
+            "-o", "--output", dest="output", type=str, nargs="?", const="", default=None,
             metavar="<suffix>",
             help="Dump the card + keys to hf-mf-<uid>-dump[-<suffix>].json and "
-            "hf-mf-<uid>-key[-<suffix>].(dic|bin). Bare -o uses no suffix.",
+                 "hf-mf-<uid>-key[-<suffix>].(dic|bin). Bare -o uses no suffix."
         )
         parser.add_argument(
-            "--bin",
-            action="store_true",
-            help="With -o, also write the raw .bin dump next to the JSON.",
+            "--bin", action="store_true",
+            help="With -o, also write the raw .bin dump next to the JSON."
         )
         parser.add_argument(
-            "-s",
-            "--slot",
-            type=int,
-            choices=range(1, 9),
-            default=None,
-            help="Also load the recovered card into this emulation slot (1-8).",
+            "-s", "--slot", type=int, choices=range(1, 9), default=None,
+            help="Also load the recovered card into this emulation slot (1-8)."
         )
         parser.add_argument(
-            "--slow",
-            action="store_true",
-            help="Slower acquisition for non-standard cards (PM3 -s/--slow).",
+            "--slow", action="store_true",
+            help="Slower acquisition for non-standard cards (PM3 -s/--slow)."
         )
         parser.add_argument(
-            "--keyfile",
-            type=str,
-            default=None,
+            "--keyfile", type=str, default=None,
             help="Resume: seed known keys from a Proxmark3 .key (A||B per sector) or "
-            ".dic file, so already-recovered sectors are skipped.",
+                 ".dic file, so already-recovered sectors are skipped."
         )
         parser.add_argument(
-            "--no-dump",
-            action="store_true",
-            help="Recover keys only; skip the card dump.",
+            "--no-dump", action="store_true", help="Recover keys only; skip the card dump."
         )
         return parser
 
@@ -1303,7 +1267,7 @@ class HFMFAutopwn(ReaderRequiredUnit):
             if 0 <= idx < total_bits:
                 field[idx if msb_left else total_bits - 1 - idx] = "1"
         bstr = "".join(field)
-        return bstr, bytes(int(bstr[i : i + 8], 2) for i in range(0, total_bits, 8))
+        return bstr, bytes(int(bstr[i: i + 8], 2) for i in range(0, total_bits, 8))
 
     def run_senested(self, current_keys_found, max_sectors_num):
         print(
@@ -1379,14 +1343,9 @@ class HFMFAutopwn(ReaderRequiredUnit):
             print(f" {CR}[!]{C0}  Could not read keyfile {path}: {e}")
             return seeded
         text = data.decode("utf-8", "ignore")
-        hexlines = [
-            l.strip()
-            for l in text.splitlines()
-            if re.fullmatch(r"[A-Fa-f0-9]{12}", l.strip())
-        ]
-        if path.lower().endswith(".dic") or (
-            hexlines and len(hexlines) != max_sectors_num * 2 and b"\n" in data
-        ):
+        hexlines = [l.strip() for l in text.splitlines()
+                    if re.fullmatch(r"[A-Fa-f0-9]{12}", l.strip())]
+        if path.lower().endswith(".dic") or (hexlines and len(hexlines) != max_sectors_num * 2 and b"\n" in data):
             # dictionary: caller will try these across sectors
             self._extra_dict = (getattr(self, "_extra_dict", None) or []) + hexlines
             print(f" {CG}[+]{C0}  Seeded {len(hexlines)} dictionary keys from {path}")
@@ -1395,8 +1354,8 @@ class HFMFAutopwn(ReaderRequiredUnit):
         if len(data) == max_sectors_num * 12:
             blank = bytes(6)
             for sec in range(max_sectors_num):
-                a = data[sec * 12 : sec * 12 + 6]
-                b = data[sec * 12 + 6 : sec * 12 + 12]
+                a = data[sec * 12: sec * 12 + 6]
+                b = data[sec * 12 + 6: sec * 12 + 12]
                 if a != blank:
                     seeded[sec * 2] = a
                 if b != blank:
@@ -1431,8 +1390,7 @@ class HFMFAutopwn(ReaderRequiredUnit):
             # verify/extend seeded keys by reuse across sectors
             for k in list(dict.fromkeys(current_keys_found.values())):
                 current_keys_found = self.merge_found_sector_keys(
-                    current_keys_found, self.try_key(k, full_mask)
-                )
+                    current_keys_found, self.try_key(k, full_mask))
 
         if key_known is not None:
             current_keys_found = self.merge_found_sector_keys(
@@ -1442,7 +1400,7 @@ class HFMFAutopwn(ReaderRequiredUnit):
             current_keys_found, self.try_key(bytes.fromhex("FFFFFFFFFFFF"), bytes(10))
         )
         # user-supplied dictionary (--dict): try each key across all still-unknown sectors
-        for dk in getattr(self, "_extra_dict", None) or []:
+        for dk in (getattr(self, "_extra_dict", None) or []):
             if len(current_keys_found) >= max_sectors_num * 2:
                 break
             current_keys_found = self.merge_found_sector_keys(
@@ -1654,7 +1612,6 @@ class HFMFAutopwn(ReaderRequiredUnit):
     def write_dump(self, blocks, raw, path):
         if path.lower().endswith(".json"):
             import json
-
             uid, atqa, sak = self._card_meta()
             obj = chameleon_pm3.mfc_blocks_to_json(uid, atqa, sak, blocks)
             with open(path, "w") as fh:
@@ -1670,11 +1627,8 @@ class HFMFAutopwn(ReaderRequiredUnit):
         try:
             fwslot = SlotNumber(slot)
             block_count = len(raw) // 16
-            tag = (
-                TagSpecificType.MIFARE_4096
-                if block_count > 64
-                else TagSpecificType.MIFARE_1024
-            )
+            tag = (TagSpecificType.MIFARE_4096 if block_count > 64
+                   else TagSpecificType.MIFARE_1024)
             self.cmd.set_slot_tag_type(fwslot, tag)
             self.cmd.set_slot_enable(fwslot, TagSenseType.HF, True)
             self.cmd.set_active_slot(fwslot)
@@ -1682,23 +1636,19 @@ class HFMFAutopwn(ReaderRequiredUnit):
             max_blocks = (self.device_com.data_max_length - 1) // 16
             index = block = 0
             while index < len(raw):
-                chunk = raw[index : index + 16 * max_blocks]
+                chunk = raw[index: index + 16 * max_blocks]
                 self.cmd.mf1_write_emu_block_data(block, chunk)
                 n = len(chunk) // 16
                 index += 16 * n
                 block += n
             self.cmd.slot_data_config_save()
-            print(
-                f" {CG}[+]{C0}  Loaded recovered card into slot {slot} "
-                f"({block_count} blocks) — ready to emulate"
-            )
+            print(f" {CG}[+]{C0}  Loaded recovered card into slot {slot} "
+                  f"({block_count} blocks) — ready to emulate")
         except Exception as e:
             print(f" {CR}[!]{C0}  Slot load failed: {e}")
 
     def _save_keys(self, extracted_keys, max_sectors_num, base):
-        uniq = set(
-            v for v in extracted_keys.values() if isinstance(v, (bytes, bytearray))
-        )
+        uniq = set(v for v in extracted_keys.values() if isinstance(v, (bytes, bytearray)))
         with open(base + ".dic", "w") as fh:
             for k in sorted(uniq):
                 fh.write(k.hex().upper() + "\n")
@@ -1718,11 +1668,7 @@ class HFMFAutopwn(ReaderRequiredUnit):
         if not filename:
             print(f" {CR}[!]{C0}  No filename provided, skipping.")
             return
-        path = (
-            filename
-            if filename.lower().endswith((".json", ".bin"))
-            else filename + ".bin"
-        )
+        path = filename if filename.lower().endswith((".json", ".bin")) else filename + ".bin"
         blocks, raw = self.read_all_blocks(extracted_keys, max_sectors_num)
         self.write_dump(blocks, raw, path)
 
@@ -1737,14 +1683,9 @@ class HFMFAutopwn(ReaderRequiredUnit):
         if args.dict:
             try:
                 with open(args.dict) as fh:
-                    self._extra_dict = [
-                        k.strip()
-                        for k in fh
-                        if re.fullmatch(r"[A-Fa-f0-9]{12}", k.strip())
-                    ]
-                print(
-                    f" {CG}[+]{C0}  Loaded {len(self._extra_dict)} keys from {args.dict}"
-                )
+                    self._extra_dict = [k.strip() for k in fh
+                                        if re.fullmatch(r"[A-Fa-f0-9]{12}", k.strip())]
+                print(f" {CG}[+]{C0}  Loaded {len(self._extra_dict)} keys from {args.dict}")
             except Exception as e:
                 print(f" {CR}[!]{C0}  Could not read dict {args.dict}: {e}")
 
@@ -1756,11 +1697,7 @@ class HFMFAutopwn(ReaderRequiredUnit):
             if args.output is not None:
                 # PM3-style auto-naming: hf-mf-<uid>-{dump,key}[-suffix].*
                 uid = self.getuid()
-                uid_hex = (
-                    uid.hex().upper()
-                    if isinstance(uid, (bytes, bytearray))
-                    else "UNKNOWN"
-                )
+                uid_hex = uid.hex().upper() if isinstance(uid, (bytes, bytearray)) else "UNKNOWN"
                 suffix = f"-{args.output}" if args.output else ""
                 key_base = f"hf-mf-{uid_hex}-key{suffix}"
                 dump_json = f"hf-mf-{uid_hex}-dump{suffix}.json"
@@ -1782,7 +1719,6 @@ class HFMFAutopwn(ReaderRequiredUnit):
             if not args.no_dump:
                 self.dump_card_to_file(extracted_keys, max_sectors_num)
 
-
 @hf_mf.command("sim")
 class HFMFSim(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -1792,28 +1728,12 @@ class HFMFSim(DeviceRequiredUnit):
             ".bin, or .eml into a slot and leave that slot active. One-shot "
             "crack-file -> live tag."
         )
-        parser.add_argument(
-            "-f",
-            "--file",
-            type=str,
-            required=True,
-            help="Dump file: .json (PM3 mfc v2), .bin, or .eml",
-        )
-        parser.add_argument(
-            "-s",
-            "--slot",
-            type=int,
-            choices=range(1, 9),
-            default=None,
-            help="Target slot 1-8 (default: active slot)",
-        )
-        parser.add_argument(
-            "-t",
-            "--type",
-            choices=["bin", "hex"],
-            default=None,
-            help="Force content type for non-.json files",
-        )
+        parser.add_argument("-f", "--file", type=str, required=True,
+                            help="Dump file: .json (PM3 mfc v2), .bin, or .eml")
+        parser.add_argument("-s", "--slot", type=int, choices=range(1, 9), default=None,
+                            help="Target slot 1-8 (default: active slot)")
+        parser.add_argument("-t", "--type", choices=["bin", "hex"], default=None,
+                            help="Force content type for non-.json files")
         return parser
 
     def _read_dump(self, path, forced):
@@ -1822,14 +1742,13 @@ class HFMFSim(DeviceRequiredUnit):
         low = path.lower()
         if low.endswith(".json") or (forced is None and raw[:1] == b"{"):
             import json
-
             _card, blocks = chameleon_pm3.mfc_json_to_blocks(json.loads(raw.decode()))
             buf = bytearray()
             for n in range((max(blocks) + 1) if blocks else 0):
                 buf.extend(blocks.get(n, bytes(16)))
             return bytes(buf)
         if low.endswith(".eml") or forced == "hex":
-            return bytes.fromhex("".join(raw.decode().split()))  # eml: hex per line
+            return bytes.fromhex(''.join(raw.decode().split()))  # eml: hex per line
         if low.endswith(".bin") or forced == "bin":
             return raw
         raise Exception("Unknown dump format; pass -t bin|hex")
@@ -1838,34 +1757,25 @@ class HFMFSim(DeviceRequiredUnit):
         raw = self._read_dump(args.file, args.type)
         if len(raw) % 16 != 0:
             raise Exception("Dump not a multiple of 16 bytes")
-        slot = (
-            SlotNumber(args.slot)
-            if args.slot
-            else SlotNumber.from_fw(self.cmd.get_active_slot())
-        )
+        slot = SlotNumber(args.slot) if args.slot else \
+            SlotNumber.from_fw(self.cmd.get_active_slot())
         block_count = len(raw) // 16
-        tag = (
-            TagSpecificType.MIFARE_4096
-            if block_count > 64
-            else TagSpecificType.MIFARE_1024
-        )
+        tag = (TagSpecificType.MIFARE_4096 if block_count > 64
+               else TagSpecificType.MIFARE_1024)
         self.cmd.set_slot_tag_type(slot, tag)
         self.cmd.set_slot_enable(slot, TagSenseType.HF, True)
         self.cmd.set_active_slot(slot)
         max_blocks = (self.device_com.data_max_length - 1) // 16
         index = block = 0
         while index < len(raw):
-            chunk = raw[index : index + 16 * max_blocks]
+            chunk = raw[index: index + 16 * max_blocks]
             self.cmd.mf1_write_emu_block_data(block, chunk)
             n = len(chunk) // 16
             index += 16 * n
             block += n
         self.cmd.slot_data_config_save()
-        print(
-            f" {CG}[+]{C0}  Emulating {block_count}-block MIFARE Classic in slot "
-            f"{int(slot)} — leave CU on the reader"
-        )
-
+        print(f" {CG}[+]{C0}  Emulating {block_count}-block MIFARE Classic in slot "
+              f"{int(slot)} — leave CU on the reader")
 
 @hf_mf.command("fchk")
 class HFMFFCHK(ReaderRequiredUnit):
@@ -1951,7 +1861,7 @@ class HFMFFCHK(ReaderRequiredUnit):
 
         for i in range(0, len(keys), chunkSize):
             # print("mask = {}".format(mask.hex(sep=' ', bytes_per_sep=1)))
-            chunkKeys = keys[i : i + chunkSize]
+            chunkKeys = keys[i: i + chunkSize]
             print(
                 f' - progress of checking keys... {color_string((CY, i))} / {len(keys)} ({color_string((CY, f"{100 * i / len(keys):.1f}"))} %)'
             )
@@ -2069,7 +1979,6 @@ class HFMFFCHK(ReaderRequiredUnit):
             f"( {color_string((CR, '0'))}: Failed, {color_string((CG, '1'))}: Success )\n\n"
         )
 
-
 @hf_mf.command("rdbl")
 class HFMFRDBL(MF1AuthArgsUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -2081,7 +1990,6 @@ class HFMFRDBL(MF1AuthArgsUnit):
         param = self.get_param(args)
         resp = self.cmd.mf1_read_one_block(param.block, param.type, param.key)
         print(f" - Data: {resp.hex()}")
-
 
 @hf_mf.command("wrbl")
 class HFMFWRBL(MF1AuthArgsUnit):
@@ -2108,7 +2016,6 @@ class HFMFWRBL(MF1AuthArgsUnit):
             print(f" - {color_string((CG, 'Write done.'))}")
         else:
             print(f" - {color_string((CR, 'Write fail.'))}")
-
 
 @hf_mf.command("view")
 class HFMFView(MF1AuthArgsUnit):
@@ -2200,7 +2107,6 @@ class HFMFView(MF1AuthArgsUnit):
                 "Missing args. Specify --dump-file (-d) or --key-file (-k)"
             )
         print_mem_dump(data, 16)
-
 
 @hf_mf.command("dump")
 class HFMFDump(MF1AuthArgsUnit):
@@ -2300,6 +2206,72 @@ class HFMFDump(MF1AuthArgsUnit):
         # write buffer to file
         args.dump_file.write(buffer)
 
+@hf_mf.command("gen3uid")
+class HFMFGen3UID(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = "Set UID on a Gen3 magic card (block 0 manufacturer bytes kept)"
+        parser.add_argument("-u", "--uid", type=str, required=True, metavar="<hex>",
+                            help="New UID, 4 or 7 bytes")
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        uid = bytes.fromhex(args.uid)
+        if len(uid) not in (4, 7):
+            print("UID must be 4 or 7 bytes"); return
+        opt = {'activate_rf_field': 0, 'wait_response': 1, 'append_crc': 1,
+               'auto_select': 1, 'keep_rf_field': 0, 'check_response_crc': 1}
+        apdu = bytes([0x90, 0xFB, 0xCC, 0xCC, len(uid)]) + uid
+        resp = self.cmd.hf14a_raw(options=opt, resp_timeout_ms=1000, data=list(apdu))
+        if resp.status == Status.HF_TAG_OK:
+            print(f" - Gen3 UID set to {uid.hex().upper()}")
+        else:
+            print(" - Gen3 UID set failed (is this a Gen3 card?)")
+
+
+@hf_mf.command("gen3blk")
+class HFMFGen3Blk(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = "Write full block 0 on a Gen3 magic card"
+        parser.add_argument("-d", "--data", type=str, required=True, metavar="<hex>",
+                            help="16-byte block 0")
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        blk0 = bytes.fromhex(args.data)
+        if len(blk0) != 16:
+            print("block 0 must be 16 bytes"); return
+        opt = {'activate_rf_field': 0, 'wait_response': 1, 'append_crc': 1,
+               'auto_select': 1, 'keep_rf_field': 0, 'check_response_crc': 1}
+        apdu = bytes([0x90, 0xF0, 0xCC, 0xCC, 0x10]) + blk0
+        resp = self.cmd.hf14a_raw(options=opt, resp_timeout_ms=1000, data=list(apdu))
+        if resp.status == Status.HF_TAG_OK:
+            print(f" - Gen3 block 0 written: {blk0.hex().upper()}")
+        else:
+            print(" - Gen3 block 0 write failed (is this a Gen3 card?)")
+
+
+@hf_mf.command("gen3freeze")
+class HFMFGen3Freeze(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = "Permanently lock the UID of a Gen3 magic card (IRREVERSIBLE)"
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        confirm = input(" [!] This permanently locks the UID and cannot be undone. Type 'yes': ")
+        if confirm.strip().lower() != "yes":
+            print(" - aborted"); return
+        opt = {'activate_rf_field': 0, 'wait_response': 1, 'append_crc': 1,
+               'auto_select': 1, 'keep_rf_field': 0, 'check_response_crc': 1}
+        apdu = bytes([0x90, 0xFD, 0x11, 0x11, 0x00])
+        resp = self.cmd.hf14a_raw(options=opt, resp_timeout_ms=1000, data=list(apdu))
+        if resp.status == Status.HF_TAG_OK:
+            print(" - Gen3 UID permanently locked")
+        else:
+            print(" - Gen3 freeze failed (is this a Gen3 card?)")
+
 
 @hf_mf.command("clone")
 class HFMFClone(MF1AuthArgsUnit):
@@ -2322,11 +2294,6 @@ class HFMFClone(MF1AuthArgsUnit):
             help="Write ACL from original dump too (! could brick your tag)",
         )
         parser.add_argument(
-            "--gen1a",
-            action="store_true",
-            help="Write via the gen1a backdoor (magic card); no keys needed, clones block 0",
-        )
-        parser.add_argument(
             "-f",
             "--dump-file",
             type=argparse.FileType("rb"),
@@ -2337,7 +2304,7 @@ class HFMFClone(MF1AuthArgsUnit):
             "-d",
             "--dic",
             type=argparse.FileType("r"),
-            required=False,
+            required=True,
             help="Read keys (to communicate with tag to write) from .dic format file",
         )
         return parser
@@ -2365,13 +2332,6 @@ class HFMFClone(MF1AuthArgsUnit):
             raise Exception("Data block not align for 16 bytes")
         if len(buffer) / 16 > 256:
             raise Exception("Data block memory overflow")
-
-        if args.gen1a:
-            self._clone_gen1a(buffer)
-            return
-
-        if args.dic is None:
-            raise Exception("keyed clone needs -d <dict>; use --gen1a for a gen1a magic card")
 
         # keys to use from file
         keys = [bytes.fromhex(line[:-1]) for line in args.dic.readlines()]
@@ -2402,7 +2362,7 @@ class HFMFClone(MF1AuthArgsUnit):
                 raise Exception(f"No key found for sector {s}")
             # iterate over blocks
             for b in range(4):
-                block_data = buffer[(4 * s + b) * 16 : (4 * s + b + 1) * 16]
+                block_data = buffer[(4 * s + b) * 16: (4 * s + b + 1) * 16]
                 # special case for last block of each sector
                 if b == 3:
                     # check ACL option
@@ -2420,44 +2380,6 @@ class HFMFClone(MF1AuthArgsUnit):
                 except UnexpectedResponseError:
                     pass
                 self.cmd.mf1_write_one_block(4 * s + b, MfcKeyType.A, keyA, block_data)
-
-
-    def _raw(self, opt, data, bitlen=None, timeout_ms=200):
-        # hf14a_raw, tolerant of NAK/no-response (returns b"")
-        try:
-            return self.cmd.hf14a_raw(options=opt, resp_timeout_ms=timeout_ms, data=data, bitlen=bitlen)
-        except UnexpectedResponseError:
-            return b""
-
-    def _clone_gen1a(self, buffer):
-        # Write the dump to a gen1a magic card through the backdoor: unlock, then
-        # raw-write (0xA0) every block including block 0. 4-bit ACK is 0x0a.
-        nblocks = len(buffer) // 16
-        opt = {"activate_rf_field": 1, "wait_response": 1, "append_crc": 0,
-               "auto_select": 0, "keep_rf_field": 1, "check_response_crc": 0}
-        try:
-            r = self._raw(opt, [0x40], bitlen=7, timeout_ms=1000)
-            if not r or r[0] != 0x0a:
-                raise Exception("gen1a unlock failed (not a gen1a magic card?)")
-            r = self._raw(opt, [0x43], timeout_ms=1000)
-            if not r or r[0] != 0x0a:
-                raise Exception("gen1a unlock failed (stage 2)")
-            opt["append_crc"] = 1          # CRC on our frames; ACK is 4-bit, no response CRC
-            for blk in range(nblocks):
-                block_data = list(bytes(buffer[blk * 16:blk * 16 + 16]))
-                r = self._raw(opt, [0xA0, blk])
-                if not r or r[0] != 0x0a:
-                    raise Exception(f"write command NAK at block {blk}")
-                r = self._raw(opt, block_data)
-                if not r or r[0] != 0x0a:
-                    raise Exception(f"write data NAK at block {blk}")
-                print(color_string((CG, f"block {blk:2d} written")))
-            print(color_string((CG, f"gen1a clone done: {nblocks} blocks")))
-        finally:
-            opt["keep_rf_field"] = 0
-            opt["wait_response"] = 0
-            self._raw(opt, [])             # drop the field
-
 
 @hf_mf.command("value")
 class HFMFVALUE(ReaderRequiredUnit):
@@ -2700,6 +2622,114 @@ class HFMFVALUE(ReaderRequiredUnit):
         else:
             print(f" - {color_string((CR, 'Restore fail.'))}")
 
+_KEY = re.compile("[a-fA-F0-9]{12}", flags=re.MULTILINE)
+
+_TOOL_MISSING = "MISSING"    # binary not found on disk
+
+_TOOL_BLOCKED = "BLOCKED"    # binary exists but OS/AV prevented execution
+
+_TOOL_NO_KEY = "NO_KEY"     # binary ran cleanly, no key found for these nonces
+
+def _sniff_tool_path(name):
+    """Return the Path to a cracking binary, or None if not present."""
+    suffix = ".exe" if sys.platform == "win32" else ""
+    p = default_cwd / (name + suffix)
+    return p if p.exists() else None
+
+def _run_mfkey64(uid, nt, nr, ar, at):
+    """
+    Run mfkey64 and return the recovered key string (12 hex chars), or one of
+    _TOOL_MISSING / _TOOL_BLOCKED / _TOOL_NO_KEY.
+
+    mfkey64 requires 5 args: uid nt {nr} {ar} {at}
+    When cracking a sniff pair (both at==\'\'):
+        at = nonce[1].nt  (the CU sent this as {at} after nonce[0]; the reader
+                           treated it as a fresh nt for the next auth round)
+    When cracking a single complete auth:
+        at = the directly captured {at} frame
+    """
+    path = _sniff_tool_path("mfkey64")
+    if path is None:
+        return _TOOL_MISSING
+    try:
+        result = subprocess.run(
+            [str(path), uid, nt, nr, ar, at],
+            capture_output=True,
+            timeout=30,
+            encoding="ascii",
+        )
+    except FileNotFoundError:
+        return _TOOL_MISSING
+    except PermissionError:
+        return _TOOL_BLOCKED
+    except OSError:
+        # Covers antivirus quarantine, wrong arch, etc.
+        return _TOOL_BLOCKED
+    except subprocess.TimeoutExpired:
+        return _TOOL_BLOCKED
+    if result.returncode not in (0, 1):
+        # Non-zero exit other than 1 (usage error) usually means OS blocked it
+        return _TOOL_BLOCKED
+    sea_obj = _KEY.search(result.stdout)
+    return sea_obj[0] if sea_obj is not None else _TOOL_NO_KEY
+
+def _run_mfkey32v2(items):
+    """
+    Used by HFMFELog (detection-log path) via multiprocessing Pool.
+    Returns (key_str, items) on success, None if not found, raises on binary errors
+    so the pool can propagate them.
+    """
+    output_str = subprocess.run(
+        [
+            default_cwd / ("mfkey32v2.exe" if sys.platform == "win32" else "mfkey32v2"),
+            items[0]["uid"],
+            items[0]["nt"],
+            items[0]["nr"],
+            items[0]["ar"],
+            items[1]["nt"],
+            items[1]["nr"],
+            items[1]["ar"],
+        ],
+        capture_output=True,
+        check=True,
+        encoding="ascii",
+    ).stdout
+    sea_obj = _KEY.search(output_str)
+    if sea_obj is not None:
+        return sea_obj[0], items
+    return None
+
+def _run_mfkey32v2_sniff(n0, n1):
+    """
+    Sniff-path wrapper for mfkey32v2.  Returns a key string, or one of
+    _TOOL_MISSING / _TOOL_BLOCKED / _TOOL_NO_KEY — never raises.
+    """
+    path = _sniff_tool_path("mfkey32v2")
+    if path is None:
+        return _TOOL_MISSING
+    try:
+        result = subprocess.run(
+            [
+                str(path),
+                n0["uid"], n0["nt"], n0["nr"], n0["ar"],
+                n1["nt"],  n1["nr"], n1["ar"],
+            ],
+            capture_output=True,
+            timeout=30,
+            encoding="ascii",
+        )
+    except FileNotFoundError:
+        return _TOOL_MISSING
+    except PermissionError:
+        return _TOOL_BLOCKED
+    except OSError:
+        return _TOOL_BLOCKED
+    except subprocess.TimeoutExpired:
+        return _TOOL_BLOCKED
+    if result.returncode not in (0, 1):
+        return _TOOL_BLOCKED
+    sea_obj = _KEY.search(result.stdout)
+    return sea_obj[0] if sea_obj is not None else _TOOL_NO_KEY
 
 class ItemGenerator:
     def __init__(self, rs, uid_found_keys=set()):
@@ -2754,7 +2784,6 @@ class ItemGenerator:
             ):
                 self.keys.add(key)
                 self.found.add(item_key)
-
 
 @hf_mf.command("elog")
 class HFMFELog(DeviceRequiredUnit):
@@ -2854,7 +2883,6 @@ class HFMFELog(DeviceRequiredUnit):
                     )
         return
 
-
 @hf_mf.command("eload")
 class HFMFELoad(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
@@ -2895,15 +2923,12 @@ class HFMFELoad(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
                 text = fd.read()
             if '"mfc' in text and '"blocks"' in text:
                 import json
-
                 _card, blocks = chameleon_pm3.mfc_json_to_blocks(json.loads(text))
                 for n in range(max(blocks) + 1 if blocks else 0):
                     buffer.extend(blocks.get(n, bytes(16)))
                 content_type = "bin"  # already materialized
             elif content_type not in ("bin", "hex"):
-                raise Exception(
-                    "Unknown file format, Specify content type with -t option"
-                )
+                raise Exception("Unknown file format, Specify content type with -t option")
 
         if not buffer:
             with open(file, mode="rb") as fd:
@@ -2922,7 +2947,7 @@ class HFMFELoad(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
         max_blocks = (self.device_com.data_max_length - 1) // 16
         while index + 16 < len(buffer):
             # split a block from buffer
-            block_data = buffer[index : index + 16 * max_blocks]
+            block_data = buffer[index: index + 16 * max_blocks]
             n_blocks = len(block_data) // 16
             index += 16 * n_blocks
             # load to device
@@ -2930,7 +2955,6 @@ class HFMFELoad(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
             print("." * n_blocks, end="")
             block += n_blocks
         print("\n - Load success")
-
 
 @hf_mf.command("esave")
 class HFMFESave(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
@@ -2993,28 +3017,22 @@ class HFMFESave(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
 
         if file.endswith(".json") or content_type == "json":
             import json
-
-            uid = bytes(data[0:4])  # block 0: UID(4) BCC SAK ATQA...
+            uid = bytes(data[0:4])                       # block 0: UID(4) BCC SAK ATQA...
             sak = bytes([data[5]])
-            atqa = bytes(data[6:8])  # wire order in block 0
-            blocks = {
-                i: bytes(data[i * 16 : (i + 1) * 16]) for i in range(len(data) // 16)
-            }
+            atqa = bytes(data[6:8])                      # wire order in block 0
+            blocks = {i: bytes(data[i * 16:(i + 1) * 16]) for i in range(len(data) // 16)}
             obj = chameleon_pm3.mfc_blocks_to_json(uid, atqa, data[5], blocks)
             with open(file, "w") as fd:
                 fd.write(json.dumps(obj, indent=4))
-            print(
-                f"\n - Wrote Proxmark3 'mfc v2' dump ({len(blocks)} blocks) to {file}"
-            )
+            print(f"\n - Wrote Proxmark3 'mfc v2' dump ({len(blocks)} blocks) to {file}")
         else:
             with open(file, "wb") as fd:
                 if content_type == "hex":
                     for i in range(len(data) // 16):
-                        fd.write(binascii.hexlify(data[i * 16 : (i + 1) * 16]) + b"\n")
+                        fd.write(binascii.hexlify(data[i * 16: (i + 1) * 16]) + b"\n")
                 else:
                     fd.write(data)
             print("\n - Read success")
-
 
 @hf_mf.command("eview")
 class HFMFEView(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
@@ -3051,7 +3069,6 @@ class HFMFEView(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
             index += chunk_count
             block_count -= chunk_count
         print_mem_dump(data, 16)
-
 
 @hf_mf.command("econfig")
 class HFMFEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredUnit):
