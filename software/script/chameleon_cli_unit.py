@@ -484,7 +484,7 @@ class HF14AScan(ReaderRequiredUnit):
             print("- Mifare Classic technology")
             prng_type = self.cmd.mf1_detect_prng()
             print(f"  # Prng: {MifareClassicPrngType(prng_type)}")
-            # read-only magic-card probe (gen1a/gen2/gen3); see cli_hf_mf
+            # read-only magic-card probe (gen1a/gen2/gen3/gen4); see cli_hf_mf
             magic_gen = cli_hf_mf.identify_magic_gen(self.cmd)
             if magic_gen:
                 print(f"  # Magic: {CY}{magic_gen}{C0} backdoor detected")
@@ -509,6 +509,10 @@ class HF14AScan(ReaderRequiredUnit):
             return
         if magic_gen == "gen3":
             print(f"  # {CY}Recommended:{C0} hf mf gen3uid / gen3blk")
+            return
+        if magic_gen == "gen4":
+            print(f"  # {CY}Recommended:{C0} hf mf ggetblk / gconfig "
+                  f"(default pwd 00000000 unless set otherwise)")
             return
         if prng_type is not None:
             print(f"  # {CY}Recommended:{C0} hf mf autopwn")
@@ -558,94 +562,6 @@ class HF14AInfo(ReaderRequiredUnit):
         scan = HF14AScan()
         scan.device_com = self.device_com
         scan.scan(deep=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Sentinel values returned by _run_mfkey64 / _run_mfkey32v2_sniff
-# to distinguish "tool unavailable" from "tool ran but found no key".
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 class CrackEffect:
@@ -797,20 +713,6 @@ class CrackEffect:
         process_thread.join()
         self.stop_event.set()
         scramble_thread.join()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def _t55_hex4(s: str, name: str) -> bytes:
@@ -1077,52 +979,6 @@ def _t55_expect_match(bits, want):
         if w == bits[i + 32:i + 64] and w in cands:
             return True
     return False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 @hw_slot.command("list")
@@ -1507,16 +1363,6 @@ class HWSlotDisable(SlotIndexArgsUnit, SenseTypeArgsUnit):
             sense_type = TagSenseType.HF
         self.cmd.set_slot_enable(slot_num, sense_type, False)
         print(f" - Disable slot {slot_num} {sense_type.name} success.")
-
-
-
-
-
-
-
-
-
-
 
 
 @hw_slot.command("nick")
@@ -2287,10 +2133,6 @@ examples/notes:
             )
         else:
             print(f" [*] {color_string((CY, 'No response'))}")
-
-
-
-
 
 
 @hf_14a.command('sniff')

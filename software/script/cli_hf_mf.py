@@ -2318,13 +2318,45 @@ def _gen3_raw(cmd, apdu: bytes):
     return resp[-2:] == b"\x90\x00", resp
 
 
+# Gen4 "Ultimate Magic" (GTU) prefix command. After select, frames are
+# CF <4-byte pwd> <op> [args], CRC appended by the card side like a normal
+# 14A frame. Default password is 00000000. Returns (ok, response_bytes).
+GEN4_DEFAULT_PWD = bytes.fromhex("00000000")
+
+
+def _gen4_raw(cmd, pwd: bytes, op: int, args: bytes = b""):
+    opt = {'activate_rf_field': 0, 'wait_response': 1, 'append_crc': 1,
+           'auto_select': 1, 'keep_rf_field': 0, 'check_response_crc': 1}
+    frame = b"\xcf" + pwd + bytes([op]) + args
+    try:
+        resp = cmd.hf14a_raw(options=opt, resp_timeout_ms=1000, data=list(frame))
+    except (UnexpectedResponseError, TimeoutError):
+        return False, b""
+    resp = bytes(resp)
+    return len(resp) > 0, resp
+
+
+def _gen4_pwd(args):
+    return bytes.fromhex(args.pwd) if getattr(args, "pwd", None) else GEN4_DEFAULT_PWD
+
+
+# Most Gen4/GTU clones ack a successful write with a single 0x00 byte and
+# something else on failure - that convention varies by vendor/firmware
+# though, so this is the one place to adjust if your card acks differently.
+GEN4_ACK_OK = 0x00
+
+
+def _gen4_write_ok(resp: bytes) -> bool:
+    return len(resp) >= 1 and resp[0] == GEN4_ACK_OK
+
+
 def identify_magic_gen(cmd):
     """Best-effort, read-only probe for the common MIFARE Classic magic-card
     backdoors. Call with a card already selectable on the antenna.
 
-    Returns "gen1a", "gen2", "gen3", or None. Heuristic, not exhaustive —
-    no gen4/Ultimate probe yet, and a gen2 card that gates writes behind a
-    magic auth key instead of leaving block 0 open will read as None here.
+    Returns "gen1a", "gen2", "gen3", "gen4", or None. Heuristic, not
+    exhaustive - a gen2 card that gates writes behind a magic auth key
+    instead of leaving block 0 open will read as None here.
     Every probe below only reads or attempts an auth handshake; nothing
     writes a block.
     """
@@ -2366,6 +2398,15 @@ def identify_magic_gen(cmd):
     ok, resp = _gen3_raw(cmd, bytes([0x90, 0xFB, 0xCC, 0xCC, 0x00]))
     if resp:
         return "gen3"
+
+    # Gen4 "Ultimate Magic": reading the GTU config block (0xC6) with the
+    # default password is read-only and only a Gen4 card understands this
+    # CF-prefixed framing at all, so any reply is the tell. A Gen4 card
+    # with a non-default password won't be caught here - that's a product
+    # trade-off (no password guessing during a passive identify scan).
+    ok, resp = _gen4_raw(cmd, GEN4_DEFAULT_PWD, 0xC6)
+    if resp:
+        return "gen4"
 
     return None
 
@@ -2588,6 +2629,111 @@ class HFMFCLoad(ReaderRequiredUnit):
         if len(buffer) // 16 > 256:
             print("Data block memory overflow"); return
         _gen1a_write_dump(self.cmd, buffer)
+
+
+@hf_mf.command("ggetblk")
+class HFMFG4GetBlk(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = "Read one block from a Gen4 (Ultimate Magic) card"
+        parser.add_argument("-b", "--block", type=int, required=True, help="Block number")
+        parser.add_argument("-p", "--pwd", type=str, default=None, metavar="<hex8>",
+                            help="Gen4 password, 4 bytes (default 00000000)")
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        ok, resp = _gen4_raw(self.cmd, _gen4_pwd(args), 0xCE, bytes([args.block]))
+        if ok and len(resp) >= 16:
+            print(f" - Block {args.block}: {resp[:16].hex().upper()}")
+        else:
+            print(f" - Gen4 read failed (is this a Gen4 card? wrong password?)")
+
+
+@hf_mf.command("gsetblk")
+class HFMFG4SetBlk(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = "Write one block to a Gen4 (Ultimate Magic) card"
+        parser.add_argument("-b", "--block", type=int, required=True, help="Block number")
+        parser.add_argument("-d", "--data", type=str, required=True, metavar="<hex32>",
+                            help="16-byte block data")
+        parser.add_argument("-p", "--pwd", type=str, default=None, metavar="<hex8>",
+                            help="Gen4 password, 4 bytes (default 00000000)")
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        data = bytes.fromhex(args.data)
+        if len(data) != 16:
+            print("block data must be 16 bytes"); return
+        _, resp = _gen4_raw(self.cmd, _gen4_pwd(args), 0xCD, bytes([args.block]) + data)
+        ok = _gen4_write_ok(resp)
+        print(f" - Block {args.block} {'written' if ok else 'write failed'}")
+
+
+@hf_mf.command("gsetuid")
+class HFMFG4SetUID(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = "Set the UID on a Gen4 (Ultimate Magic) card"
+        parser.add_argument("-u", "--uid", type=str, required=True, metavar="<hex>",
+                            help="New UID, 4 or 7 bytes")
+        parser.add_argument("-p", "--pwd", type=str, default=None, metavar="<hex8>",
+                            help="Gen4 password, 4 bytes (default 00000000)")
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        uid = bytes.fromhex(args.uid)
+        if len(uid) not in (4, 7):
+            print("UID must be 4 or 7 bytes"); return
+        _, resp = _gen4_raw(self.cmd, _gen4_pwd(args), 0xFE, uid)
+        ok = _gen4_write_ok(resp)
+        print(f" - Gen4 UID {'set to ' + uid.hex().upper() if ok else 'set failed'}")
+
+
+@hf_mf.command("gsetpwd")
+class HFMFG4SetPwd(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = "Change the Gen4 (Ultimate Magic) password"
+        parser.add_argument("-p", "--pwd", type=str, default=None, metavar="<hex8>",
+                            help="Current password, 4 bytes (default 00000000)")
+        parser.add_argument("-n", "--new", type=str, required=True, metavar="<hex8>",
+                            help="New password, 4 bytes")
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        new = bytes.fromhex(args.new)
+        if len(new) != 4:
+            print("new password must be 4 bytes"); return
+        _, resp = _gen4_raw(self.cmd, _gen4_pwd(args), 0xFD, new)
+        ok = _gen4_write_ok(resp)
+        print(f" - Gen4 password {'changed' if ok else 'change failed'}")
+
+
+@hf_mf.command("gconfig")
+class HFMFG4Config(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = "Read or write the Gen4 (Ultimate Magic) GTU config block"
+        parser.add_argument("-d", "--data", type=str, default=None, metavar="<hex>",
+                            help="Config bytes to write; omit to read current config")
+        parser.add_argument("-p", "--pwd", type=str, default=None, metavar="<hex8>",
+                            help="Gen4 password, 4 bytes (default 00000000)")
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        pwd = _gen4_pwd(args)
+        if args.data:
+            cfg = bytes.fromhex(args.data)
+            _, resp = _gen4_raw(self.cmd, pwd, 0xF0, cfg)
+            ok = _gen4_write_ok(resp)
+            print(f" - Gen4 config {'written' if ok else 'write failed'}")
+        else:
+            ok, resp = _gen4_raw(self.cmd, pwd, 0xC6)
+            if ok:
+                print(f" - Gen4 config: {resp.hex().upper()}")
+            else:
+                print(" - Gen4 config read failed (is this a Gen4 card? wrong password?)")
 
 
 @hf_mf.command("gen3uid")
