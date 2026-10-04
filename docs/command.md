@@ -1,6 +1,6 @@
 # Phreakbyte CLI Command Reference
 
-Complete reference for the Phreakbyte edition ChameleonUltra client (`chameleon_cli_main.py`), auto-generated from the live CLI parser: 27 command groups, 152 commands.
+Complete reference for the Phreakbyte edition ChameleonUltra client (`chameleon_cli_main.py`), auto-generated from the live CLI parser: 27 command groups, 157 commands.
 
 Notation: `<...>` are values you supply. Each option lists its flags, help, allowed `choices`, whether it is `required`, and its `default`. Run any command with `-h` in the client for the same information live.
 
@@ -466,6 +466,13 @@ Mifare Classic fast key check on sectors
 - `--export-dic` — Export result as .dic format, file will be OVERWRITTEN if exists
 - `-m`, `--mask` — Which sectorKey to be skip, 1 bit per sectorKey. `0b1` represent to skip to check. (in hex[20] format) (default: 00000000000000000000)
 
+#### `hf mf gconfig`
+
+Read or write the Gen4 (Ultimate Magic) GTU config block
+
+- `-d`, `--data` — Config bytes to write; omit to read current config
+- `-p`, `--pwd` — Gen4 password, 4 bytes (default 00000000)
+
 #### `hf mf gen3blk`
 
 Write full block 0 on a Gen3 magic card
@@ -482,6 +489,35 @@ Permanently lock the UID of a Gen3 magic card (IRREVERSIBLE)
 Set UID on a Gen3 magic card (block 0 manufacturer bytes kept)
 
 - `-u`, `--uid` — New UID, 4 or 7 bytes (required)
+
+#### `hf mf ggetblk`
+
+Read one block from a Gen4 (Ultimate Magic) card
+
+- `-b`, `--block` — Block number (required)
+- `-p`, `--pwd` — Gen4 password, 4 bytes (default 00000000)
+
+#### `hf mf gsetblk`
+
+Write one block to a Gen4 (Ultimate Magic) card
+
+- `-b`, `--block` — Block number (required)
+- `-d`, `--data` — 16-byte block data (required)
+- `-p`, `--pwd` — Gen4 password, 4 bytes (default 00000000)
+
+#### `hf mf gsetpwd`
+
+Change the Gen4 (Ultimate Magic) password
+
+- `-p`, `--pwd` — Current password, 4 bytes (default 00000000)
+- `-n`, `--new` — New password, 4 bytes (required)
+
+#### `hf mf gsetuid`
+
+Set the UID on a Gen4 (Ultimate Magic) card
+
+- `-u`, `--uid` — New UID, 4 or 7 bytes (required)
+- `-p`, `--pwd` — Gen4 password, 4 bytes (default 00000000)
 
 #### `hf mf hardnested`
 
