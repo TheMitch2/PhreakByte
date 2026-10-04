@@ -2317,6 +2317,58 @@ def _gen3_raw(cmd, apdu: bytes):
     return resp[-2:] == b"\x90\x00", resp
 
 
+def identify_magic_gen(cmd):
+    """Best-effort, read-only probe for the common MIFARE Classic magic-card
+    backdoors. Call with a card already selectable on the antenna.
+
+    Returns "gen1a", "gen2", "gen3", or None. Heuristic, not exhaustive —
+    no gen4/Ultimate probe yet, and a gen2 card that gates writes behind a
+    magic auth key instead of leaving block 0 open will read as None here.
+    Every probe below only reads or attempts an auth handshake; nothing
+    writes a block.
+    """
+    # Gen1a: the 7-bit 0x40 "unlock stage 1" command. A real card ignores
+    # or NAKs it; a gen1a magic card answers with the 4-bit ACK (0x0a).
+    # We stop right after this single read of the ACK - never send the
+    # stage-2 0x43 or any write, so the card's state isn't changed.
+    opt_raw = {"activate_rf_field": 1, "wait_response": 1, "append_crc": 0,
+               "auto_select": 0, "keep_rf_field": 1, "check_response_crc": 0}
+    try:
+        r = cmd.hf14a_raw(options=opt_raw, resp_timeout_ms=500, data=[0x40], bitlen=7)
+        if r and bytes(r)[:1] == b"\x0a":
+            return "gen1a"
+    except (UnexpectedResponseError, TimeoutError):
+        pass
+    finally:
+        try:
+            cmd.hf14a_raw(options={**opt_raw, "keep_rf_field": 0, "wait_response": 0},
+                          resp_timeout_ms=200, data=[])  # drop the field
+        except Exception:
+            pass
+
+    # Gen2 / CUID tell: a standard READ of block 0 with no prior auth.
+    # A genuine card requires authentication first and NAKs (4-bit, not
+    # 16 bytes); a gen2/CUID card answers the read directly.
+    opt_sel = {"activate_rf_field": 0, "wait_response": 1, "append_crc": 1,
+               "auto_select": 1, "keep_rf_field": 0, "check_response_crc": 1}
+    try:
+        r = cmd.hf14a_raw(options=opt_sel, resp_timeout_ms=500, data=[0x30, 0x00])
+        if r and len(bytes(r)) >= 16:
+            return "gen2"
+    except (UnexpectedResponseError, TimeoutError):
+        pass
+
+    # Gen3: the same APDU family as gen3uid/gen3blk/gen3freeze, but with
+    # Lc=0 so there is no UID payload to write - a malformed/empty write
+    # is rejected rather than applied. Only a Gen3 card understands this
+    # APDU framing at all, so any status-word reply is the tell.
+    ok, resp = _gen3_raw(cmd, bytes([0x90, 0xFB, 0xCC, 0xCC, 0x00]))
+    if resp:
+        return "gen3"
+
+    return None
+
+
 @hf_mf.command("gen3uid")
 class HFMFGen3UID(ReaderRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:

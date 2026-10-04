@@ -477,17 +477,47 @@ class HF14AScan(ReaderRequiredUnit):
 
     def check_mf1_nt(self):
         # detect mf1 support
+        prng_type = None
+        magic_gen = None
         if self.cmd.mf1_detect_support():
             # detect prng
             print("- Mifare Classic technology")
             prng_type = self.cmd.mf1_detect_prng()
             print(f"  # Prng: {MifareClassicPrngType(prng_type)}")
+            # read-only magic-card probe (gen1a/gen2/gen3); see cli_hf_mf
+            magic_gen = cli_hf_mf.identify_magic_gen(self.cmd)
+            if magic_gen:
+                print(f"  # Magic: {CY}{magic_gen}{C0} backdoor detected")
+        self._recommend(prng_type=prng_type, magic_gen=magic_gen)
 
     def sak_info(self, data_tag):
         # detect the technology in use based on SAK
         int_sak = data_tag["sak"][0]
         if int_sak in type_id_SAK_dict:
             print(f"- Guessed type(s) from SAK: {type_id_SAK_dict[int_sak]}")
+        self._sak = int_sak
+        self._has_ats = len(data_tag.get("ats", b"")) > 0
+
+    def _recommend(self, prng_type=None, magic_gen=None):
+        """Print a single 'what would I run next' suggestion. Only fires for
+        cases this scan can actually tell apart; stays silent rather than
+        guess when the SAK/ATS are ambiguous (e.g. SAK 0x20 covers Plus EV,
+        DESFire and NTAG 4xx alike)."""
+        if magic_gen == "gen1a":
+            print(f"  # {CY}Recommended:{C0} hf mf cload/cview, or clone --gen1a to write one")
+            return
+        if magic_gen == "gen3":
+            print(f"  # {CY}Recommended:{C0} hf mf gen3uid / gen3blk")
+            return
+        if prng_type is not None:
+            print(f"  # {CY}Recommended:{C0} hf mf autopwn")
+            return
+        sak = getattr(self, "_sak", None)
+        has_ats = getattr(self, "_has_ats", False)
+        if sak == 0x00 and not has_ats:
+            print(f"  # {CY}Recommended:{C0} hf mfu dump")
+        elif has_ats and sak in (0x20, None):
+            print(f"  # {CY}Recommended:{C0} hf des chk --pattern1b")
 
     def scan(self, deep=False):
         resp = self.cmd.hf14a_scan()
