@@ -2322,6 +2322,11 @@ class HFMFClone(MF1AuthArgsUnit):
             help="Write ACL from original dump too (! could brick your tag)",
         )
         parser.add_argument(
+            "--gen1a",
+            action="store_true",
+            help="Write via the gen1a backdoor (magic card); no keys needed, clones block 0",
+        )
+        parser.add_argument(
             "-f",
             "--dump-file",
             type=argparse.FileType("rb"),
@@ -2332,7 +2337,7 @@ class HFMFClone(MF1AuthArgsUnit):
             "-d",
             "--dic",
             type=argparse.FileType("r"),
-            required=True,
+            required=False,
             help="Read keys (to communicate with tag to write) from .dic format file",
         )
         return parser
@@ -2360,6 +2365,13 @@ class HFMFClone(MF1AuthArgsUnit):
             raise Exception("Data block not align for 16 bytes")
         if len(buffer) / 16 > 256:
             raise Exception("Data block memory overflow")
+
+        if args.gen1a:
+            self._clone_gen1a(buffer)
+            return
+
+        if args.dic is None:
+            raise Exception("keyed clone needs -d <dict>; use --gen1a for a gen1a magic card")
 
         # keys to use from file
         keys = [bytes.fromhex(line[:-1]) for line in args.dic.readlines()]
@@ -2408,6 +2420,43 @@ class HFMFClone(MF1AuthArgsUnit):
                 except UnexpectedResponseError:
                     pass
                 self.cmd.mf1_write_one_block(4 * s + b, MfcKeyType.A, keyA, block_data)
+
+
+    def _raw(self, opt, data, bitlen=None, timeout_ms=200):
+        # hf14a_raw, tolerant of NAK/no-response (returns b"")
+        try:
+            return self.cmd.hf14a_raw(options=opt, resp_timeout_ms=timeout_ms, data=data, bitlen=bitlen)
+        except UnexpectedResponseError:
+            return b""
+
+    def _clone_gen1a(self, buffer):
+        # Write the dump to a gen1a magic card through the backdoor: unlock, then
+        # raw-write (0xA0) every block including block 0. 4-bit ACK is 0x0a.
+        nblocks = len(buffer) // 16
+        opt = {"activate_rf_field": 1, "wait_response": 1, "append_crc": 0,
+               "auto_select": 0, "keep_rf_field": 1, "check_response_crc": 0}
+        try:
+            r = self._raw(opt, [0x40], bitlen=7, timeout_ms=1000)
+            if not r or r[0] != 0x0a:
+                raise Exception("gen1a unlock failed (not a gen1a magic card?)")
+            r = self._raw(opt, [0x43], timeout_ms=1000)
+            if not r or r[0] != 0x0a:
+                raise Exception("gen1a unlock failed (stage 2)")
+            opt["append_crc"] = 1          # CRC on our frames; ACK is 4-bit, no response CRC
+            for blk in range(nblocks):
+                block_data = list(bytes(buffer[blk * 16:blk * 16 + 16]))
+                r = self._raw(opt, [0xA0, blk])
+                if not r or r[0] != 0x0a:
+                    raise Exception(f"write command NAK at block {blk}")
+                r = self._raw(opt, block_data)
+                if not r or r[0] != 0x0a:
+                    raise Exception(f"write data NAK at block {blk}")
+                print(color_string((CG, f"block {blk:2d} written")))
+            print(color_string((CG, f"gen1a clone done: {nblocks} blocks")))
+        finally:
+            opt["keep_rf_field"] = 0
+            opt["wait_response"] = 0
+            self._raw(opt, [])             # drop the field
 
 
 @hf_mf.command("value")
