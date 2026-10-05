@@ -631,6 +631,7 @@ hf_mf = hf.subgroup("mf", "MIFARE Classic commands")
 hf_mfu = hf.subgroup("mfu", "MIFARE Ultralight / NTAG commands")
 hf_des = hf.subgroup("des", "MIFARE DESFire commands")
 hf_seos = hf.subgroup("seos", "SEOS commands")
+hf_st25ta = hf.subgroup("st25ta", "ST25TA (NFC Forum Type 4) commands")
 
 lf = root.subgroup("lf", "Low Frequency commands")
 lf_em = lf.subgroup("em", "EM commands")

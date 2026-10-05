@@ -1506,6 +1506,70 @@ static data_frame_tx_t *cmd_processor_seos_write_emu_keys(uint16_t cmd, uint16_t
     return data_frame_make(cmd, STATUS_SUCCESS, 0, NULL);
 }
 
+static nfc_tag_st25ta_information_t *st25ta_active_info(void) {
+    tag_slot_specific_type_t tag_types;
+    tag_emulation_get_specific_types_by_slot(tag_emulation_get_slot(), &tag_types);
+    if (tag_types.tag_hf != TAG_TYPE_ST25TA) return NULL;
+    tag_data_buffer_t *buffer = get_buffer_by_tag_type(TAG_TYPE_ST25TA);
+    return (nfc_tag_st25ta_information_t *)buffer->buffer;
+}
+
+// out: ndef_size(2, BE), CC file(15), read_pwd(16), write_pwd(16)
+static data_frame_tx_t *cmd_processor_st25ta_get_info(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
+    nfc_tag_st25ta_information_t *info = st25ta_active_info();
+    if (info == NULL) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    uint8_t out[2 + NFC_TAG_ST25TA_CC_SIZE + 2 * NFC_TAG_ST25TA_PWD_SIZE];
+    out[0] = (uint8_t)(info->ndef_size >> 8);
+    out[1] = (uint8_t)(info->ndef_size & 0xFF);
+    memcpy(&out[2], info->cc, NFC_TAG_ST25TA_CC_SIZE);
+    memcpy(&out[2 + NFC_TAG_ST25TA_CC_SIZE], info->pwd_read, NFC_TAG_ST25TA_PWD_SIZE);
+    memcpy(&out[2 + NFC_TAG_ST25TA_CC_SIZE + NFC_TAG_ST25TA_PWD_SIZE], info->pwd_write, NFC_TAG_ST25TA_PWD_SIZE);
+    return data_frame_make(cmd, STATUS_SUCCESS, sizeof(out), out);
+}
+
+// in: offset(2, BE), len(1)
+static data_frame_tx_t *cmd_processor_st25ta_read_ndef(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
+    nfc_tag_st25ta_information_t *info = st25ta_active_info();
+    if (info == NULL || length != 3) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    uint16_t off = ((uint16_t)data[0] << 8) | data[1];
+    uint8_t len = data[2];
+    if (len == 0 || (uint32_t)off + len > info->ndef_size) {
+        return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    }
+    return data_frame_make(cmd, STATUS_SUCCESS, len, &info->ndef[off]);
+}
+
+// in: offset(2, BE), data(1..240)
+static data_frame_tx_t *cmd_processor_st25ta_write_ndef(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
+    nfc_tag_st25ta_information_t *info = st25ta_active_info();
+    if (info == NULL || length < 3 || length > 2 + 240) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    uint16_t off = ((uint16_t)data[0] << 8) | data[1];
+    uint16_t len = length - 2;
+    if ((uint32_t)off + len > info->ndef_size) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    memcpy(&info->ndef[off], &data[2], len);
+    return data_frame_make(cmd, STATUS_SUCCESS, 0, NULL);
+}
+
+// in: ndef_size(2, BE), read_access(1), write_access(1), read_pwd(16), write_pwd(16)
+static data_frame_tx_t *cmd_processor_st25ta_set_config(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
+    nfc_tag_st25ta_information_t *info = st25ta_active_info();
+    if (info == NULL || length != 4 + 2 * NFC_TAG_ST25TA_PWD_SIZE) {
+        return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    }
+    uint16_t size = ((uint16_t)data[0] << 8) | data[1];
+    if (size < 2 || size > NFC_TAG_ST25TA_NDEF_MAX) return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    if (size > info->ndef_size) {
+        memset(&info->ndef[info->ndef_size], 0, size - info->ndef_size);
+    }
+    info->ndef_size = size;
+    info->cc[ST25TA_CC_OFF_READ_ACCESS] = data[2];
+    info->cc[ST25TA_CC_OFF_WRITE_ACCESS] = data[3];
+    memcpy(info->pwd_read, &data[4], NFC_TAG_ST25TA_PWD_SIZE);
+    memcpy(info->pwd_write, &data[4 + NFC_TAG_ST25TA_PWD_SIZE], NFC_TAG_ST25TA_PWD_SIZE);
+    nfc_tag_st25ta_sync_cc(info);
+    return data_frame_make(cmd, STATUS_SUCCESS, 0, NULL);
+}
+
 #if defined(PROJECT_CHAMELEON_ULTRA)
 // T55xx clone is only available on Chameleon Ultra; the Lite firmware
 // has no LF reader hardware and does not compile the write_*_to_t55xx
@@ -1629,6 +1693,9 @@ static nfc_tag_14a_coll_res_reference_t *get_coll_res_data(bool write) {
             break;
         case TAG_TYPE_SEOS:
             info = nfc_tag_seos_get_coll_res();
+            break;
+        case TAG_TYPE_ST25TA:
+            info = nfc_tag_st25ta_get_coll_res();
             break;
 #if defined(PROJECT_DESFIRE_EMULATION)
         case TAG_TYPE_DESFIRE_EV1_2K:
@@ -4276,6 +4343,10 @@ static cmd_data_map_t m_data_cmd_map[] = {
     {    DATA_CMD_SEOS_READ_EMU_DATA,             NULL,                      cmd_processor_seos_read_emu_data,            NULL                   },
     {    DATA_CMD_SEOS_WRITE_EMU_DATA,            NULL,                      cmd_processor_seos_write_emu_data,           NULL                   },
     {    DATA_CMD_SEOS_WRITE_EMU_KEYS,            NULL,                      cmd_processor_seos_write_emu_keys,           NULL                   },
+    {    DATA_CMD_ST25TA_GET_INFO,                NULL,                      cmd_processor_st25ta_get_info,               NULL                   },
+    {    DATA_CMD_ST25TA_READ_NDEF,               NULL,                      cmd_processor_st25ta_read_ndef,              NULL                   },
+    {    DATA_CMD_ST25TA_WRITE_NDEF,              NULL,                      cmd_processor_st25ta_write_ndef,             NULL                   },
+    {    DATA_CMD_ST25TA_SET_CONFIG,              NULL,                      cmd_processor_st25ta_set_config,             NULL                   },
 
     /* ISO14443-4 T=CL emulation */
 #if defined(PROJECT_CHAMELEON_ULTRA)

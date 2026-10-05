@@ -2471,6 +2471,52 @@ class ChameleonCMD:
         payload = auth + privenc + privmac
         return self.device.send_cmd_sync(Command.SEOS_WRITE_EMU_KEYS, payload)
 
+    ST25TA_CHUNK = 240
+
+    @expect_response(Status.SUCCESS)
+    def st25ta_get_info(self):
+        resp = self.device.send_cmd_sync(Command.ST25TA_GET_INFO, None)
+        if resp.status == Status.SUCCESS:
+            resp.parsed = {
+                "ndef_size": int.from_bytes(resp.data[0:2], "big"),
+                "cc": resp.data[2:17],
+                "pwd_read": resp.data[17:33],
+                "pwd_write": resp.data[33:49],
+            }
+        return resp
+
+    @expect_response(Status.SUCCESS)
+    def _st25ta_read_chunk(self, offset: int, length: int):
+        resp = self.device.send_cmd_sync(
+            Command.ST25TA_READ_NDEF, struct.pack("!HB", offset, length))
+        resp.parsed = resp.data
+        return resp
+
+    def st25ta_read_ndef(self, offset: int, length: int) -> bytes:
+        out = b""
+        while length > 0:
+            n = min(length, self.ST25TA_CHUNK)
+            out += self._st25ta_read_chunk(offset, n)
+            offset += n
+            length -= n
+        return out
+
+    @expect_response(Status.SUCCESS)
+    def _st25ta_write_chunk(self, offset: int, data: bytes):
+        return self.device.send_cmd_sync(
+            Command.ST25TA_WRITE_NDEF, struct.pack("!H", offset) + data)
+
+    def st25ta_write_ndef(self, offset: int, data: bytes):
+        for i in range(0, len(data), self.ST25TA_CHUNK):
+            self._st25ta_write_chunk(offset + i, data[i:i + self.ST25TA_CHUNK])
+
+    @expect_response(Status.SUCCESS)
+    def st25ta_set_config(self, ndef_size: int, read_access: int, write_access: int,
+                          pwd_read: bytes, pwd_write: bytes):
+        payload = struct.pack("!HBB", ndef_size, read_access, write_access) + pwd_read + pwd_write
+        return self.device.send_cmd_sync(Command.ST25TA_SET_CONFIG, payload)
+
+
 def test_fn():
     # connect to chameleon
     dev = chameleon_com.ChameleonCom()

@@ -17,6 +17,7 @@ import cli_hf_des  # noqa: F401,E402  (hf des ...)
 import cli_lf      # noqa: F401,E402  (lf ...)
 import cli_hf_mf   # noqa: F401,E402  (hf mf ...)
 import cli_hf_mfu  # noqa: F401,E402  (hf mfu ...)
+import cli_hf_st25ta  # noqa: F401,E402  (hf st25ta ...)
 
 @root.command("clear")
 class RootClear(BaseCLIUnit):

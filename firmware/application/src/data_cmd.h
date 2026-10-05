@@ -187,6 +187,10 @@
 #define DATA_CMD_SEOS_READ_EMU_DATA             (4042)
 #define DATA_CMD_SEOS_WRITE_EMU_DATA            (4043)
 #define DATA_CMD_SEOS_WRITE_EMU_KEYS            (4044)
+#define DATA_CMD_ST25TA_GET_INFO                (4045)
+#define DATA_CMD_ST25TA_READ_NDEF               (4046)
+#define DATA_CMD_ST25TA_WRITE_NDEF              (4047)
+#define DATA_CMD_ST25TA_SET_CONFIG              (4048)
 //
 // ******************************************************************
 

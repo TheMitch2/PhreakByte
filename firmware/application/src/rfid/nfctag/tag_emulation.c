@@ -9,6 +9,7 @@
 #include "nfc_mf1.h"
 #include "nfc_14a_4.h"
 #include "nfc_seos.h"
+#include "nfc_st25ta.h"
 #if defined(PROJECT_DESFIRE_EMULATION)
 #include "desfire/nfc_desfire.h"
 #endif
@@ -122,6 +123,7 @@ static tag_base_handler_map_t tag_base_map[] = {
     // ISO14443-4 T=CL emulation
     {TAG_SENSE_HF, TAG_TYPE_HF14A_4,     nfc_tag_14a_4_data_loadcb,    nfc_tag_14a_4_data_savecb,    nfc_tag_14a_4_data_factory,    &m_tag_data_hf},
     {TAG_SENSE_HF, TAG_TYPE_SEOS,        nfc_tag_seos_data_loadcb,     nfc_tag_seos_data_savecb,     nfc_tag_seos_data_factory,     &m_tag_data_hf},
+    {TAG_SENSE_HF, TAG_TYPE_ST25TA,      nfc_tag_st25ta_data_loadcb,   nfc_tag_st25ta_data_savecb,   nfc_tag_st25ta_data_factory,   &m_tag_data_hf},
 #if defined(PROJECT_DESFIRE_EMULATION)
     {TAG_SENSE_HF, TAG_TYPE_DESFIRE_EV1_2K, nfc_tag_desfire_data_loadcb, nfc_tag_desfire_data_savecb, nfc_tag_desfire_data_factory, &m_tag_data_hf},
     {TAG_SENSE_HF, TAG_TYPE_DESFIRE_EV1_4K, nfc_tag_desfire_data_loadcb, nfc_tag_desfire_data_savecb, nfc_tag_desfire_data_factory, &m_tag_data_hf},
