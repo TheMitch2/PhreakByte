@@ -169,6 +169,11 @@ class Command(enum.IntEnum):
     SEOS_WRITE_EMU_DATA = 4043
     SEOS_WRITE_EMU_KEYS = 4044
 
+    ST25TA_GET_INFO = 4045
+    ST25TA_READ_NDEF = 4046
+    ST25TA_WRITE_NDEF = 4047
+    ST25TA_SET_CONFIG = 4048
+
     # ISO14443-4 T=CL emulation
     HF14A_4_APDU_RECV = 6000
     HF14A_4_APDU_SEND = 6001
@@ -405,6 +410,7 @@ class TagSpecificType(enum.IntEnum):
     DESFIRE_EV2_8K = 1305
 
     # ST25TA series          2000
+    ST25TA = 2000
 
     # ISO14443-4 T=CL emulation
     HF14A_4 = 3000
@@ -493,6 +499,8 @@ class TagSpecificType(enum.IntEnum):
             return "NTAG 212"
         elif self == TagSpecificType.SEOS:
             return "SEOS"
+        elif self == TagSpecificType.ST25TA:
+            return "ST25TA"
         elif self == TagSpecificType.DESFIRE_EV1_2K:
             return "DESFire EV1 2K"
         elif self == TagSpecificType.DESFIRE_EV1_4K:
