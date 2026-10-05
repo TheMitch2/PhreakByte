@@ -1210,6 +1210,9 @@ class HWSlotList(DeviceRequiredUnit):
                     card_id_str = f"{info['card_id']} (0x{info['card_id']:06X})"
                     print(f"      {'Frame:':40}{color_string((CY, frame.hex().upper()))}")
                     print(f"      {'Card ID:':40}{color_string((CG, card_id_str))}")
+                if lf_tag_type == TagSpecificType.Indala:
+                    frame = self.cmd.indala_get_emu_id()
+                    print(f"      {'Frame:':40}{color_string((CY, frame.hex().upper()))}")
         if current != selected:
             self.cmd.set_active_slot(selected)
 
