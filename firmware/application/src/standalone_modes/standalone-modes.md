@@ -294,28 +294,33 @@ off, only the card identity is cloned. **Buttons:** BOTH_SHORT = scan + clone on
 card · BOTH_LONG = arm/disarm · BOTH_VLONG = discard results. **Requires
 `--opt-in`** (writes the active slot). MIFARE Classic 1K source assumed.
 
-## `autoclone` ,  clone a card to a magic card  *(Ultra only)*
+## `autoclone` ,  auto-sensing clone  *(Ultra only)*
 
-Two-press clone of a MIFARE Classic 1K card onto a **gen1a "magic" card**. The
-first press reads the source and buffers it; the second writes it to the magic
-card you then present. Optionally also drops the clone into the active slot.
+Two-press clone that **auto-detects the source frequency** and writes to the
+matching card: an HF MIFARE Classic goes to a **gen1a "magic" card**, an LF
+EM410x goes to a **T5577**. The first press reads the source and buffers it; the
+second writes it to the blank card you then present.
 
 ```
 standalone set-mode autoclone --opt-in       # writes_tag + writes_slot ,  --opt-in required
-standalone config autoclone --also-slot on   # optional: also clone into the active slot
-#  place the SOURCE card, then:
-standalone trigger                           # 1st press: read + buffer the source
-#  swap to the gen1a MAGIC card, then:
+standalone config autoclone --also-slot on   # optional: also clone HF source into the active slot
+#  place the SOURCE card (HF 14A or LF EM410x), then:
+standalone trigger                           # 1st press: detect + read + buffer the source
+#  swap to the matching blank (gen1a magic for HF, T5577 for LF), then:
 standalone trigger                           # 2nd press: write the clone
-standalone get-result                        # result / uid / blocks written
+standalone get-result                        # result / uid (HF) or EM id (LF) / blocks written
 standalone disarm
 ```
 
-**Config** (4-byte blob): `--also-slot on|off` (default `off`). Source blocks are
-read with the default key `FFFFFFFFFFFF`; sectors with other keys are skipped, so
-`blocks written` reflects what was readable. The target must be a gen1a magic card
-(block-0 writable); a non-magic card fails the unlock and writes nothing.
-**Buttons:** BOTH_SHORT = read source, then (2nd) write magic · BOTH_LONG =
+**Detection:** the first press tries HF 14A first; if no HF card is present it
+falls back to LF and reads an EM410x. Whichever it finds decides the target on
+the second press. **HF:** source blocks are read with the default key
+`FFFFFFFFFFFF`; sectors with other keys are skipped, so `blocks written` reflects
+what was readable, and the target must be a gen1a magic card (block-0 writable).
+**LF:** the 5-byte EM410x ID is written to a T5577 (`blocks` = 1 on success).
+`--also-slot` applies to the HF path only.
+**Config** (4-byte blob): `--also-slot on|off` (default `off`).
+**Buttons:** BOTH_SHORT = read source, then (2nd) write target · BOTH_LONG =
 arm/disarm · BOTH_VLONG = discard the buffered source and results. **Requires
 `--opt-in`** (writes target memory, and the slot with `--also-slot`). The device
 stays armed after a write, so trigger → trigger repeats for the next card.
