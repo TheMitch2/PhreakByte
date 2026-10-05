@@ -468,7 +468,7 @@ Mifare Classic fast key check on sectors
 
 #### `hf mf gconfig`
 
-Read or write the Gen4 (Ultimate Magic) GTU config block
+Read or write the Gen4-GTU ('Ultimate Magic') config block
 
 - `-d`, `--data` — Config bytes to write; omit to read current config
 - `-p`, `--pwd` — Gen4 password, 4 bytes (default 00000000)
@@ -492,14 +492,14 @@ Set UID on a Gen3 magic card (block 0 manufacturer bytes kept)
 
 #### `hf mf ggetblk`
 
-Read one block from a Gen4 (Ultimate Magic) card
+Read one block from a Gen4-GTU ('Ultimate Magic') card - not Gen4-GDM, a different protocol
 
 - `-b`, `--block` — Block number (required)
 - `-p`, `--pwd` — Gen4 password, 4 bytes (default 00000000)
 
 #### `hf mf gsetblk`
 
-Write one block to a Gen4 (Ultimate Magic) card
+Write one block to a Gen4-GTU ('Ultimate Magic') card - not Gen4-GDM, a different protocol
 
 - `-b`, `--block` — Block number (required)
 - `-d`, `--data` — 16-byte block data (required)
@@ -507,14 +507,14 @@ Write one block to a Gen4 (Ultimate Magic) card
 
 #### `hf mf gsetpwd`
 
-Change the Gen4 (Ultimate Magic) password
+Change the Gen4-GTU ('Ultimate Magic') password
 
 - `-p`, `--pwd` — Current password, 4 bytes (default 00000000)
 - `-n`, `--new` — New password, 4 bytes (required)
 
 #### `hf mf gsetuid`
 
-Set the UID on a Gen4 (Ultimate Magic) card
+Set the UID on a Gen4-GTU ('Ultimate Magic') card
 
 - `-u`, `--uid` — New UID, 4 or 7 bytes (required)
 - `-p`, `--pwd` — Gen4 password, 4 bytes (default 00000000)
