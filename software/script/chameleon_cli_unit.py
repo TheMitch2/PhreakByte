@@ -1212,7 +1212,10 @@ class HWSlotList(DeviceRequiredUnit):
                     print(f"      {'Card ID:':40}{color_string((CG, card_id_str))}")
                 if lf_tag_type == TagSpecificType.Indala:
                     frame = self.cmd.indala_get_emu_id()
+                    fc, cn = indala_decode_raw(frame)
                     print(f"      {'Frame:':40}{color_string((CY, frame.hex().upper()))}")
+                    print(f"      {'FC:':40}{color_string((CG, fc))}")
+                    print(f"      {'CN:':40}{color_string((CG, cn))}")
         if current != selected:
             self.cmd.set_active_slot(selected)
 
@@ -5840,7 +5843,7 @@ class HFSeosKeys(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
         print(f"\n {CR}No keys found{C0}")
 
 
-# ---- Indala LF (read + T55xx clone) : ported from RRG #402 (kevihiiin); emulation (econfig) omitted ----
+# ---- Indala LF (read, T55xx clone, emulation) : ported from RRG #402 (kevihiiin) ----
 def indala_decode_raw(raw: bytes):
     """Decode Indala 26-bit FC/CN from 8-byte raw frame (PM3-compatible bit mapping)."""
     bits = []
