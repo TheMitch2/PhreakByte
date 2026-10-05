@@ -25,7 +25,7 @@ NRF_LOG_MODULE_REGISTER();
 // Timer3 ISR plays back the pattern at exactly 125 kHz (8us per entry).
 #define INDALA_PSK_CYCLES_PER_BIT (16)
 #define INDALA_PSK_ENTRIES_PER_CYCLE (2)
-#define INDALA_PSK_COUNTER_TOP (4)   // arbitrary (only ch0 > 0 vs == 0 matters for pattern)
+#define INDALA_PSK_COUNTER_TOP (8)   // 8us/entry at 1MHz PWM base
 
 #define INDALA_T55XX_BLOCK_COUNT (3) // config + 2 data blocks
 
