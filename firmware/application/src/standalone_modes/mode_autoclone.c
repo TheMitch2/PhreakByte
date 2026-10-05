@@ -63,7 +63,7 @@ static struct {
     bool     active;
     bool     have_source;
     bool     src_is_lf;      /* source was an LF EM410x tag, not HF 14A */
-    uint8_t  em_id[5];       /* EM410x ID when src_is_lf */
+    uint8_t  em_scan[7];     /* scan_em410x output: [tag_type:2][id:5] when src_is_lf */
     picc_14a_tag_t src_tag;
     uint8_t  src[MFC1K_BLOCKS][BLK_SIZE];
     bool     valid[MFC1K_BLOCKS];
@@ -103,7 +103,7 @@ static void record_lf(uint8_t result, uint8_t written) {
     memset(r, 0, REC_SIZE);
     r[0] = result;
     r[1] = 5;
-    memcpy(&r[2], m_st.em_id, 5);
+    memcpy(&r[2], &m_st.em_scan[2], 5);
     r[9] = written;
     m_st.write_cursor += REC_SIZE;
 }
@@ -243,7 +243,7 @@ static bool read_source_lf(void) {
         bsp_delay_ms(8);
     }
     pcd_14a_reader_antenna_off();
-    return scan_em410x(m_st.em_id) == STATUS_LF_TAG_OK;
+    return scan_em410x(m_st.em_scan) == STATUS_LF_TAG_OK;
 }
 
 /* Write the captured EM410x ID to a T5577. write_em410x_to_t55xx() drives the
@@ -255,7 +255,7 @@ static uint8_t write_lf_t55xx(void) {
     }
     pcd_14a_reader_antenna_off();
     uint8_t zero[4] = {0};
-    return write_em410x_to_t55xx(m_st.em_id, zero, zero, 0) == STATUS_LF_TAG_OK ? 1 : 0;
+    return write_em410x_to_t55xx(&m_st.em_scan[2], zero, zero, 0) == STATUS_LF_TAG_OK ? 1 : 0;
 }
 
 static standalone_rc_t on_button(standalone_button_evt_t evt) {
