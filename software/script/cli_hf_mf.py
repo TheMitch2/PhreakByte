@@ -2333,6 +2333,9 @@ def _gen4_raw(cmd, pwd: bytes, op: int, args: bytes = b""):
     except (UnexpectedResponseError, TimeoutError):
         return False, b""
     resp = bytes(resp)
+    # TODO: tighten the write-ack check once the real success byte is confirmed
+    # on hardware. GTU clones vary by vendor (commonly 0x00 ack on success);
+    # for now any reply is treated as sent.
     return len(resp) > 0, resp
 
 

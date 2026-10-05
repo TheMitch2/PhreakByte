@@ -484,8 +484,8 @@ class HF14AScan(ReaderRequiredUnit):
             print("- Mifare Classic technology")
             prng_type = self.cmd.mf1_detect_prng()
             print(f"  # Prng: {MifareClassicPrngType(prng_type)}")
-            # read-only magic-card probe (gen1a/gen3/gen4-gtu); see cli_hf_mf
-            # for why gen2/CUID and gen4-GDM aren't (reliably) probeable here
+            # read-only magic-card probe (gen1a/gen3/gen4); see cli_hf_mf for
+            # why gen2/CUID isn't (reliably) probeable here
             magic_gen = cli_hf_mf.identify_magic_gen(self.cmd)
             if magic_gen:
                 print(f"  # Magic: {CY}{magic_gen}{C0} backdoor detected")
@@ -511,7 +511,7 @@ class HF14AScan(ReaderRequiredUnit):
         if magic_gen == "gen3":
             print(f"  # {CY}Recommended:{C0} hf mf gen3uid / gen3blk")
             return
-        if magic_gen == "gen4-gtu":
+        if magic_gen == "gen4":
             print(f"  # {CY}Recommended:{C0} hf mf ggetblk / gconfig "
                   f"(default pwd 00000000 unless set otherwise)")
             return
