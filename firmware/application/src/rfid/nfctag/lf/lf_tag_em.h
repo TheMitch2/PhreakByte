@@ -31,4 +31,6 @@ int lf_tag_jablotron_data_savecb(tag_specific_type_t type, tag_data_buffer_t *bu
 bool lf_tag_jablotron_data_factory(uint8_t slot, tag_specific_type_t tag_type);
 int lf_tag_idteck_data_savecb(tag_specific_type_t type, tag_data_buffer_t *buffer);
 bool lf_tag_idteck_data_factory(uint8_t slot, tag_specific_type_t tag_type);
+int lf_tag_indala_data_savecb(tag_specific_type_t type, tag_data_buffer_t *buffer);
+bool lf_tag_indala_data_factory(uint8_t slot, tag_specific_type_t tag_type);
 bool is_lf_field_exists(void);
