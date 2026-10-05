@@ -202,10 +202,19 @@ static const nrf_pwm_sequence_t *indala_modulator(indala_codec *d, uint8_t *buf)
         uint8_t bit_idx = 7 - (i % 8); // MSB first
         bool cur_bit = (buf[byte_idx] >> bit_idx) & 1;
 
-        // PSK1: phase = data bit value
-        // ch0 = COUNTER_TOP -> 100% duty (FET ON), ch0 = 0 -> 0% duty (FET OFF)
-        uint16_t first  = cur_bit ? 0 : INDALA_PSK_COUNTER_TOP;
-        uint16_t second = cur_bit ? INDALA_PSK_COUNTER_TOP : 0;
+        // PSK1: phase = data bit value.
+        // NOTE: compare == counter_top is NOT a safe way to get 100% duty on
+        // nRF52 PWM hardware -- a compare value equal to the period can fail
+        // to assert the active level at all (Nordic's own nrfx PWM driver
+        // special-cases "pulse_cycles >= period_cycles" for exactly this
+        // reason). Every other modulator in this codebase (em410x.c,
+        // viking.c) keeps its "on" compare value strictly below counter_top;
+        // this one didn't, which meant the FET likely never actually turned
+        // on for either phase -- no subcarrier at all, every time.
+        // INDALA_PSK_COUNTER_TOP - 1 keeps compare < top (glitch-free) while
+        // still representing an effectively-full-on window.
+        uint16_t first  = cur_bit ? 0 : (INDALA_PSK_COUNTER_TOP - 1);
+        uint16_t second = cur_bit ? (INDALA_PSK_COUNTER_TOP - 1) : 0;
 
         for (int j = 0; j < INDALA_PSK_CYCLES_PER_BIT; j++) {
             psk_shared_pwm_vals[k].channel_0 = first;
