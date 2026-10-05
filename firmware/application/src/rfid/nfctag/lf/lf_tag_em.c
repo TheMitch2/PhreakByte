@@ -10,6 +10,7 @@
 #include "nrfx_pwm.h"
 #include "protocols/em410x.h"
 #include "protocols/hidprox.h"
+#include "protocols/indala.h"
 #include "protocols/idteck.h"
 #include "protocols/ioprox.h"
 #include "protocols/jablotron.h"
@@ -243,6 +244,15 @@ int lf_tag_data_loadcb(tag_specific_type_t type, tag_data_buffer_t *buffer) {
         return LF_HIDPROX_TAG_ID_SIZE;
     }
 
+    if (type == TAG_TYPE_INDALA && buffer->length >= LF_INDALA_TAG_ID_SIZE) {
+        m_tag_type = type;
+        void *codec = indala.alloc();
+        m_pwm_seq = indala.modulator(codec, buffer->buffer);
+        indala.free(codec);
+        NRF_LOG_INFO("load lf indala data finish.");
+        return LF_INDALA_TAG_ID_SIZE;
+    }
+
     if (type == TAG_TYPE_IOPROX && buffer->length >= LF_IOPROX_TAG_ID_SIZE) {
         m_tag_type = type;
         void *codec = ioprox.alloc();
@@ -325,6 +335,17 @@ int lf_tag_hidprox_data_savecb(tag_specific_type_t type, tag_data_buffer_t *buff
  * @param buffer    Data buffer
  * @return The length of the data that needs to be saved is that it does not save when 0
  */
+int lf_tag_indala_data_savecb(tag_specific_type_t type, tag_data_buffer_t *buffer) {
+    // Make sure to load this tag before allowing saving
+    // Just save the original card package directly
+    return m_tag_type == TAG_TYPE_INDALA ? LF_INDALA_TAG_ID_SIZE : 0;
+}
+
+/** @brief Id card deposit card number before callback
+ * @param type      Refined tag type
+ * @param buffer    Data buffer
+ * @return The length of the data that needs to be saved is that it does not save when 0
+ */
 int lf_tag_ioprox_data_savecb(tag_specific_type_t type, tag_data_buffer_t *buffer) {
     // Make sure to load this tag before allowing saving
     // Just save the original card package directly
@@ -386,6 +407,17 @@ bool lf_tag_em410x_data_factory(uint8_t slot, tag_specific_type_t tag_type) {
 bool lf_tag_hidprox_data_factory(uint8_t slot, tag_specific_type_t tag_type) {
     // default id, must to align(4), more word...
     uint8_t tag_id[13] = {0x01, 0x00, 0x00, 0x00, 0x64, 0x00, 0x00, 0x00, 0x51, 0x45, 0x00, 0x00, 0x00};
+    return lf_tag_data_factory(slot, tag_type, tag_id, sizeof(tag_id));
+}
+
+/** @brief Id card deposit card number before callback
+ * @param slot      Card slot number
+ * @param tag_type  Refined tag type
+ * @return Whether the format is successful, if the formatting is successful, it will return to True, otherwise False will be returned
+ */
+bool lf_tag_indala_data_factory(uint8_t slot, tag_specific_type_t tag_type) {
+    // default id, same raw 8-byte layout as 'lf indala write'/scan
+    uint8_t tag_id[LF_INDALA_TAG_ID_SIZE] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x00, 0x00, 0x00};
     return lf_tag_data_factory(slot, tag_type, tag_id, sizeof(tag_id));
 }
 

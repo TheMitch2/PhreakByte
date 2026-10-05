@@ -2321,3 +2321,33 @@ class LFIndalaWriteT55xx(LFIndalaIdArgsUnit, ReaderRequiredUnit):
         self.cmd.indala_write_to_t55xx(id_bytes)
         print(f" {indala_format_output(id_bytes)}")
         print(" Write done. Verify with 'lf indala read'.")
+
+
+@lf_indala.command("econfig")
+class LFIndalaEconfig(SlotIndexArgsAndGoUnit, LFIndalaIdArgsUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = (
+            "Get or set the Indala emulated frame on a slot. "
+            "Provide -r <hex> or --fc/--cn to set; omit to read back the current value."
+        )
+        self.add_slot_args(parser)
+        self.add_card_arg(parser)
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        if args.raw is not None:
+            slotinfo = self.cmd.get_slot_info()
+            selected = SlotNumber.from_fw(self.cmd.get_active_slot())
+            lf_tag_type = TagSpecificType(slotinfo[selected - 1]["lf"])
+            if lf_tag_type != TagSpecificType.Indala:
+                print(
+                    f"{color_string((CR, 'WARNING'))}: Slot LF type is not Indala. "
+                    f"Set it with: hw slot type -s <n> -t Indala"
+                )
+            self.cmd.indala_set_emu_id(bytes.fromhex(args.raw))
+            print(f" - Indala emu frame set to {args.raw.upper()}.")
+        else:
+            response = self.cmd.indala_get_emu_id()
+            print(" - Get Indala emu frame success.")
+            print(f" {indala_format_output(response)}")
