@@ -1,7 +1,8 @@
 /*
  * mode_autoclone.c
  *
- * Two-step clone of a 14A card onto a gen1a "magic" card. Ultra only.
+ * Two-step auto-sensing clone. Ultra only. Auto-detects the source frequency:
+ *   HF 14A -> gen1a magic card, or LF EM410x -> T5577.
  *   1st BOTH_SHORT: scan source, build block 0 from the anticollision (UID clone,
  *                   no key), and read any data sectors whose key is in the dict.
  *   2nd BOTH_SHORT: write the buffered blocks to the magic card now present.
@@ -31,6 +32,9 @@
 #include "nfc_14a.h"
 #include "nfc_mf1.h"
 #include "mf1_dict.h"
+#include "lf_reader_main.h"
+#include "lf_reader_data.h"
+#include "lf_125khz_radio.h"
 
 #define CFG_VERSION      1
 #define MODE_NAME        "autoclone"
@@ -60,6 +64,8 @@ static struct {
     cfg_t    cfg;
     bool     active;
     bool     have_source;
+    bool     src_is_lf;      /* source was an LF EM410x tag, not HF 14A */
+    uint8_t  em_id[5];       /* EM410x ID when src_is_lf */
     picc_14a_tag_t src_tag;
     uint8_t  src[MFC1K_BLOCKS][BLK_SIZE];
     bool     valid[MFC1K_BLOCKS];
@@ -89,6 +95,18 @@ static void record(uint8_t result, const picc_14a_tag_t *tag, uint8_t written) {
         memcpy(&r[2], tag->uid, tag->uid_len > 7 ? 7 : tag->uid_len);
     }
     r[9]  = written;
+    m_st.write_cursor += REC_SIZE;
+}
+
+/* LF result: log the 5-byte EM410x id instead of a 14A tag. */
+static void record_lf(uint8_t result, uint8_t written) {
+    if (m_st.write_cursor + REC_SIZE > RESULT_BUFFER_BYTES) return;
+    uint8_t *r = &m_st.buffer[m_st.write_cursor];
+    memset(r, 0, REC_SIZE);
+    r[0] = result;
+    r[1] = 5;
+    memcpy(&r[2], m_st.em_id, 5);
+    r[9] = written;
     m_st.write_cursor += REC_SIZE;
 }
 
@@ -219,6 +237,20 @@ static standalone_rc_t on_exit(void) {
     return STANDALONE_RC_OK;
 }
 
+/* LF fallback: read an EM410x tag. Returns true + fills m_st.em_id on success. */
+static bool read_source_lf(void) {
+    start_lf_125khz_radio();
+    bool ok = em410x_read(m_st.em_id, 1000);
+    stop_lf_125khz_radio();
+    return ok;
+}
+
+/* Write the captured EM410x ID to a T5577 now on the antenna. Returns 1/0. */
+static uint8_t write_lf_t55xx(void) {
+    uint8_t zero[4] = {0};
+    return write_em410x_to_t55xx(m_st.em_id, zero, zero, 0) == STATUS_LF_TAG_OK ? 1 : 0;
+}
+
 static standalone_rc_t on_button(standalone_button_evt_t evt) {
     if (!m_st.active) return STANDALONE_RC_INVALID_STATE;
 
@@ -242,32 +274,52 @@ static standalone_rc_t on_button(standalone_button_evt_t evt) {
 
         if (st == STATUS_HF_TAG_OK && valid > 0) {
             m_st.have_source = true;
+            m_st.src_is_lf   = false;
             if (m_st.cfg.also_slot) clone_to_slot();
             tag_mode_enter();
             standalone_feedback(SL_FB_SUCCESS);   /* present the target, press again */
             return STANDALONE_RC_OK;
         }
+
+        /* No HF source: fall back to LF (EM410x -> T5577). */
+        if (read_source_lf()) {
+            m_st.have_source = true;
+            m_st.src_is_lf   = true;
+            tag_mode_enter();
+            standalone_feedback(SL_FB_SUCCESS);   /* present a T5577, press again */
+            return STANDALONE_RC_OK;
+        }
+
         tag_mode_enter();
         record(RES_NO_SOURCE, (st == STATUS_HF_TAG_OK) ? &m_st.src_tag : NULL, 0);
         standalone_feedback(SL_FB_ERROR);
         return STANDALONE_RC_NO_TAG;
     }
 
-    /* Step 2: write the buffered card to the magic card now present. */
-    reader_on();
-    picc_14a_tag_t target;
-    uint8_t st = pcd_14a_reader_scan_auto(&target);
-    uint8_t written = (st == STATUS_HF_TAG_OK) ? write_magic() : 0;
-    pcd_14a_reader_antenna_off();
-    tag_mode_enter();
-
-    if (st != STATUS_HF_TAG_OK) {
-        record(RES_NO_TARGET, &m_st.src_tag, 0);
-        standalone_feedback(SL_FB_ERROR);
-        return STANDALONE_RC_NO_TAG;
+    /* Step 2: write the buffered card to the target now present. */
+    uint8_t written;
+    if (m_st.src_is_lf) {
+        written = write_lf_t55xx();          /* EM410x -> T5577 */
+    } else {
+        reader_on();
+        picc_14a_tag_t target;
+        uint8_t st = pcd_14a_reader_scan_auto(&target);
+        if (st != STATUS_HF_TAG_OK) {
+            pcd_14a_reader_antenna_off();
+            tag_mode_enter();
+            record(RES_NO_TARGET, &m_st.src_tag, 0);
+            standalone_feedback(SL_FB_ERROR);
+            return STANDALONE_RC_NO_TAG;
+        }
+        written = write_magic();
+        pcd_14a_reader_antenna_off();
     }
+    tag_mode_enter();
     m_st.have_source = false;
-    record(written > 0 ? RES_OK : RES_WRITE_FAIL, &m_st.src_tag, written);
+    if (m_st.src_is_lf)
+        record_lf(written > 0 ? RES_OK : RES_WRITE_FAIL, written);
+    else
+        record(written > 0 ? RES_OK : RES_WRITE_FAIL, &m_st.src_tag, written);
     standalone_feedback(written > 0 ? SL_FB_SUCCESS : SL_FB_ERROR);
     return written > 0 ? STANDALONE_RC_OK : STANDALONE_RC_WRITE_FAIL;
 }
