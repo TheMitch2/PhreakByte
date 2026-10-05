@@ -526,9 +526,11 @@ static int get_block_max_by_tag_type(tag_specific_type_t tag_type) {
             block_max = 64;
             break;
         case TAG_TYPE_MIFARE_2048:
+        case TAG_TYPE_MIFARE_PLUS_S2K:
             block_max = 128;
             break;
         case TAG_TYPE_MIFARE_4096:
+        case TAG_TYPE_MIFARE_PLUS_S4K:
             block_max = 256;
             break;
     }
@@ -1331,14 +1333,25 @@ bool nfc_tag_mf1_data_factory(uint8_t slot, tag_specific_type_t tag_type) {
     }
 
     // default mf1 auto ant-collision res
-    p_mf1_information->res_coll.atqa[0] = 0x04;
-    p_mf1_information->res_coll.atqa[1] = 0x00;
-    p_mf1_information->res_coll.sak[0] = 0x08;
-    p_mf1_information->res_coll.uid[0] = 0xDE;
-    p_mf1_information->res_coll.uid[1] = 0xAD;
-    p_mf1_information->res_coll.uid[2] = 0xBE;
-    p_mf1_information->res_coll.uid[3] = 0xEF;
-    p_mf1_information->res_coll.size = NFC_TAG_14A_UID_SINGLE_SIZE;
+    if (tag_type == TAG_TYPE_MIFARE_PLUS_S2K || tag_type == TAG_TYPE_MIFARE_PLUS_S4K) {
+        // MIFARE Plus SL1, 7-byte UID: ATQA 0x0044, SAK 0x10 (2K) / 0x11 (4K)
+        // per NXP AN10833 SAK coding table.
+        p_mf1_information->res_coll.atqa[0] = 0x44;
+        p_mf1_information->res_coll.atqa[1] = 0x00;
+        p_mf1_information->res_coll.sak[0] = (tag_type == TAG_TYPE_MIFARE_PLUS_S4K) ? 0x11 : 0x10;
+        static const uint8_t default_uid7[] = {0x04, 0x50, 0x4C, 0x55, 0x53, 0x32, 0x4B};
+        memcpy(p_mf1_information->res_coll.uid, default_uid7, 7);
+        p_mf1_information->res_coll.size = NFC_TAG_14A_UID_DOUBLE_SIZE;
+    } else {
+        p_mf1_information->res_coll.atqa[0] = 0x04;
+        p_mf1_information->res_coll.atqa[1] = 0x00;
+        p_mf1_information->res_coll.sak[0] = 0x08;
+        p_mf1_information->res_coll.uid[0] = 0xDE;
+        p_mf1_information->res_coll.uid[1] = 0xAD;
+        p_mf1_information->res_coll.uid[2] = 0xBE;
+        p_mf1_information->res_coll.uid[3] = 0xEF;
+        p_mf1_information->res_coll.size = NFC_TAG_14A_UID_SINGLE_SIZE;
+    }
     p_mf1_information->res_coll.ats.length = 0;
 
     // default mf1 config

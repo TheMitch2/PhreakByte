@@ -1102,6 +1102,8 @@ class HWSlotList(DeviceRequiredUnit):
                     TagSpecificType.MIFARE_1024,
                     TagSpecificType.MIFARE_2048,
                     TagSpecificType.MIFARE_4096,
+                    TagSpecificType.MIFARE_PLUS_S2K,
+                    TagSpecificType.MIFARE_PLUS_S4K,
                 ]:
                     config = self.cmd.mf1_get_emulator_config()
                     # print('    - Mifare Classic emulator settings:')
