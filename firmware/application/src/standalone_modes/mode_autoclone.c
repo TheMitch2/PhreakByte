@@ -33,8 +33,6 @@
 #include "nfc_mf1.h"
 #include "mf1_dict.h"
 #include "lf_reader_main.h"
-#include "lf_reader_data.h"
-#include "lf_125khz_radio.h"
 
 #define CFG_VERSION      1
 #define MODE_NAME        "autoclone"
@@ -237,16 +235,25 @@ static standalone_rc_t on_exit(void) {
     return STANDALONE_RC_OK;
 }
 
-/* LF fallback: read an EM410x tag. Returns true + fills m_st.em_id on success. */
+/* LF fallback: read an EM410x tag. scan_em410x() drives the 125kHz radio
+ * itself, so we only ensure reader mode and keep the HF antenna off. */
 static bool read_source_lf(void) {
-    start_lf_125khz_radio();
-    bool ok = em410x_read(m_st.em_id, 1000);
-    stop_lf_125khz_radio();
-    return ok;
+    if (get_device_mode() != DEVICE_MODE_READER) {
+        reader_mode_enter();
+        bsp_delay_ms(8);
+    }
+    pcd_14a_reader_antenna_off();
+    return scan_em410x(m_st.em_id) == STATUS_LF_TAG_OK;
 }
 
-/* Write the captured EM410x ID to a T5577 now on the antenna. Returns 1/0. */
+/* Write the captured EM410x ID to a T5577. write_em410x_to_t55xx() drives the
+ * 125kHz radio itself. */
 static uint8_t write_lf_t55xx(void) {
+    if (get_device_mode() != DEVICE_MODE_READER) {
+        reader_mode_enter();
+        bsp_delay_ms(8);
+    }
+    pcd_14a_reader_antenna_off();
     uint8_t zero[4] = {0};
     return write_em410x_to_t55xx(m_st.em_id, zero, zero, 0) == STATUS_LF_TAG_OK ? 1 : 0;
 }
