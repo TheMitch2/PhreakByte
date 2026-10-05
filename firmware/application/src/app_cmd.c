@@ -1674,6 +1674,8 @@ static nfc_tag_14a_coll_res_reference_t *get_coll_res_data(bool write) {
         case TAG_TYPE_MIFARE_1024:
         case TAG_TYPE_MIFARE_2048:
         case TAG_TYPE_MIFARE_4096:
+        case TAG_TYPE_MIFARE_PLUS_S2K:
+        case TAG_TYPE_MIFARE_PLUS_S4K:
         case TAG_TYPE_MIFARE_Mini:
             info = write ? get_mifare_coll_res() : get_saved_mifare_coll_res();
             break;

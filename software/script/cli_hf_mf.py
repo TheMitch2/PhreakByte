@@ -3485,9 +3485,9 @@ class HFMFESave(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
             block_count = 20
         elif tag_type == TagSpecificType.MIFARE_1024:
             block_count = 64
-        elif tag_type == TagSpecificType.MIFARE_2048:
+        elif tag_type in (TagSpecificType.MIFARE_2048, TagSpecificType.MIFARE_PLUS_S2K):
             block_count = 128
-        elif tag_type == TagSpecificType.MIFARE_4096:
+        elif tag_type in (TagSpecificType.MIFARE_4096, TagSpecificType.MIFARE_PLUS_S4K):
             block_count = 256
         else:
             raise Exception(
@@ -3546,9 +3546,9 @@ class HFMFEView(SlotIndexArgsAndGoUnit, DeviceRequiredUnit):
             block_count = 20
         elif tag_type == TagSpecificType.MIFARE_1024:
             block_count = 64
-        elif tag_type == TagSpecificType.MIFARE_2048:
+        elif tag_type in (TagSpecificType.MIFARE_2048, TagSpecificType.MIFARE_PLUS_S2K):
             block_count = 128
-        elif tag_type == TagSpecificType.MIFARE_4096:
+        elif tag_type in (TagSpecificType.MIFARE_4096, TagSpecificType.MIFARE_PLUS_S4K):
             block_count = 256
         else:
             raise Exception(
@@ -3647,6 +3647,8 @@ class HFMFEConfig(SlotIndexArgsAndGoUnit, HF14AAntiCollArgsUnit, DeviceRequiredU
             TagSpecificType.MIFARE_1024,
             TagSpecificType.MIFARE_2048,
             TagSpecificType.MIFARE_4096,
+            TagSpecificType.MIFARE_PLUS_S2K,
+            TagSpecificType.MIFARE_PLUS_S4K,
         ]:
             print(
                 f"{color_string((CR, f'Slot {self.slot_num} not configured as MIFARE Classic'))}"

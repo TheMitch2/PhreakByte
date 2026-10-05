@@ -390,6 +390,10 @@ class TagSpecificType(enum.IntEnum):
     MIFARE_2048 = 1002
     MIFARE_4096 = 1003
 
+    # MIFARE Plus (SL1 / Classic-compatible mode only)
+    MIFARE_PLUS_S2K = 1004
+    MIFARE_PLUS_S4K = 1005
+
     # MFUL / NTAG series     1100
     NTAG_213 = 1100
     NTAG_215 = 1101
@@ -479,6 +483,10 @@ class TagSpecificType(enum.IntEnum):
             return "Mifare Classic 2k"
         elif self == TagSpecificType.MIFARE_4096:
             return "Mifare Classic 4k"
+        elif self == TagSpecificType.MIFARE_PLUS_S2K:
+            return "Mifare Plus S 2K (SL1)"
+        elif self == TagSpecificType.MIFARE_PLUS_S4K:
+            return "Mifare Plus S 4K (SL1)"
         elif self == TagSpecificType.NTAG_213:
             return "NTAG 213"
         elif self == TagSpecificType.NTAG_215:
