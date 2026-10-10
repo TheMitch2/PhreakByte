@@ -11,7 +11,7 @@ if [ ! -f "$uf2_file" ]; then
 fi
 
 echo "Waiting for CHAMELEON UF2 drive..."
-echo "Enter UF2 mode: hold B and plug USB"
+echo "Enter UF2 mode: hold A and plug USB"
 
 MOUNT=""
 for i in $(seq 1 60); do

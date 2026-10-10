@@ -50,6 +50,9 @@ NRF_LOG_MODULE_REGISTER();
 
 static nrf_dfu_observer_t m_observer;
 
+/* MSC is appended only in UF2 mode; legacy serial DFU stays CDC-only. */
+static bool m_uf2_mode = true;
+
 static void msc_user_ev_handler(app_usbd_class_inst_t const *p_inst,
                                 app_usbd_msc_user_event_t event) {
     (void)p_inst;
@@ -152,6 +155,12 @@ void uf2_dfu_complete(void) {
 void usb_dfu_transport_class_register(void) {
     ret_code_t err;
 
+    /* Legacy serial DFU: CDC only. A composite MSC interface makes the host
+     * poll usb-storage mid-flash and reset the port near the end. */
+    if (!m_uf2_mode) {
+        return;
+    }
+
     uf2_ghostfat_init();
 
     err = app_usbd_class_append(app_usbd_msc_class_inst_get(&m_app_msc));
@@ -164,4 +173,8 @@ void usb_dfu_transport_class_register(void) {
 
 void uf2_set_observer(nrf_dfu_observer_t observer) {
     m_observer = observer;
+}
+
+void uf2_set_mode(bool uf2_mode) {
+    m_uf2_mode = uf2_mode;
 }

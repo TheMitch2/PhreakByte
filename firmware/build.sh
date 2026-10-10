@@ -11,6 +11,8 @@ softdevice_id=0x0100
 application_version=1
 bootloader_version=2
 
+bootloader_start=0xF3000
+
 device_type=${CURRENT_DEVICE_TYPE:-ultra}
 case $device_type in
   "ultra") hw_version=0 ;;
@@ -52,6 +54,32 @@ rm -rf "objects"
   cd objects
 
     cp ../nrf52_sdk/components/softdevice/${softdevice}/hex/${softdevice}_nrf52_${softdevice_version}_softdevice.hex softdevice.hex
+
+    # The app image feeds pkg generate and uf2conv. nrfutil pads hex gaps,
+    # so any page at/above the bootloader (0xF3000) — e.g. a merged settings
+    # or MBR-param page — makes serial DFU overwrite the running BL mid-flash
+    # and brick the device near 98%. Refuse to package such a hex.
+    app_max=$(python3 - application.hex <<'PY'
+import sys
+base = top = 0
+for line in open(sys.argv[1]):
+    line = line.strip()
+    if len(line) < 11 or line[0] != ':':
+        continue
+    n = int(line[1:3], 16); a = int(line[3:7], 16); t = int(line[7:9], 16)
+    if t == 4:   base = int(line[9:13], 16) << 16
+    elif t == 2: base = int(line[9:13], 16) << 4
+    elif t == 0: top = max(top, base + a + n)
+print(top)
+PY
+)
+    if (( app_max > bootloader_start )); then
+        printf 'ERROR: application.hex reaches 0x%X, past bootloader 0x%X.\n' \
+               "$app_max" "$bootloader_start"
+        echo "The DFU app image would overwrite the bootloader. Package the raw"
+        echo "app hex (linker output), not a settings/full-merged one."
+        exit 1
+    fi
 
     # SD+BL DFU zip — composite BL at 0xF3000, flashable from stock
     nrfutil nrf5sdk-tools pkg generate \

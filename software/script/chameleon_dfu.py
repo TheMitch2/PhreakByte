@@ -62,6 +62,10 @@ class DFUError(Exception):
     pass
 
 
+class DFURemoteError(DFUError):
+    """Device returned an error response (distinct from no response at all)."""
+
+
 class DFUTransferError(DFUError):
     """Recoverable mid-transfer error (offset/CRC mismatch) -> retry object."""
 
@@ -78,8 +82,8 @@ def check_response(resp: bytes, opcode: int) -> bytes:
     if result == 0x01:
         return resp[3:]
     if result == 0x0B and len(resp) > 3:  # extended error
-        raise DFUError(f"DFU extended error 0x{resp[3]:02x}")
-    raise DFUError(f"DFU error: {DFU_RESULT.get(result, hex(result))}")
+        raise DFURemoteError(f"DFU extended error 0x{resp[3]:02x}")
+    raise DFURemoteError(f"DFU error: {DFU_RESULT.get(result, hex(result))}")
 
 
 # --- SLIP (RFC 1055), serial transport only ----------------------------------
@@ -397,10 +401,13 @@ class SecureDFU:
                     continue
                 try:
                     self.execute()
+                except DFURemoteError:
+                    # Device replied with an error (e.g. VerificationFailed) —
+                    # a real rejection, never a reset. Always propagate.
+                    raise
                 except DFUError:
-                    # The data was CRC-validated before this execute, so on the
-                    # last window a missing ack means the device activated and
-                    # reset (expected for SD/BL) rather than a real failure.
+                    # No reply. On the last window that means the device
+                    # activated and reset (expected for SD/BL), not a failure.
                     if is_final:
                         if progress:
                             progress(100)

@@ -6,7 +6,7 @@ fi
 
 if ! ../resource/tools/enter_dfu.py; then
     echo "Wait for device to be off"
-    echo "Press B and plug"
+    echo "Hold B and plug (B = CDC serial DFU; A enters UF2)"
     echo "LEDS 4 & 5 should blink"
 fi
 while :; do

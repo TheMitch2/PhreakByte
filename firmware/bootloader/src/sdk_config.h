@@ -1305,8 +1305,12 @@
 // <i> the bootloader. This area will not be erased by the bootloader during a
 // <i> firmware upgrade. The size must be a multiple of the flash page size.
 
+// Must cover the app's FDS region (FDS_VIRTUAL_PAGES 22 * 2048 words * 4 =
+// 0x2C000, at 0xC7000..0xF3000). The SDK default 0x3000 lets DFU staging run
+// into FDS, corrupting SD/BL updates (VerificationFailed) and risking FDS on
+// large app updates.
 #ifndef NRF_DFU_APP_DATA_AREA_SIZE
-#define NRF_DFU_APP_DATA_AREA_SIZE 12288
+#define NRF_DFU_APP_DATA_AREA_SIZE 0x2C000
 #endif
 
 // <q> NRF_DFU_IN_APP  - Specifies that this code is in the app, not the bootloader, so some settings are off-limits.

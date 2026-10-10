@@ -65,6 +65,7 @@
 #include "nrfx_systick.h"
 #include "nrf_gpio.h"
 #include "hw_connect.h"
+#include "uf2_ghostfat.h"
 
 
 static void on_error(void) {
@@ -253,14 +254,19 @@ int main(void) {
      * BUTTON_1 + plug → legacy signed CDC/BLE DFU (existing behaviour).
      * BUTTON_2 + plug → UF2 drag-and-drop mode (new).
      */
+    bool uf2_mode = false;
     nrf_gpio_cfg_input(BUTTON_2, BUTTON_PULL);
     nrf_delay_ms(5);  /* let the pin settle before sampling */
     if (nrf_gpio_pin_read(BUTTON_2) == 1) {
         NRF_POWER->GPREGRET = BOOTLOADER_DFU_UF2_MAGIC;
+        uf2_mode = true;
         /* Fall through; the GPREGRET enter-method in nrf_bootloader.c will
          * recognise the magic and route us into DFU mode with both
          * transports (CDC + MSC) active. */
     }
+    /* Only UF2 mode exposes MSC; legacy serial DFU stays CDC-only or the host
+     * resets the port mid-flash. Set before nrf_bootloader_init. */
+    uf2_set_mode(uf2_mode);
     init_leds();
 
     nrf_bootloader_mbr_addrs_populate();

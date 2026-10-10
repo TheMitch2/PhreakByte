@@ -44,4 +44,8 @@ extern void uf2_flash_read(uint32_t addr,       void *data, uint32_t len);
  * Implemented by nrf_dfu_uf2.c — finalise (mark app valid, reset). */
 extern void uf2_dfu_complete(void);
 
+/* Transport composition, set before DFU starts: true = CDC + MSC (UF2
+ * drag-and-drop), false = CDC-only (legacy serial DFU). */
+extern void uf2_set_mode(bool uf2_mode);
+
 #endif /* UF2_GHOSTFAT_H__ */
