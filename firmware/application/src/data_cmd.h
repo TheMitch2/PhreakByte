@@ -229,6 +229,7 @@
 #define DATA_CMD_DESFIRE_FACTORY_BLANK          (6009)  /* re-init slot to a blank card         */
 #define DATA_CMD_DESFIRE_GET_STATS              (6011)  /* RF frame counters + max handler us   */
 #define DATA_CMD_DESFIRE_READER_AUTH_ISO7816    (6012)  /* reader mode: ISO 7816 mutual auth vs a physical DESFire card */
+#define DATA_CMD_DESFIRE_READER_GET_VERSION     (6013)  /* reader mode: full 3-frame GetVersion in one T=CL session */
 
 //
 // ******************************************************************

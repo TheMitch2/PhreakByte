@@ -200,6 +200,7 @@ class Command(enum.IntEnum):
     DESFIRE_FACTORY_BLANK = 6009
     DESFIRE_GET_STATS = 6011
     DESFIRE_READER_AUTH_ISO7816 = 6012
+    DESFIRE_READER_GET_VERSION = 6013
 
     # Standalone (host-less) modes subsystem
     STANDALONE_GET_MODE         = 7000

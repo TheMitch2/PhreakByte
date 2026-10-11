@@ -4355,6 +4355,92 @@ static data_frame_tx_t *cmd_processor_hf14a_4_debug_counters(uint16_t cmd, uint1
     nfc_tag_14a_4_get_debug_counters(&buf[0], &buf[1], &buf[2], &buf[3]);
     return data_frame_make(cmd, STATUS_SUCCESS, 4, buf);
 }
+
+/**
+ * DESFire GetVersion - the full three-frame GetVersion in one firmware call.
+ *
+ * The per-APDU host path (hf14a_4_reader_apdu) cycles the field on every call,
+ * so a card re-selected for each frame never answers the 0xAF continuation and
+ * only the first (HW) frame is read. GetVersion needs one uninterrupted T=CL
+ * session: field cycle -> scan_auto (select+RATS) -> ISO-wrapped 0x60, then
+ * 0xAF, then 0xAF, with the block number toggled between frames (tcl_apdu_).
+ *
+ * response (STATUS_HF_TAG_OK):
+ *   num_frames(1), then per frame: len(1) bytes(len)
+ *   where bytes = frame payload + SW1 SW2 (91 XX; 91 AF = more frames follow).
+ * STATUS_HF_TAG_NO if no card answered.
+ */
+static data_frame_tx_t *cmd_processor_desfire_get_version(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
+    static uint8_t abuf[64];
+    static uint8_t rbuf[270];
+    static uint8_t chain_buf[512];
+    uint16_t rbits = 0;
+    uint8_t blk = 0;
+
+    /* Field cycle returns a card left in T=CL active to IDLE, then full
+     * select + RATS, same preamble as the reader APDU/auth handlers. */
+    pcd_14a_reader_antenna_off();
+    bsp_delay_ms(5);
+    pcd_14a_reader_reset();
+    pcd_14a_reader_antenna_on();
+    bsp_delay_ms(8);
+
+    pcd_14a_reader_timeout_set(200);
+    picc_14a_tag_t taginfo;
+    status = pcd_14a_reader_scan_auto(&taginfo);
+    if (status != STATUS_HF_TAG_OK) {
+        pcd_14a_reader_timeout_set(DEF_COM_TIMEOUT);
+        return data_frame_make(cmd, STATUS_HF_TAG_NO, 0, NULL);
+    }
+    bsp_delay_ms(5);
+
+    /* Clear RC522 stale state after RATS (see emv_scan for the rationale). */
+    write_register_single(CommandReg, PCD_IDLE);
+    {
+        uint16_t w = 0;
+        while ((read_register_single(CommandReg) & 0x0F) != PCD_IDLE && w++ < 1000);
+    }
+    write_register_single(ComIrqReg, 0x7F);
+    set_register_mask(FIFOLevelReg, 0x80);
+    clear_register_mask(BitFramingReg, 0x80);
+
+    pcd_14a_reader_timeout_set(600);
+
+    static const uint8_t apdu_ver[5]  = {0x90, 0x60, 0x00, 0x00, 0x00};
+    static const uint8_t apdu_next[5] = {0x90, 0xAF, 0x00, 0x00, 0x00};
+
+    uint8_t out[64];
+    uint16_t out_len = 1;   /* out[0] = frame count, filled in at the end */
+    uint8_t frames = 0;
+
+    const uint8_t *apdu = apdu_ver;
+    for (uint8_t i = 0; i < 3; i++) {
+        uint8_t *rd = NULL;
+        uint16_t rl = 0;
+        if (!tcl_apdu_(apdu, 5, &rd, &rl, abuf, rbuf, chain_buf, &rbits, &blk)) {
+            break;
+        }
+        if (rl < 2 || out_len + 1 + rl > sizeof(out)) {
+            break;
+        }
+        out[out_len++] = (uint8_t)rl;
+        memcpy(&out[out_len], rd, rl);
+        out_len += rl;
+        frames++;
+        /* SW 91 AF = another frame follows; anything else ends GetVersion. */
+        if (!(rd[rl - 2] == 0x91 && rd[rl - 1] == 0xAF)) {
+            break;
+        }
+        apdu = apdu_next;
+    }
+
+    pcd_14a_reader_timeout_set(DEF_COM_TIMEOUT);
+    if (frames == 0) {
+        return data_frame_make(cmd, STATUS_HF_TAG_NO, 0, NULL);
+    }
+    out[0] = frames;
+    return data_frame_make(cmd, STATUS_HF_TAG_OK, out_len, out);
+}
 #endif
 
 
@@ -4615,6 +4701,7 @@ static cmd_data_map_t m_data_cmd_map[] = {
     {    DATA_CMD_HF14A_4_STATIC_RESP,            NULL,                        cmd_processor_hf14a_4_static_resp,           NULL                   },
     {    DATA_CMD_HF14A_4_READER_APDU,            before_hf_reader_run,        cmd_processor_hf14a_4_reader_apdu,           NULL                   },
     {    DATA_CMD_HF14A_4_EMV_SCAN,               before_hf_reader_run,        cmd_processor_hf14a_4_emv_scan,              NULL                   },
+    {    DATA_CMD_DESFIRE_READER_GET_VERSION,     before_hf_reader_run,        cmd_processor_desfire_get_version,           NULL                   },
 #if defined(PROJECT_DESFIRE_EMULATION)
     {    DATA_CMD_DESFIRE_SET_CREDENTIAL,         NULL,                        cmd_processor_desfire_set_credential,        NULL                   },
     {    DATA_CMD_DESFIRE_GET_CREDENTIAL,         NULL,                        cmd_processor_desfire_get_credential,        NULL                   },

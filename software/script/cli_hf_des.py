@@ -311,8 +311,62 @@ def _desfire_select_app(cmd, aid: bytes):
     return resp[-1] == 0x00
 
 
+def _split_version_frames(blob: bytes) -> list:
+    """Unpack the firmware GetVersion blob into payload frames (SW stripped).
+
+    layout: num_frames(1), then per frame len(1) bytes(len), where
+    bytes = payload + SW1 SW2. Returns a list of payload-only frames.
+    """
+    frames: list = []
+    if not blob:
+        return frames
+    n = blob[0]
+    off = 1
+    for _ in range(n):
+        if off >= len(blob):
+            break
+        ln = blob[off]
+        off += 1
+        chunk = blob[off:off + ln]
+        off += ln
+        frames.append(chunk[:-2] if len(chunk) >= 2 else b"")
+    return frames
+
+
+def _desfire_get_version_frames(cmd) -> list:
+    """Return the GetVersion payload frames [HW, SW, production] as bytes.
+
+    Prefers the single-session firmware command (6013), which keeps the T=CL
+    session across the 0x60/0xAF/0xAF sequence so every frame is read. Falls
+    back to per-APDU transceive on firmware without it; there each call
+    re-selects the card, so usually only the HW frame comes back.
+    """
+    fn = getattr(cmd, "desfire_reader_get_version", None)
+    if fn is not None:
+        try:
+            resp = fn()
+            if resp.status in (Status.HF_TAG_OK, Status.SUCCESS) and resp.data:
+                frames = _split_version_frames(resp.data)
+                if frames:
+                    return frames
+        except Exception:
+            pass  # older firmware / unsupported: fall back to per-APDU
+
+    frames = []
+    resp = _des_transceive(cmd, 0x60)
+    frames.append(resp[:-1])
+    st = resp[-1]
+    for _ in range(2):
+        if st != 0xAF:
+            break
+        resp = _des_transceive(cmd, 0xAF)
+        frames.append(resp[:-1])
+        st = resp[-1]
+    return frames
+
+
 def _desfire_get_version(cmd) -> dict:
-    """Send GetVersion (0x60) and return a dict of card info.
+    """Run GetVersion and return a dict of card info.
 
     HW frame: vendor(0) type(1) subtype(2) major(3) minor(4) storage(5) protocol(6)
     SW frame: same layout.
@@ -322,9 +376,9 @@ def _desfire_get_version(cmd) -> dict:
     If the SW frame returns no payload (some reader/BLE stacks don't relay it)
     sw_major, sw_storage and sw_proto are derived from the HW frame values.
     """
-    resp = _des_transceive(cmd, 0x60)
+    frames = _desfire_get_version_frames(cmd)
     info: dict = {}
-    hw = resp[:-1]
+    hw = frames[0] if len(frames) >= 1 else b""
     # HW frame — individual guards so a short frame still populates what it has
     if len(hw) >= 1:
         info["hw_vendor"] = hw[0]
@@ -341,50 +395,52 @@ def _desfire_get_version(cmd) -> dict:
     if len(hw) >= 7:
         info["hw_proto"] = hw[6]
 
-    if resp[-1] == 0xAF:
-        resp2 = _des_transceive(cmd, 0xAF)
-        sw = resp2[:-1]
-        # SW frame — same per-field guards
-        if len(sw) >= 1:
-            info["sw_vendor"] = sw[0]
-        if len(sw) >= 2:
-            info["sw_type"] = sw[1]
-        if len(sw) >= 3:
-            info["sw_subtype"] = sw[2]
-        if len(sw) >= 4:
-            info["sw_major"] = sw[3]
-        if len(sw) >= 5:
-            info["sw_minor"] = sw[4]
-        if len(sw) >= 6:
-            info["sw_storage"] = sw[5]
-        if len(sw) >= 7:
-            info["sw_proto"] = sw[6]
+    sw = frames[1] if len(frames) >= 2 else b""
+    # SW frame — same per-field guards
+    if len(sw) >= 1:
+        info["sw_vendor"] = sw[0]
+    if len(sw) >= 2:
+        info["sw_type"] = sw[1]
+    if len(sw) >= 3:
+        info["sw_subtype"] = sw[2]
+    if len(sw) >= 4:
+        info["sw_major"] = sw[3]
+    if len(sw) >= 5:
+        info["sw_minor"] = sw[4]
+    if len(sw) >= 6:
+        info["sw_storage"] = sw[5]
+    if len(sw) >= 7:
+        info["sw_proto"] = sw[6]
 
-        # Fallback: derive SW fields from HW when SW frame payload is empty
-        if "sw_major" not in info and "hw_major" in info:
-            info["sw_major"] = _DESFIRE_HW_MAJOR_TO_SW_MAJOR.get(
-                info["hw_major"], info["hw_major"]
-            )
-            info["sw_minor"] = 0
-        if "sw_storage" not in info:
-            info["sw_storage"] = info.get("hw_storage")
-        if "sw_proto" not in info:
-            info["sw_proto"] = info.get("hw_proto")
+    # Fallback: derive SW fields from HW when the SW frame is missing or empty
+    # (older firmware's per-APDU path often reads only the HW frame).
+    if "sw_major" not in info and "hw_major" in info:
+        info["sw_major"] = _DESFIRE_HW_MAJOR_TO_SW_MAJOR.get(
+            info["hw_major"], info["hw_major"]
+        )
+        info["sw_minor"] = 0
+    if "sw_storage" not in info:
+        info["sw_storage"] = info.get("hw_storage")
+    if "sw_proto" not in info:
+        info["sw_proto"] = info.get("hw_proto")
 
-        if resp2[-1] == 0xAF:
-            resp3 = _des_transceive(cmd, 0xAF)
-            p3 = resp3[:-1]
-            if len(p3) >= 7:
-                info["uid"] = p3[:7].hex().upper()
-            if len(p3) >= 12:
-                info["batch"] = p3[7:12].hex().upper()
-            if len(p3) >= 13:
-                info["prod_week"] = p3[12]
-            if len(p3) >= 14:
-                info["prod_year"] = p3[13]
+    if len(frames) >= 3:
+        p3 = frames[2]
+        if len(p3) >= 7:
+            info["uid"] = p3[:7].hex().upper()
+        if len(p3) >= 12:
+            info["batch"] = p3[7:12].hex().upper()
+        if len(p3) >= 13:
+            info["prod_week"] = p3[12]
+        if len(p3) >= 14:
+            info["prod_year"] = p3[13]
+    # Raw frames kept for display/diagnosis — the production fields are
+    # vendor BCD and any frame-length surprise shows up here.
+    info["_frames"] = [f.hex().upper() for f in frames]
     return info
 
 
+_DESFIRE_VENDOR = {0x04: "NXP"}
 _DESFIRE_HW_TYPE = {0x01: "DESFire", 0x81: "DESFire (SW)"}
 # Keyed on hw_major (payload[3]), matching PM3 logic.
 # hw_subtype (payload[2]) is always 0x01 for all EV variants and cannot
@@ -1299,6 +1355,11 @@ class HfDesInfo(ReaderRequiredUnit):
             hw_ver_str = _fmtver(hw_maj, hw_min) if hw_maj is not None else "?"
             sw_ver_str = _fmtver(sw_maj, sw_min) if sw_maj is not None else "?"
 
+            if "hw_vendor" in ver:
+                vnd = _DESFIRE_VENDOR.get(
+                    ver["hw_vendor"], f"0x{ver['hw_vendor']:02X}"
+                )
+                print(f" Vendor        : {vnd}")
             print(f" HW version    : {hw_ver_str}  ({hw_gen})  storage: {hw_stor}")
             print(f" SW version    : {sw_ver_str}  storage: {sw_stor}")
             print(f" Protocol      : {proto}")
@@ -1306,10 +1367,14 @@ class HfDesInfo(ReaderRequiredUnit):
                 print(f" Card UID      : {ver['uid']}")
             if "batch" in ver:
                 print(f" Batch no      : {ver['batch']}")
-            if "prod_week" in ver:
+            if "prod_week" in ver and "prod_year" in ver:
+                # Week and year are vendor BCD, printed as hex digits (PM3:
+                # "%02x" / "20%02x") — 0x25 is week/year 25, not decimal 37.
                 print(
-                    f" Production    : week {ver['prod_week']:02d} / 20{ver['prod_year']:02d}"
+                    f" Production    : week {ver['prod_week']:02X} / 20{ver['prod_year']:02X}"
                 )
+            if "_frames" in ver:
+                print(f" Version (raw) : {' '.join(ver['_frames'])}")
         except Exception as e:
             print(f" {CY}[!] GetVersion failed: {e}{C0}")
 

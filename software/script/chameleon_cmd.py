@@ -1714,6 +1714,24 @@ class ChameleonCMD:
         return self.device.send_cmd_sync(
             Command.DESFIRE_READER_AUTH_ISO7816, payload, timeout=3)
 
+    def desfire_reader_get_version(self):
+        """
+        Reader mode: full three-frame DESFire GetVersion in one firmware call.
+        The firmware cycles the field, does select+RATS, then sends the
+        ISO-wrapped 0x60 / 0xAF / 0xAF sequence in a single T=CL session, so the
+        continuation frames (SW/production) arrive — unlike the per-APDU path,
+        which re-selects the card each call and only ever reads the HW frame.
+
+        :return: response object.
+            resp.status:
+                Status.HF_TAG_OK  -- card answered (resp.data holds the frames)
+                Status.HF_TAG_NO  -- no card found in the field
+            resp.data: num_frames(1), then per frame len(1) bytes(len), where
+                       bytes = frame payload + SW1 SW2 (91 XX).
+        """
+        return self.device.send_cmd_sync(
+            Command.DESFIRE_READER_GET_VERSION, b"", timeout=3)
+
     @expect_response(Status.SUCCESS)
     def mf1_read_emu_block_data(self, block_start: int, block_count: int):
         """
