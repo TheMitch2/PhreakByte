@@ -89,6 +89,42 @@ class HWLogDump(DeviceRequiredUnit):
             print(" - Log is empty (is the level above 0?)")
 
 
+@hw_log.command("stream")
+class HWLogStream(DeviceRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = ("Live-tail the debug log over the current link (RTT-like, no J-Link). "
+                              "Each poll flushes the device's RAM tail to flash, then prints new "
+                              "entries until Ctrl-C.")
+        parser.add_argument("-i", "--interval", type=float, default=0.3,
+                            help="poll interval in seconds (default 0.3)")
+        parser.add_argument("--from-start", action="store_true",
+                            help="print the existing log first, then follow")
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        st = _status(self.cmd)
+        if st['level'] == 0:
+            print(" - Note: log level is off; enable it with 'hw log level info'")
+        offset = 0 if args.from_start else st['stored']
+        print(f" - Streaming from offset {offset:,} (Ctrl-C to stop)")
+        try:
+            while True:
+                total = _status(self.cmd)['stored']   # flushes RAM -> flash
+                if total < offset:                    # cleared or wrapped: resync
+                    offset = 0
+                while offset < total:
+                    data = self.cmd.log_read(offset, min(CHUNK, total - offset))
+                    if not data:
+                        break
+                    offset += len(data)
+                    sys.stdout.write(data.decode("utf-8", errors="replace"))
+                    sys.stdout.flush()
+                time.sleep(args.interval)
+        except KeyboardInterrupt:
+            print("\n - stopped")
+
+
 @hw_log.command("clear")
 class HWLogClear(DeviceRequiredUnit):
     def args_parser(self) -> ArgumentParserNoExit:
