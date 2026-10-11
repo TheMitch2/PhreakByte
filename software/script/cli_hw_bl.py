@@ -79,3 +79,25 @@ class HWBlPush(DeviceRequiredUnit):
         self.cmd.bl_stage_commit()
         print(" - Verified. The device copies the image and resets; reconnect in a few seconds.")
         time.sleep(0.2)
+
+
+@hw.command("version")
+class HWVersion(DeviceRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = ("Show or set the Secure-DFU version counters in the settings page. "
+                              "These gate DFU updates (an image must be >= the stored counter); "
+                              "set them at/below an image to let DFU accept it. hw bl push ignores them.")
+        parser.add_argument("-a", "--app", type=int, help="set stored application version")
+        parser.add_argument("-b", "--bl", type=int, help="set stored bootloader version")
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        if args.app is None and args.bl is None:
+            app_v, bl_v = self.cmd.get_dfu_settings_version()
+            print(f" - Settings application version : {app_v}")
+            print(f" - Settings bootloader version  : {bl_v}")
+            return
+        mask = (1 if args.app is not None else 0) | (2 if args.bl is not None else 0)
+        app_v, bl_v = self.cmd.set_dfu_settings_version(mask, args.app or 0, args.bl or 0)
+        print(f" - Updated settings versions: application {app_v}, bootloader {bl_v}")

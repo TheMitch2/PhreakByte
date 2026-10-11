@@ -154,6 +154,23 @@ class ChameleonCMD:
         self._bl_stage(Command.BL_STAGE_COMMIT, struct.pack('!I', 0x434F5059))
 
     @expect_response(Status.SUCCESS)
+    def get_dfu_settings_version(self):
+        """Read the Secure-DFU version counters (app, bootloader) from the settings page."""
+        resp = self.device.send_cmd_sync(Command.GET_DFU_SETTINGS_VERSION)
+        if resp.status == Status.SUCCESS:
+            resp.parsed = struct.unpack('!II', resp.data)
+        return resp
+
+    @expect_response(Status.SUCCESS)
+    def set_dfu_settings_version(self, mask, app_ver, bl_ver):
+        """Set the settings-page version counters (mask b0=app, b1=bl); returns the new (app, bl)."""
+        resp = self.device.send_cmd_sync(Command.SET_DFU_SETTINGS_VERSION,
+                                         struct.pack('!BII', mask, app_ver, bl_ver))
+        if resp.status == Status.SUCCESS:
+            resp.parsed = struct.unpack('!II', resp.data)
+        return resp
+
+    @expect_response(Status.SUCCESS)
     def get_device_mode(self):
         resp = self.device.send_cmd_sync(Command.GET_DEVICE_MODE)
         if resp.status == Status.SUCCESS:

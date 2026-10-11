@@ -18,6 +18,7 @@
 #include "logflash.h"
 #include "logring.h"
 #include "blstage.h"
+#include "dfuver.h"
 #include "netdata.h"
 #if defined(PROJECT_CHAMELEON_ULTRA)
 #include "bsp_wdt.h"
@@ -216,6 +217,28 @@ static data_frame_tx_t *cmd_processor_bl_stage_commit(uint16_t cmd, uint16_t sta
     uint32_t magic;
     memcpy(&magic, data, 4);
     return bl_stage_reply(cmd, blstage_commit(U32NTOHL(magic)));
+}
+
+static data_frame_tx_t *cmd_processor_get_dfu_settings_version(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
+    uint32_t app_v = 0, bl_v = 0;
+    dfuver_get(&app_v, &bl_v);
+    uint32_t payload[2] = { U32HTONL(app_v), U32HTONL(bl_v) };
+    return data_frame_make(cmd, STATUS_SUCCESS, sizeof(payload), (uint8_t *)payload);
+}
+
+static data_frame_tx_t *cmd_processor_set_dfu_settings_version(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
+    if (length != 9) {
+        return data_frame_make(cmd, STATUS_PAR_ERR, 0, NULL);
+    }
+    uint32_t app_v, bl_v;
+    uint8_t mask = data[0];
+    memcpy(&app_v, data + 1, 4);
+    memcpy(&bl_v, data + 5, 4);
+    bool ok = dfuver_set(mask, U32NTOHL(app_v), U32NTOHL(bl_v));
+    uint32_t na = 0, nb = 0;
+    dfuver_get(&na, &nb);
+    uint32_t payload[2] = { U32HTONL(na), U32HTONL(nb) };
+    return data_frame_make(cmd, ok ? STATUS_SUCCESS : STATUS_FLASH_WRITE_FAIL, sizeof(payload), (uint8_t *)payload);
 }
 
 static data_frame_tx_t *cmd_processor_get_device_model(uint16_t cmd, uint16_t status, uint16_t length, uint8_t *data) {
@@ -4441,6 +4464,8 @@ static cmd_data_map_t m_data_cmd_map[] = {
     {    DATA_CMD_BL_STAGE_BEGIN,               NULL,                        cmd_processor_bl_stage_begin,                NULL                   },
     {    DATA_CMD_BL_STAGE_DATA,                NULL,                        cmd_processor_bl_stage_data,                 NULL                   },
     {    DATA_CMD_BL_STAGE_COMMIT,              NULL,                        cmd_processor_bl_stage_commit,               NULL                   },
+    {    DATA_CMD_GET_DFU_SETTINGS_VERSION,     NULL,                        cmd_processor_get_dfu_settings_version,      NULL                   },
+    {    DATA_CMD_SET_DFU_SETTINGS_VERSION,     NULL,                        cmd_processor_set_dfu_settings_version,      NULL                   },
     {    DATA_CMD_SET_BLE_NAME,                 NULL,                        cmd_processor_set_ble_name,                  NULL                   },
 
 #if defined(PROJECT_CHAMELEON_ULTRA)
