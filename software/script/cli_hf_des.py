@@ -2001,7 +2001,9 @@ class HfDesSignature(ReaderRequiredUnit):
             return
         status = resp[-1]
         sig = resp[:-1]
-        if status != 0x00 or len(sig) != 56:
+        # Read_Sig OK is status 0x90 (PM3's DesfireReadSignature treats 0x90 as
+        # success); some stacks report 0x00. The 56-byte payload is the signature.
+        if len(sig) != 56 or status not in (0x00, 0x90):
             print(f" {CY}[!] Read_Sig not available (status 0x{status:02X}, {len(sig)} bytes). "
                   f"Card may require auth or not support it.{C0}")
             return
