@@ -1,8 +1,31 @@
 """cli_hw_log - persistent debug log commands (hw log ...)."""
 
 import argparse
+import os
 import sys
 import time
+
+
+def _stop_pressed() -> bool:
+    """Non-blocking: True if the user pressed Enter (tty only). Drains the input
+    so it doesn't leak into the next prompt. Returns False on non-tty stdin."""
+    try:
+        if not sys.stdin.isatty():
+            return False
+        if os.name == "nt":
+            import msvcrt
+            hit = False
+            while msvcrt.kbhit():
+                msvcrt.getwch()
+                hit = True
+            return hit
+        import select
+        if select.select([sys.stdin], [], [], 0)[0]:
+            sys.stdin.readline()
+            return True
+        return False
+    except Exception:
+        return False
 
 from cli_core import ArgumentParserNoExit, DeviceRequiredUnit, hw
 
@@ -107,7 +130,8 @@ class HWLogStream(DeviceRequiredUnit):
         if st['level'] == 0:
             print(" - Note: log level is off; enable it with 'hw log level info'")
         offset = 0 if args.from_start else st['stored']
-        print(f" - Streaming from offset {offset:,} (Ctrl-C to stop)")
+        how = "press Enter to stop" if sys.stdin.isatty() else "Ctrl-C to stop"
+        print(f" - Streaming from offset {offset:,} ({how})")
         try:
             while True:
                 total = _status(self.cmd)['stored']   # flushes RAM -> flash
@@ -120,9 +144,22 @@ class HWLogStream(DeviceRequiredUnit):
                     offset += len(data)
                     sys.stdout.write(data.decode("utf-8", errors="replace"))
                     sys.stdout.flush()
-                time.sleep(args.interval)
+                # Stop only between polls (never mid-command, which would desync
+                # the link). Poll stdin in small slices across the interval.
+                end = time.time() + args.interval
+                stop = False
+                while time.time() < end:
+                    if _stop_pressed():
+                        stop = True
+                        break
+                    time.sleep(0.03)
+                if stop:
+                    break
         except KeyboardInterrupt:
-            print("\n - stopped")
+            # A Ctrl-C can land mid-command; let the RX thread drain so the next
+            # command isn't matched to a stale response.
+            time.sleep(0.2)
+        print("\n - stopped")
 
 
 @hw_log.command("clear")
