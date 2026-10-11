@@ -1937,6 +1937,145 @@ class HfDesChk(ReaderRequiredUnit):
             print(f"\n {CR}No keys found{C0}")
 
 
+# NXP originality public keys (secp224r1), from Proxmark3 crypto/originality.c
+# (PK_MFDES). Verification uses the raw UID as the ECDSA message value, no
+# digest, matching PM3 (reverse=false, hash=false).
+_NXP_DESFIRE_PK = [
+    ("DESFire Light (AN12343)",
+     "040E98E117AAA36457F43173DC920A8757267F44CE4EC5ADD3C54075571AEBBF7B942A9774A1D94AD02572427E5AE0A2DD36591B1FB34FCF3D"),
+    ("NTAG413DNA, DESFire EV1",
+     "04BB5D514F7050025C7D0F397310360EEC91EAF792E96FC7E0F496CB4E669D414F877B7B27901FE67C2E3B33CD39D1C797715189AC951C2ADD"),
+    ("NTAG424DNA/TT, DESFire EV2, DESFire Light EV2",
+     "04B304DC4C615F5326FE9383DDEC9AA892DF3A57FA7FFB3276192BC0EAA252ED45A865E3B093A3D0DCE5BE29E92F1392CE7DE321E3E5C52B3A"),
+    ("NTAG424DNA, DESFire EV2, DESFire Light (AN12196)",
+     "048A9B380AF2EE1B98DC417FECC263F8449C7625CECE82D9B916C992DA209D68422B81EC20B65A66B5102A61596AF3379200599316A00A1410"),
+    ("DESFire EV2 XL",
+     "04CD5D45E50B1502F0BA4656FF37669597E7E183251150F9574CC8DA56BF01C7ABE019E29FEA48F9CE22C3EA4029A765E1BC95A89543BAD1BC"),
+    ("DESFire EV3",
+     "041DB46C145D0A36539C6544BD6D9B0AA62FF91EC48CBC6ABAE36E0089A46F0D08C8A715EA40A63313B92E90DDC1730230E0458A33276FB743"),
+]
+
+
+def _verify_originality(uid: bytes, sig56: bytes):
+    """Return the label of the first NXP key that verifies, else None.
+    ECDSA secp224r1 over the raw UID (no digest), raw r||s signature."""
+    from cryptography.hazmat.primitives.asymmetric import ec, utils
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.exceptions import InvalidSignature
+    # mbedtls uses the UID bytes as the message integer e; left-pad to the
+    # 28-byte (224-bit) curve size so Prehashed(SHA224) yields the same e.
+    e = uid.rjust(28, b"\x00")
+    r = int.from_bytes(sig56[:28], "big")
+    s = int.from_bytes(sig56[28:56], "big")
+    der = utils.encode_dss_signature(r, s)
+    for label, key_hex in _NXP_DESFIRE_PK:
+        try:
+            pub = ec.EllipticCurvePublicKey.from_encoded_point(
+                ec.SECP224R1(), bytes.fromhex(key_hex))
+            pub.verify(der, e, ec.ECDSA(utils.Prehashed(hashes.SHA224())))
+            return label
+        except InvalidSignature:
+            continue
+        except Exception:
+            continue
+    return None
+
+
+@hf_des.command("signature")
+class HfDesSignature(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = (
+            "Read the NXP originality signature (Read_Sig 0x3C) from a DESFire card and "
+            "verify it against NXP's public keys (secp224r1). A match means a genuine NXP "
+            "chip; no match points to a clone / magic card. Requires the 'cryptography' package."
+        )
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        uid, _sak, _ats = _des_select(self.cmd)
+        try:
+            resp = _des_transceive(self.cmd, 0x3C, bytes([0x00]))
+        except RuntimeError as e:
+            print(f" {CR}[!] Read_Sig failed: {e}{C0}")
+            return
+        status = resp[-1]
+        sig = resp[:-1]
+        if status != 0x00 or len(sig) != 56:
+            print(f" {CY}[!] Read_Sig not available (status 0x{status:02X}, {len(sig)} bytes). "
+                  f"Card may require auth or not support it.{C0}")
+            return
+        print(f" - UID       : {uid.hex().upper()}")
+        print(f" - Signature : {sig.hex().upper()}")
+        try:
+            label = _verify_originality(uid, sig)
+        except ImportError:
+            print(f" {CY}[!] 'cryptography' package not installed; cannot verify.{C0}")
+            return
+        if label:
+            print(f" {CG}[+] Genuine: signature verifies with NXP key [{label}]{C0}")
+        else:
+            print(f" {CR}[-] No NXP key verifies this signature - likely a clone / magic card.{C0}")
+            print(f" {CY}    (A random-UID card can also fail here, since the signature is over "
+                  f"the real UID.){C0}")
+
+
+@hf_des.command("bruteaid")
+class HfDesBruteAid(ReaderRequiredUnit):
+    def args_parser(self) -> ArgumentParserNoExit:
+        parser = ArgumentParserNoExit()
+        parser.description = (
+            "Brute-force the DESFire application-ID space: issue SelectApplication (0x5A) for "
+            "each AID and report those the card accepts, including apps hidden from "
+            "GetApplicationIDs. One field cycle per AID over USB/BLE, so it is slow "
+            "(~tens of ms each) - bound the range. Found AIDs are usable as 'hf des chk --aid'."
+        )
+        parser.add_argument("--start", type=str, default="000000", metavar="<hex>",
+                            help="start AID, 3 hex bytes (default 000000)")
+        parser.add_argument("--end", type=str, default="0000FF", metavar="<hex>",
+                            help="end AID inclusive, 3 hex bytes (default 0000FF)")
+        return parser
+
+    def on_exec(self, args: argparse.Namespace):
+        try:
+            start = int(args.start.replace(" ", ""), 16)
+            end = int(args.end.replace(" ", ""), 16)
+        except ValueError:
+            print(f" {CR}[!] --start/--end must be hex, e.g. 000000{C0}")
+            return
+        if not (0 <= start <= 0xFFFFFF and 0 <= end <= 0xFFFFFF) or start > end:
+            print(f" {CR}[!] range must be within 000000..FFFFFF and start <= end{C0}")
+            return
+        total = end - start + 1
+        _des_select(self.cmd)  # confirm a card is present
+        print(f" - Scanning {total} AID(s) {start:06X}..{end:06X} (Ctrl-C to stop)")
+        found = []
+        t0 = time.time()
+        try:
+            for n, aid in enumerate(range(start, end + 1), 1):
+                aid_bytes = bytes([(aid >> 16) & 0xFF, (aid >> 8) & 0xFF, aid & 0xFF])
+                try:
+                    resp = _des_transceive(self.cmd, 0x5A, aid_bytes)
+                    if resp[-1] == 0x00:
+                        found.append(aid)
+                        print(f"   {CG}+ AID {aid:06X} accepted{C0}")
+                except RuntimeError:
+                    pass
+                if n % 16 == 0 or n == total:
+                    rate = n / max(time.time() - t0, 1e-3)
+                    eta = (total - n) / max(rate, 1e-3)
+                    print(f"\r   {n}/{total}  {rate:.0f} AID/s  ETA {eta:.0f}s   ",
+                          end="", flush=True)
+        except KeyboardInterrupt:
+            print(f"\n {CY}[!] stopped by user{C0}")
+        print()
+        if found:
+            print(f" {CG}Found {len(found)} AID(s):{C0} " +
+                  ", ".join(f"{a:06X}" for a in found))
+        else:
+            print(f" {CR}No AIDs accepted in range{C0}")
+
+
 # =============================================================================
 # Standalone (host-less) modes subsystem
 # =============================================================================
